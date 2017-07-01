@@ -1,0 +1,9 @@
+[package]
+name = "matroska"
+description = "Matroska/WebM demuxer"
+version = "0.1.0"
+authors = ["Luca Barbato <lu_zero@gentoo.org>"]
+readme = "README.md"
+license = "MIT"
+
+[dependencies]
