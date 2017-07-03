@@ -7,3 +7,4 @@ readme = "README.md"
 license = "MIT"
 
 [dependencies]
+nom = "^3.1"
