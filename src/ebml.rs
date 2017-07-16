@@ -43,7 +43,7 @@ fn vint(input: &[u8]) -> IResult<&[u8], u64> {
         return IResult::Error(ErrorKind::Custom(1));
     }
 
-    if input.len() < len as usize {
+    if input.len() <= len as usize {
         return IResult::Incomplete(Needed::Size(1));
     }
 
@@ -72,7 +72,7 @@ fn vid(input: &[u8]) -> IResult<&[u8], u64> {
         return IResult::Error(ErrorKind::Custom(1));
     }
 
-    if input.len() < len as usize {
+    if input.len() <= len as usize {
         return IResult::Incomplete(Needed::Size(1));
     }
 
