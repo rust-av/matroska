@@ -3,13 +3,11 @@ use nom::{HexDisplay, IResult, Needed, ErrorKind};
 
 struct Document {
     header: Header,
-    body: Vec<Element>
+    body: Vec<Element>,
 }
 
 
-struct Header {
-
-}
+struct Header {}
 
 #[derive(Debug)]
 enum ElementData {
@@ -21,19 +19,19 @@ enum ElementData {
     Date(u64),
     Master(Vec<Element>),
     Binary(Vec<u8>),
-    Unknown(u64)
+    Unknown(u64),
 }
 
 #[derive(Debug)]
 pub struct Element {
     id: u64,
     size: u64,
-    data: ElementData
+    data: ElementData,
 }
 
 pub fn vint(input: &[u8]) -> IResult<&[u8], u64> {
     if input.len() == 0 {
-        return IResult::Incomplete(Needed::Size(1))
+        return IResult::Incomplete(Needed::Size(1));
     }
 
     let v = input[0];
@@ -55,14 +53,14 @@ pub fn vint(input: &[u8]) -> IResult<&[u8], u64> {
         val = (val << 8) | input[i + 1] as u64;
     }
 
-    IResult::Done(&input[len as usize + 1 ..], val)
+    IResult::Done(&input[len as usize + 1..], val)
 }
 
 // The ID are represented in the specification as their binary representation
 // do not drop the marker bit.
 pub fn vid(input: &[u8]) -> IResult<&[u8], u64> {
     if input.len() == 0 {
-        return IResult::Incomplete(Needed::Size(1))
+        return IResult::Incomplete(Needed::Size(1));
     }
 
     let v = input[0];
@@ -84,13 +82,13 @@ pub fn vid(input: &[u8]) -> IResult<&[u8], u64> {
         val = (val << 8) | input[i + 1] as u64;
     }
 
-    IResult::Done(&input[len as usize + 1 ..], val)
+    IResult::Done(&input[len as usize + 1..], val)
 }
 
 fn parse_master(input: &[u8], size: u64) -> IResult<&[u8], ElementData> {
     map!(input,
-        many0!(parse_element), |elem| ElementData::Master(elem)
-    )
+         many0!(parse_element),
+         |elem| ElementData::Master(elem))
 }
 
 fn parse_uint(input: &[u8], size: u64) -> IResult<&[u8], ElementData> {
@@ -104,7 +102,7 @@ fn parse_uint(input: &[u8], size: u64) -> IResult<&[u8], ElementData> {
         val = (val << 8) | input[i] as u64;
     }
 
-    IResult::Done(&input[size as usize ..], ElementData::Unsigned(val))
+    IResult::Done(&input[size as usize..], ElementData::Unsigned(val))
 }
 
 pub fn parse_uint_data(input: &[u8], size: u64) -> IResult<&[u8], u64> {
@@ -118,7 +116,7 @@ pub fn parse_uint_data(input: &[u8], size: u64) -> IResult<&[u8], u64> {
         val = (val << 8) | input[i] as u64;
     }
 
-    IResult::Done(&input[size as usize ..], val)
+    IResult::Done(&input[size as usize..], val)
 }
 
 use std::str;
@@ -159,7 +157,7 @@ fn parse_element_id(input: &[u8], id: u64, size: u64) -> IResult<&[u8], ElementD
         0x4282 => parse_str(input, size),
         0x4287 => parse_uint(input, size),
         0x4285 => parse_uint(input, size),
-        _ => IResult::Done(&input[size as usize ..], ElementData::Unknown(id))
+        _ => IResult::Done(&input[size as usize..], ElementData::Unknown(id)),
     }
 }
 
@@ -228,13 +226,13 @@ macro_rules! ebml_master (
 
 #[derive(Debug,Clone,PartialEq)]
 pub struct EBMLHeader {
-  pub version:               u64,
-  pub read_version:          u64,
-  pub max_id_length:         u64,
-  pub max_size_length:       u64,
-  pub doc_type:              String,
-  pub doc_type_version:      u64,
-  pub doc_type_read_version: u64,
+    pub version: u64,
+    pub read_version: u64,
+    pub max_id_length: u64,
+    pub max_size_length: u64,
+    pub doc_type: String,
+    pub doc_type_version: u64,
+    pub doc_type_read_version: u64,
 }
 
 named!(pub ebml_header<EBMLHeader>,
@@ -274,11 +272,11 @@ mod tests {
     #[test]
     fn variable_integer() {
         let val01 = [0b10000000];
-//        let val01 = [0b01000000, 0b1];
+        //        let val01 = [0b01000000, 0b1];
 
         match vint(&val01) {
             IResult::Done(_, v) => assert!(0 == v),
-            _ => panic!()
+            _ => panic!(),
         }
     }
 
