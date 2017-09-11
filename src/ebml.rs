@@ -31,7 +31,7 @@ pub struct Element {
     data: ElementData
 }
 
-fn vint(input: &[u8]) -> IResult<&[u8], u64> {
+pub fn vint(input: &[u8]) -> IResult<&[u8], u64> {
     if input.len() == 0 {
         return IResult::Incomplete(Needed::Size(1))
     }
@@ -60,7 +60,7 @@ fn vint(input: &[u8]) -> IResult<&[u8], u64> {
 
 // The ID are represented in the specification as their binary representation
 // do not drop the marker bit.
-fn vid(input: &[u8]) -> IResult<&[u8], u64> {
+pub fn vid(input: &[u8]) -> IResult<&[u8], u64> {
     if input.len() == 0 {
         return IResult::Incomplete(Needed::Size(1))
     }
@@ -107,7 +107,7 @@ fn parse_uint(input: &[u8], size: u64) -> IResult<&[u8], ElementData> {
     IResult::Done(&input[size as usize ..], ElementData::Unsigned(val))
 }
 
-fn parse_uint_data(input: &[u8], size: u64) -> IResult<&[u8], u64> {
+pub fn parse_uint_data(input: &[u8], size: u64) -> IResult<&[u8], u64> {
     let mut val = 0;
 
     if size > 8 {
@@ -130,7 +130,7 @@ fn parse_str(input: &[u8], size: u64) -> IResult<&[u8], ElementData> {
     )
 }
 
-fn parse_str_data(input: &[u8], size: u64) -> IResult<&[u8], String> {
+pub fn parse_str_data(input: &[u8], size: u64) -> IResult<&[u8], String> {
     do_parse!(input,
         s: take_s!(size as usize) >>
         ( String::from_utf8(s.to_owned()).unwrap() )
@@ -167,38 +167,42 @@ named!(pub parse_element<Element>,
 
 #[macro_export]
 macro_rules! ebml_uint (
-  ($i: expr, $id:expr) => (
+  ($i: expr, $id:expr) => ({
+    use $crate::ebml::{vid, vint, parse_uint_data};
     do_parse!($i,
                verify!(vid, |val:u64| val == $id)
       >> size: vint
       >> data: apply!(parse_uint_data, size)
       >> (data)
     )
-  )
+  })
 );
 
 #[macro_export]
 macro_rules! ebml_str (
-  ($i: expr, $id:expr) => (
+  ($i: expr, $id:expr) => ({
+    use $crate::ebml::{vid, vint, parse_str_data};
+
     do_parse!($i,
                verify!(vid, |val:u64| val == $id)
       >> size: vint
       >> data: apply!(parse_str_data, size)
       >> (data)
     )
-  )
+  })
 );
 
 #[macro_export]
 macro_rules! ebml_master (
-  ($i: expr, $id:expr, $submac:ident!( $($args:tt)* )) => (
+  ($i: expr, $id:expr, $submac:ident!( $($args:tt)* )) => ({
+    use $crate::ebml::{vid, vint};
     do_parse!($i,
                verify!(vid, |val:u64| val == $id)
       >> size: vint
       >> data: flat_map!(take!(size as usize), $submac!($($args)*))
       >> (data)
     )
-  )
+  })
 );
 
 #[derive(Debug,Clone,PartialEq)]

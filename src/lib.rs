@@ -1,6 +1,6 @@
 #[macro_use] extern crate nom;
 
-pub mod ebml;
+#[macro_use] pub mod ebml;
 
 #[cfg(test)]
 mod tests {
