@@ -107,12 +107,33 @@ fn parse_uint(input: &[u8], size: u64) -> IResult<&[u8], ElementData> {
     IResult::Done(&input[size as usize ..], ElementData::Unsigned(val))
 }
 
+fn parse_uint_data(input: &[u8], size: u64) -> IResult<&[u8], u64> {
+    let mut val = 0;
+
+    if size > 8 {
+        return IResult::Error(ErrorKind::Custom(1));
+    }
+
+    for i in 0..size as usize {
+        val = (val << 8) | input[i] as u64;
+    }
+
+    IResult::Done(&input[size as usize ..], val)
+}
+
 use std::str;
 
 fn parse_str(input: &[u8], size: u64) -> IResult<&[u8], ElementData> {
     do_parse!(input,
         s: take_s!(size as usize) >>
         ( ElementData::PlainString(String::from_utf8(s.to_owned()).unwrap()) )
+    )
+}
+
+fn parse_str_data(input: &[u8], size: u64) -> IResult<&[u8], String> {
+    do_parse!(input,
+        s: take_s!(size as usize) >>
+        ( String::from_utf8(s.to_owned()).unwrap() )
     )
 }
 
@@ -144,6 +165,81 @@ named!(pub parse_element<Element>,
     )
 );
 
+#[macro_export]
+macro_rules! ebml_uint (
+  ($i: expr, $id:expr) => (
+    do_parse!($i,
+               verify!(vid, |val:u64| val == $id)
+      >> size: vint
+      >> data: apply!(parse_uint_data, size)
+      >> (data)
+    )
+  )
+);
+
+#[macro_export]
+macro_rules! ebml_str (
+  ($i: expr, $id:expr) => (
+    do_parse!($i,
+               verify!(vid, |val:u64| val == $id)
+      >> size: vint
+      >> data: apply!(parse_str_data, size)
+      >> (data)
+    )
+  )
+);
+
+#[macro_export]
+macro_rules! ebml_master (
+  ($i: expr, $id:expr, $submac:ident!( $($args:tt)* )) => (
+    do_parse!($i,
+               verify!(vid, |val:u64| val == $id)
+      >> size: vint
+      >> data: flat_map!(take!(size as usize), $submac!($($args)*))
+      >> (data)
+    )
+  )
+);
+
+#[derive(Debug,Clone,PartialEq)]
+pub struct EBMLHeader {
+  pub version:               u64,
+  pub read_version:          u64,
+  pub max_id_length:         u64,
+  pub max_size_length:       u64,
+  pub doc_type:              String,
+  pub doc_type_version:      u64,
+  pub doc_type_read_version: u64,
+}
+
+named!(pub ebml_header<EBMLHeader>,
+  ebml_master!(0x1A45DFA3,
+    do_parse!(
+      t: permutation!(
+        ebml_uint!(0x4286), // version
+        ebml_uint!(0x42F7), // read_version
+        ebml_uint!(0x42F2), // max id length
+        ebml_uint!(0x42F3), // max size length
+        ebml_str!(0x4282),  // doctype
+        ebml_uint!(0x4287), // doctype version
+        ebml_uint!(0x4285)  // doctype_read version
+      ) >>
+      ({
+        EBMLHeader {
+          version:               t.0,
+          read_version:          t.1,
+          max_id_length:         t.2,
+          max_size_length:       t.3,
+          doc_type:              t.4,
+          doc_type_version:      t.5,
+          doc_type_read_version: t.6,
+
+        }
+      })
+    )
+  )
+);
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -161,12 +257,20 @@ mod tests {
         }
     }
 
+    /*
     #[test]
     fn header() {
         println!("{}", single_stream[..8].to_hex(8));
         println!("{:b} {:b}", single_stream[0], single_stream[1]);
         println!("{:#?}", parse_element(single_stream));
         panic!();
+    }*/
 
+    #[test]
+    fn header() {
+        println!("{}", single_stream[..8].to_hex(8));
+        println!("{:b} {:b}", single_stream[0], single_stream[1]);
+        println!("{:?}", ebml_header(&single_stream[..100]));
+        panic!();
     }
 }
