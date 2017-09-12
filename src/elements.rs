@@ -10,6 +10,7 @@ pub enum SegmentElement {
     Cues(Cues),
     Attachments(Attachments),
     Tags(Tags),
+    Void,
     Unknown(u64, Option<u64>),
 }
 
@@ -35,17 +36,29 @@ macro_rules! sub_element(
       >> element: flat_map!(take!(size as usize), dbg_dmp!($parser))
       >> (element)
     )
-  })
+  });
+  ($i:expr, $submac:ident!( $($args:tt)* )) => ({
+    do_parse!($i,
+         size: vint
+      >> element: flat_map!(take!(size as usize), dbg_dmp!($submac!($($args)*)))
+      >> (element)
+    )
+  });
 );
 
 // Segment, the root element, has id 0x18538067
 named!(pub segment_element<SegmentElement>,
   switch!(vid,
-    0x114D9B74 => sub_element!(seek_head) |
-    0x1549A966 => sub_element!(info)      |
-    0x1F43B675 => sub_element!(cluster)   |
-
-    unknown    => do_parse!(
+      0x114D9B74 => sub_element!(seek_head)
+    | 0x1549A966 => sub_element!(info)
+    | 0x1F43B675 => sub_element!(cluster)
+    | 0x1043A770 => sub_element!(chapters)
+    | 0x1254C367 => sub_element!(value!(SegmentElement::Tags(Tags { })))
+    | 0x1941A469 => sub_element!(value!(SegmentElement::Attachments(Attachments { })))
+    | 0x1654AE6B => sub_element!(value!(SegmentElement::Tracks(Tracks { })))
+    | 0x1C53BB6B => sub_element!(value!(SegmentElement::Cues(Cues { })))
+    | 0xEC       => sub_element!(value!(SegmentElement::Void))
+    | unknown    => do_parse!(
         size: opt!(vint) >>
               cond!(size.is_some(), take!( (size.unwrap() as usize) )) >>
               (SegmentElement::Unknown(unknown, size))
@@ -282,6 +295,13 @@ pub struct Tracks {}
 
 #[derive(Debug,Clone,PartialEq)]
 pub struct Chapters {}
+
+//https://datatracker.ietf.org/doc/html/draft-lhomme-cellar-matroska-03#section-7.3.199
+//TODO
+named!(pub chapters<SegmentElement>,
+  //EditionEntry
+  ebml_master!(0x45B9, value!(SegmentElement::Chapters(Chapters{})))
+);
 
 #[derive(Debug,Clone,PartialEq)]
 pub struct Cues {}
