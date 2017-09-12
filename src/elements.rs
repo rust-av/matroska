@@ -300,10 +300,11 @@ mod tests {
     use std::cmp::min;
 
     const mkv: &'static [u8] = include_bytes!("../assets/single_stream.mkv");
+    const webm: &'static [u8] = include_bytes!("../assets/big-buck-bunny_trailer.webm");
 
 
     #[test]
-    fn segment_root() {
+    fn mkv_segment_root() {
         let res = segment(&mkv[47..100]);
         println!("{:?}", res);
 
@@ -315,7 +316,7 @@ mod tests {
     }
 
     #[test]
-    fn segment_elements() {
+    fn mkv_segment_elements() {
         let mut index: usize = 59;
 
         loop {
@@ -345,6 +346,57 @@ mod tests {
                              index,
                              e,
                              (&mkv[index..max_index]).to_hex(16));
+                    break;
+                }
+            }
+        }
+
+        panic!();
+    }
+
+    #[test]
+    fn webm_segment_root() {
+        let res = segment(&webm[40..100]);
+        println!("{:?}", res);
+
+        if let IResult::Done(i, _) = res {
+            println!("consumed {} bytes after header", (&webm[40..]).offset(i));
+        }
+
+        panic!();
+    }
+
+    #[test]
+    fn webm_segment_elements() {
+        let mut index: usize = 48;
+
+        loop {
+            let res = segment_element(&webm[index..]);
+
+            match res {
+                IResult::Done(i, o) => {
+                    let new_index = webm.offset(i);
+                    match o {
+                        SegmentElement::Unknown(id, size) => {
+                            println!("[{} -> {}] Unknown {{ id: 0x{:x}, size: {:?} }}",
+                                     index,
+                                     new_index,
+                                     id,
+                                     size);
+                        }
+                        o => {
+                            println!("[{} -> {}] {:#?}", index, new_index, o);
+                        }
+                    };
+
+                    index = new_index as usize;
+                }
+                e => {
+                    let max_index = min(webm.len(), index + 200);
+                    println!("[{}] {:#?}:\n{}",
+                             index,
+                             e,
+                             (&webm[index..max_index]).to_hex(16));
                     break;
                 }
             }

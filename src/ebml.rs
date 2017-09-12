@@ -332,6 +332,7 @@ named!(pub ebml_header<EBMLHeader>,
 #[cfg(test)]
 mod tests {
     use super::*;
+    use nom::Offset;
 
     const single_stream: &'static [u8] = include_bytes!("../assets/single_stream.mkv");
     const webm: &'static [u8] = include_bytes!("../assets/big-buck-bunny_trailer.webm");
@@ -367,7 +368,12 @@ mod tests {
     #[test]
     fn webm_header() {
         println!("{}", webm[..8].to_hex(8));
-        println!("{:?}", ebml_header(&webm[..100]));
+        let res = ebml_header(&webm[..100]);
+        println!("{:?}", res);
+
+        if let IResult::Done(i,_) = res {
+          println!("offset: {} bytes", webm.offset(i));
+        }
         panic!();
     }
 }
