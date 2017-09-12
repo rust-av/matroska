@@ -113,8 +113,8 @@ pub struct Info {
 named!(pub info<SegmentElement>,
   do_parse!(
     t: permutation_opt!(
-      dbg_dmp!(complete!(ebml_binary!(0x73A4)))?, // SegmentUID
-      dbg_dmp!(complete!(ebml_str!(0x7384)))?,    // SegmentFIlename FIXME SHOULD BE UTF-8 not str
+      complete!(ebml_binary!(0x73A4))?, // SegmentUID
+      complete!(ebml_str!(0x7384))?,    // SegmentFIlename FIXME SHOULD BE UTF-8 not str
       complete!(ebml_binary!(0x3CB923))?,         // PrevUID
       complete!(ebml_str!(0x3C83AB))?,            // PrevFilename FIXME SHOULD BE UTF-8 not str
       complete!(ebml_binary!(0x3EB923))?,         // NextUID
@@ -152,7 +152,7 @@ pub struct ChapterTranslate {}
 //https://datatracker.ietf.org/doc/html/draft-lhomme-cellar-matroska-03#section-7.3.16
 //TODO
 named!(pub chapter_translate<ChapterTranslate>,
-  dbg_dmp!(ebml_master!(0x6924, value!(ChapterTranslate{})))
+  ebml_master!(0x6924, value!(ChapterTranslate{}))
 );
 
 //https://datatracker.ietf.org/doc/html/draft-lhomme-cellar-matroska-03#section-7.3.26
@@ -196,7 +196,7 @@ pub struct SilentTracks {
 
 //https://datatracker.ietf.org/doc/html/draft-lhomme-cellar-matroska-03#section-7.3.16
 named!(pub silent_tracks<SilentTracks>,
-  dbg_dmp!(ebml_master!(0x5854, map!(many0!(ebml_uint!(0x58D7)), |v| SilentTracks { numbers: v })))
+  ebml_master!(0x5854, map!(many0!(ebml_uint!(0x58D7)), |v| SilentTracks { numbers: v }))
 );
 
 #[derive(Debug,Clone,PartialEq)]
