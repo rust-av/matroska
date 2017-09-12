@@ -2,6 +2,8 @@
 extern crate nom;
 
 #[macro_use]
+pub mod permutation;
+#[macro_use]
 pub mod ebml;
 pub mod elements;
 
