@@ -280,6 +280,15 @@ macro_rules! ebml_master (
   })
 );
 
+named!(pub skip_void,
+do_parse!(
+  id:   verify!(vid, |val:u64| val == 0xEC) >>
+  size: vint >>
+  data: take!(size) >>
+  (data)
+  ));
+
+
 #[derive(Debug,Clone,PartialEq)]
 pub struct EBMLHeader {
     pub version: u64,
@@ -294,14 +303,15 @@ pub struct EBMLHeader {
 named!(pub ebml_header<EBMLHeader>,
   ebml_master!(0x1A45DFA3,
     do_parse!(
-      t: permutation!(
-        ebml_uint!(0x4286), // version
-        ebml_uint!(0x42F7), // read_version
-        ebml_uint!(0x42F2), // max id length
-        ebml_uint!(0x42F3), // max size length
-        ebml_str!(0x4282),  // doctype
-        ebml_uint!(0x4287), // doctype version
-        ebml_uint!(0x4285)  // doctype_read version
+      t: permutation_opt!(
+        complete!(ebml_uint!(0x4286)), // version
+        complete!(ebml_uint!(0x42F7)), // read_version
+        complete!(ebml_uint!(0x42F2)), // max id length
+        complete!(ebml_uint!(0x42F3)), // max size length
+        complete!(ebml_str!(0x4282)),  // doctype
+        complete!(ebml_uint!(0x4287)), // doctype version
+        complete!(ebml_uint!(0x4285)),  // doctype_read version
+        complete!(skip_void)?
       ) >>
       ({
         EBMLHeader {
@@ -324,6 +334,7 @@ mod tests {
     use super::*;
 
     const single_stream: &'static [u8] = include_bytes!("../assets/single_stream.mkv");
+    const webm: &'static [u8] = include_bytes!("../assets/big-buck-bunny_trailer.webm");
 
     #[test]
     fn variable_integer() {
@@ -346,10 +357,17 @@ mod tests {
     }*/
 
     #[test]
-    fn header() {
+    fn mkv_header() {
         println!("{}", single_stream[..8].to_hex(8));
         println!("{:b} {:b}", single_stream[0], single_stream[1]);
         println!("{:?}", ebml_header(&single_stream[..100]));
+        panic!();
+    }
+
+    #[test]
+    fn webm_header() {
+        println!("{}", webm[..8].to_hex(8));
+        println!("{:?}", ebml_header(&webm[..100]));
         panic!();
     }
 }
