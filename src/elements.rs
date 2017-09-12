@@ -43,6 +43,7 @@ named!(pub segment_element<SegmentElement>,
   switch!(vid,
     0x114D9B74 => sub_element!(seek_head) |
     0x1549A966 => sub_element!(info)      |
+    0x1F43B675 => sub_element!(cluster)   |
 
     unknown    => do_parse!(
         size: opt!(vint) >>
@@ -154,14 +155,133 @@ named!(pub chapter_translate<ChapterTranslate>,
   dbg_dmp!(ebml_master!(0x6924, value!(ChapterTranslate{})))
 );
 
+//https://datatracker.ietf.org/doc/html/draft-lhomme-cellar-matroska-03#section-7.3.26
+#[derive(Debug,Clone,PartialEq)]
+pub struct Cluster {
+    pub timecode: u64,
+    pub silent_tracks: Option<SilentTracks>,
+    pub position: Option<u64>,
+    pub prev_size: Option<u64>,
+    pub simple_block: Option<Vec<u8>>,
+    pub block_group: Option<BlockGroup>,
+    pub encrypted_block: Option<Vec<u8>>,
+}
+
+named!(pub cluster<SegmentElement>,
+  do_parse!(
+    t: permutation_opt!(
+      complete!(ebml_uint!(0xE7)),
+      complete!(silent_tracks)?,
+      complete!(ebml_uint!(0xA7))?,
+      complete!(ebml_uint!(0xAB))?,
+      complete!(ebml_binary!(0xA3))?,
+      complete!(block_group)?,
+      complete!(ebml_binary!(0xAF))?
+    ) >> (SegmentElement::Cluster(Cluster {
+      timecode: t.0,
+      silent_tracks: t.1,
+      position: t.2,
+      prev_size: t.3,
+      simple_block: t.4,
+      block_group: t.5,
+      encrypted_block: t.6,
+    }))
+  )
+);
+
+#[derive(Debug,Clone,PartialEq)]
+pub struct SilentTracks {
+    numbers: Vec<u64>,
+}
+
+//https://datatracker.ietf.org/doc/html/draft-lhomme-cellar-matroska-03#section-7.3.16
+named!(pub silent_tracks<SilentTracks>,
+  dbg_dmp!(ebml_master!(0x5854, map!(many0!(ebml_uint!(0x58D7)), |v| SilentTracks { numbers: v })))
+);
+
+#[derive(Debug,Clone,PartialEq)]
+pub struct BlockGroup {
+    pub block: Vec<u8>,
+    pub block_virtual: Option<Vec<u8>>,
+    pub block_additions: Option<BlockAdditions>,
+    pub block_duration: Option<u64>,
+    pub reference_priority: u64,
+    pub reference_block: Option<u64>,
+    pub reference_virtual: Option<i64>,
+    pub codec_state: Option<Vec<u8>>,
+    pub discard_padding: Option<i64>,
+    pub slices: Option<Slices>,
+    pub reference_frame: Option<ReferenceFrame>,
+}
+
+//https://datatracker.ietf.org/doc/html/draft-lhomme-cellar-matroska-03#section-7.3.16
+//TODO
+named!(pub block_group<BlockGroup>,
+  ebml_master!(0x5854,
+    do_parse!(
+      t: permutation_opt!(
+        complete!(ebml_binary!(0xA1)),
+        complete!(ebml_binary!(0xA2))?,
+        complete!(block_additions)?,
+        complete!(ebml_uint!(0x9B))?,
+        complete!(ebml_uint!(0xFA)),
+        complete!(ebml_uint!(0xFB))?,
+        complete!(ebml_int!(0xFD))?,
+        complete!(ebml_binary!(0xA4))?,
+        complete!(ebml_int!(0x75A2))?,
+        complete!(slices)?,
+        complete!(reference_frame)?
+
+      ) >> (BlockGroup {
+        block: t.0,
+        block_virtual: t.1,
+        block_additions: t.2,
+        block_duration: t.3,
+        reference_priority: t.4,
+        reference_block: t.5,
+        reference_virtual: t.6,
+        codec_state: t.7,
+        discard_padding: t.8,
+        slices: t.9,
+        reference_frame: t.10
+      })
+    )
+  )
+);
+
+#[derive(Debug,Clone,PartialEq)]
+pub struct BlockAdditions {}
+
+//https://datatracker.ietf.org/doc/html/draft-lhomme-cellar-matroska-03#section-7.3.16
+//TODO
+named!(pub block_additions<BlockAdditions>,
+  ebml_master!(0x75A1, value!(BlockAdditions {}))
+);
+
+#[derive(Debug,Clone,PartialEq)]
+pub struct Slices {}
+
+//https://datatracker.ietf.org/doc/html/draft-lhomme-cellar-matroska-03#section-7.3.46
+//TODO
+named!(pub slices<Slices>,
+  ebml_master!(0x8E, value!(Slices {}))
+);
+
+#[derive(Debug,Clone,PartialEq)]
+pub struct ReferenceFrame {}
+
+//https://datatracker.ietf.org/doc/html/draft-lhomme-cellar-matroska-03#section-7.3.53
+//TODO
+named!(pub reference_frame<ReferenceFrame>,
+  ebml_master!(0xC8, value!(ReferenceFrame {}))
+);
+
+
 #[derive(Debug,Clone,PartialEq)]
 pub struct Tracks {}
 
 #[derive(Debug,Clone,PartialEq)]
 pub struct Chapters {}
-
-#[derive(Debug,Clone,PartialEq)]
-pub struct Cluster {}
 
 #[derive(Debug,Clone,PartialEq)]
 pub struct Cues {}
