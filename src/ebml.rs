@@ -1,6 +1,7 @@
 
-use nom::{HexDisplay, IResult, Needed, ErrorKind};
+use nom::{IResult, Needed, ErrorKind};
 
+/*
 struct Document {
     header: Header,
     body: Vec<Element>,
@@ -28,6 +29,7 @@ pub struct Element {
     size: u64,
     data: ElementData,
 }
+*/
 
 pub fn vint(input: &[u8]) -> IResult<&[u8], u64> {
     if input.len() == 0 {
@@ -85,7 +87,8 @@ pub fn vid(input: &[u8]) -> IResult<&[u8], u64> {
     IResult::Done(&input[len as usize + 1..], val)
 }
 
-fn parse_master(input: &[u8], size: u64) -> IResult<&[u8], ElementData> {
+/*
+fn parse_master(input: &[u8], _: u64) -> IResult<&[u8], ElementData> {
     map!(input,
          many0!(parse_element),
          |elem| ElementData::Master(elem))
@@ -104,7 +107,7 @@ fn parse_uint(input: &[u8], size: u64) -> IResult<&[u8], ElementData> {
 
     IResult::Done(&input[size as usize..], ElementData::Unsigned(val))
 }
-
+*/
 pub fn parse_uint_data(input: &[u8], size: u64) -> IResult<&[u8], u64> {
     let mut val = 0;
 
@@ -134,15 +137,14 @@ pub fn parse_int_data(input: &[u8], size: u64) -> IResult<&[u8], i64> {
     IResult::Done(&input[size as usize..], val as i64)
 }
 
-use std::str;
-
+/*
 fn parse_str(input: &[u8], size: u64) -> IResult<&[u8], ElementData> {
     do_parse!(input,
         s: take_s!(size as usize) >>
         ( ElementData::PlainString(String::from_utf8(s.to_owned()).unwrap()) )
     )
 }
-
+*/
 pub fn parse_str_data(input: &[u8], size: u64) -> IResult<&[u8], String> {
     do_parse!(input,
         s: take_s!(size as usize) >>
@@ -171,7 +173,7 @@ pub fn parse_float_data(input: &[u8], size: u64) -> IResult<&[u8], f64> {
         IResult::Error(ErrorKind::Custom(1))
     }
 }
-
+/*
 fn parse_element_id(input: &[u8], id: u64, size: u64) -> IResult<&[u8], ElementData> {
     // println!("id: 0x{:X} size: {}", id, size);
     if input.len() < size as usize {
@@ -199,7 +201,7 @@ named!(pub parse_element<Element>,
         (Element { id, size, data })
     )
 );
-
+*/
 #[macro_export]
 macro_rules! ebml_uint (
   ($i: expr, $id:expr) => ({
@@ -332,7 +334,7 @@ named!(pub ebml_header<EBMLHeader>,
 #[cfg(test)]
 mod tests {
     use super::*;
-    use nom::Offset;
+    use nom::{HexDisplay, Offset};
 
     const single_stream: &'static [u8] = include_bytes!("../assets/single_stream.mkv");
     const webm: &'static [u8] = include_bytes!("../assets/big-buck-bunny_trailer.webm");
@@ -371,8 +373,8 @@ mod tests {
         let res = ebml_header(&webm[..100]);
         println!("{:?}", res);
 
-        if let IResult::Done(i,_) = res {
-          println!("offset: {} bytes", webm.offset(i));
+        if let IResult::Done(i, _) = res {
+            println!("offset: {} bytes", webm.offset(i));
         }
         panic!();
     }

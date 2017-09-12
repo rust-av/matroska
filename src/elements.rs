@@ -47,7 +47,7 @@ named!(pub segment_element<SegmentElement>,
 
     unknown    => do_parse!(
         size: opt!(vint) >>
-              cond!((size.is_some()), take!( (size.unwrap() as usize) )) >>
+              cond!(size.is_some(), take!( (size.unwrap() as usize) )) >>
               (SegmentElement::Unknown(unknown, size))
       )
   )

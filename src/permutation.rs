@@ -268,7 +268,7 @@ macro_rules! permutation_opt_iterator (
 
 #[cfg(test)]
 mod tests {
-    use nom::{Needed, IResult};
+    use nom::Needed;
     use nom::IResult::*;
     use nom::ErrorKind;
 
