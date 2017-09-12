@@ -119,6 +119,21 @@ pub fn parse_uint_data(input: &[u8], size: u64) -> IResult<&[u8], u64> {
     IResult::Done(&input[size as usize..], val)
 }
 
+pub fn parse_int_data(input: &[u8], size: u64) -> IResult<&[u8], i64> {
+    let mut val = 0;
+
+    if size > 8 {
+        return IResult::Error(ErrorKind::Custom(1));
+    }
+
+    for i in 0..size as usize {
+        val = (val << 8) | input[i] as u64;
+    }
+
+    //FIXME: is that right?
+    IResult::Done(&input[size as usize..], val as i64)
+}
+
 use std::str;
 
 fn parse_str(input: &[u8], size: u64) -> IResult<&[u8], ElementData> {
@@ -140,6 +155,21 @@ pub fn parse_binary_data(input: &[u8], size: u64) -> IResult<&[u8], Vec<u8>> {
         s: take_s!(size as usize) >>
         ( s.to_owned() )
     )
+}
+
+//FIXME: handle default values
+//FIXME: is that really following IEEE_754-1985 ?
+pub fn parse_float_data(input: &[u8], size: u64) -> IResult<&[u8], f64> {
+    use nom::{be_f32,be_f64};
+    if size == 0 {
+      IResult::Done(input, 0f64)
+    } else if size == 4 {
+      map!(input, flat_map!(take!(4), be_f32), |val| val as f64)
+    } else if size == 8 {
+      flat_map!(input, take!(8), be_f64)
+    } else {
+      IResult::Error(ErrorKind::Custom(1))
+    }
 }
 
 fn parse_element_id(input: &[u8], id: u64, size: u64) -> IResult<&[u8], ElementData> {
@@ -178,6 +208,32 @@ macro_rules! ebml_uint (
                verify!(vid, |val:u64| val == $id)
       >> size: vint
       >> data: apply!(parse_uint_data, size)
+      >> (data)
+    )
+  })
+);
+
+#[macro_export]
+macro_rules! ebml_int (
+  ($i: expr, $id:expr) => ({
+    use $crate::ebml::{vid, vint, parse_int_data};
+    do_parse!($i,
+               verify!(vid, |val:u64| val == $id)
+      >> size: vint
+      >> data: apply!(parse_int_data, size)
+      >> (data)
+    )
+  })
+);
+
+#[macro_export]
+macro_rules! ebml_float (
+  ($i: expr, $id:expr) => ({
+    use $crate::ebml::{vid, vint, parse_float_data};
+    do_parse!($i,
+               verify!(vid, |val:u64| val == $id)
+      >> size: vint
+      >> data: apply!(parse_float_data, size)
       >> (data)
     )
   })

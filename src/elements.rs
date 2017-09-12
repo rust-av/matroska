@@ -101,7 +101,7 @@ pub struct Info {
     pub segment_family: Option<Vec<u8>>,
     pub chapter_translate: Option<ChapterTranslate>,
     pub timecode_scale: u64,
-    pub duration: Option<Vec<u8>>, // FIXME should be float
+    pub duration: Option<f64>, // FIXME should be float
     pub date_utc: Option<Vec<u8>>, //FIXME: should be date
     pub title: Option<String>,
     pub muxing_app: String,
@@ -121,7 +121,7 @@ named!(pub info<SegmentElement>,
       complete!(ebml_binary!(0x4444))?,           // SegmentFamily
       complete!(chapter_translate)?,              //
       complete!(ebml_uint!(0x2AD7B1)),            // TimecodeScale
-      complete!(ebml_binary!(0x4489))?,           // Duration: FIXME should be float
+      complete!(ebml_float!(0x4489))?,           // Duration: FIXME should be float
       complete!(ebml_binary!(0x4461))?,           // DateUTC FIXME: should be date
       complete!(ebml_str!(0x7BA9))?,              // Title FIXME SHOULD BE UTF-8 not str
       complete!(ebml_str!(0x4D80)),               // MuxingApp FIXME SHOULD BE UTF-8 not str
