@@ -160,15 +160,15 @@ pub fn parse_binary_data(input: &[u8], size: u64) -> IResult<&[u8], Vec<u8>> {
 //FIXME: handle default values
 //FIXME: is that really following IEEE_754-1985 ?
 pub fn parse_float_data(input: &[u8], size: u64) -> IResult<&[u8], f64> {
-    use nom::{be_f32,be_f64};
+    use nom::{be_f32, be_f64};
     if size == 0 {
-      IResult::Done(input, 0f64)
+        IResult::Done(input, 0f64)
     } else if size == 4 {
-      map!(input, flat_map!(take!(4), be_f32), |val| val as f64)
+        map!(input, flat_map!(take!(4), be_f32), |val| val as f64)
     } else if size == 8 {
-      flat_map!(input, take!(8), be_f64)
+        flat_map!(input, take!(8), be_f64)
     } else {
-      IResult::Error(ErrorKind::Custom(1))
+        IResult::Error(ErrorKind::Custom(1))
     }
 }
 
