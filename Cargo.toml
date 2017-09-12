@@ -8,3 +8,5 @@ license = "MIT"
 
 [dependencies]
 nom = "^3.1"
+av-format = {git = "https://github.com/rust-av/rust-av" }
+av-data = {git = "https://github.com/rust-av/rust-av" }
