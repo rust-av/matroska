@@ -8,7 +8,7 @@ macro_rules! permutation_opt (
       let mut needed = ::std::option::Option::None;
 
       loop {
-        println!("current res: {:?}", res);
+        //println!("current res: {:?}", res);
         let mut all_done = true;
         permutation_opt_iterator!(0, input, all_done, needed, res, $($rest)*);
 
@@ -268,12 +268,12 @@ macro_rules! permutation_opt_iterator (
 
 #[cfg(test)]
 mod tests {
-  use nom::{Needed,IResult};
-  use nom::IResult::*;
-  use nom::ErrorKind;
+    use nom::{Needed, IResult};
+    use nom::IResult::*;
+    use nom::ErrorKind;
 
-  // reproduce the tag and take macros, because of module import order
-  macro_rules! tag (
+    // reproduce the tag and take macros, because of module import order
+    macro_rules! tag (
     ($i:expr, $inp: expr) => (
       {
         #[inline(always)]
@@ -289,7 +289,7 @@ mod tests {
     );
   );
 
-  macro_rules! tag_bytes (
+    macro_rules! tag_bytes (
     ($i:expr, $bytes: expr) => (
       {
         use std::cmp::min;
@@ -311,7 +311,7 @@ mod tests {
     );
   );
 
-  macro_rules! take(
+    macro_rules! take(
     ($i:expr, $count:expr) => (
       {
         let cnt = $count as usize;
@@ -325,60 +325,60 @@ mod tests {
     );
   );
 
-  #[test]
-  fn permutation() {
-    named!(perm<(&[u8], &[u8], &[u8])>,
+    #[test]
+    fn permutation() {
+        named!(perm<(&[u8], &[u8], &[u8])>,
       permutation!(tag!("abcd"), tag!("efg"), tag!("hi"))
     );
 
-    let expected = (&b"abcd"[..], &b"efg"[..], &b"hi"[..]);
+        let expected = (&b"abcd"[..], &b"efg"[..], &b"hi"[..]);
 
-    let a = &b"abcdefghijk"[..];
-    assert_eq!(perm(a), Done(&b"jk"[..], expected));
-    let b = &b"efgabcdhijk"[..];
-    assert_eq!(perm(b), Done(&b"jk"[..], expected));
-    let c = &b"hiefgabcdjk"[..];
-    assert_eq!(perm(c), Done(&b"jk"[..], expected));
+        let a = &b"abcdefghijk"[..];
+        assert_eq!(perm(a), Done(&b"jk"[..], expected));
+        let b = &b"efgabcdhijk"[..];
+        assert_eq!(perm(b), Done(&b"jk"[..], expected));
+        let c = &b"hiefgabcdjk"[..];
+        assert_eq!(perm(c), Done(&b"jk"[..], expected));
 
-    let d = &b"efgxyzabcdefghi"[..];
-    assert_eq!(perm(d), Error(error_position!(ErrorKind::Permutation, &b"xyzabcdefghi"[..])));
+        let d = &b"efgxyzabcdefghi"[..];
+        assert_eq!(perm(d), Error(error_position!(ErrorKind::Permutation, &b"xyzabcdefghi"[..])));
 
-    let e = &b"efgabc"[..];
-    assert_eq!(perm(e), Incomplete(Needed::Size(7)));
-  }
+        let e = &b"efgabc"[..];
+        assert_eq!(perm(e), Incomplete(Needed::Size(7)));
+    }
 
-  #[test]
-  fn optional_permutation() {
-    named!(perm<(&[u8], Option<&[u8]>, &[u8], Option<&[u8]>)>,
+    #[test]
+    fn optional_permutation() {
+        named!(perm<(&[u8], Option<&[u8]>, &[u8], Option<&[u8]>)>,
       permutation_opt!(dbg_dmp!(tag!("abcd")), dbg_dmp!(tag!("efg"))?, dbg_dmp!(tag!("hi")), dbg_dmp!(tag!("jkl"))?)
     );
 
-    let expected1 = (&b"abcd"[..], Some(&b"efg"[..]), &b"hi"[..], Some(&b"jkl"[..]));
-    let expected2 = (&b"abcd"[..], None, &b"hi"[..], Some(&b"jkl"[..]));
-    let expected3 = (&b"abcd"[..], None, &b"hi"[..], None);
+        let expected1 = (&b"abcd"[..], Some(&b"efg"[..]), &b"hi"[..], Some(&b"jkl"[..]));
+        let expected2 = (&b"abcd"[..], None, &b"hi"[..], Some(&b"jkl"[..]));
+        let expected3 = (&b"abcd"[..], None, &b"hi"[..], None);
 
-    let a = &b"abcdefghijklm"[..];
-    assert_eq!(perm(a), Done(&b"m"[..], expected1));
-    let b = &b"efgabcdhijklm"[..];
-    assert_eq!(perm(b), Done(&b"m"[..], expected1));
-    let c = &b"hiefgabcdjklm"[..];
-    assert_eq!(perm(c), Done(&b"m"[..], expected1));
+        let a = &b"abcdefghijklm"[..];
+        assert_eq!(perm(a), Done(&b"m"[..], expected1));
+        let b = &b"efgabcdhijklm"[..];
+        assert_eq!(perm(b), Done(&b"m"[..], expected1));
+        let c = &b"hiefgabcdjklm"[..];
+        assert_eq!(perm(c), Done(&b"m"[..], expected1));
 
-    let d = &b"abcdjklhim"[..];
-    assert_eq!(perm(d), Done(&b"m"[..], expected2));
-    let e = &b"abcdhijklm"[..];
-    assert_eq!(perm(e), Done(&b"m"[..], expected2));
+        let d = &b"abcdjklhim"[..];
+        assert_eq!(perm(d), Done(&b"m"[..], expected2));
+        let e = &b"abcdhijklm"[..];
+        assert_eq!(perm(e), Done(&b"m"[..], expected2));
 
-    let f = &b"abcdhim"[..];
-    assert_eq!(perm(f), Done(&b"m"[..], expected3));
-    let g = &b"hiabcdm"[..];
-    assert_eq!(perm(g), Done(&b"m"[..], expected3));
-/*
+        let f = &b"abcdhim"[..];
+        assert_eq!(perm(f), Done(&b"m"[..], expected3));
+        let g = &b"hiabcdm"[..];
+        assert_eq!(perm(g), Done(&b"m"[..], expected3));
+        /*
     let d = &b"efgxyzabcdefghi"[..];
     assert_eq!(perm(d), Error(error_position!(ErrorKind::Permutation, &b"xyzabcdefghi"[..])));
 
     let e = &b"efgabc"[..];
     assert_eq!(perm(e), Incomplete(Needed::Size(7)));
 */
-  }
+    }
 }
