@@ -267,7 +267,7 @@ named!(pub ebml_header<EBMLHeader>,
 mod tests {
     use super::*;
 
-    const single_stream : &'static [u8] = include_bytes!("../assets/single_stream.mkv");
+    const single_stream: &'static [u8] = include_bytes!("../assets/single_stream.mkv");
 
     #[test]
     fn variable_integer() {

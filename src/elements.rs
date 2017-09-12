@@ -27,14 +27,22 @@ named!(skip,
     size: vint >> data: take!(size) >> (data)
   ));
 
+#[macro_export]
+macro_rules! sub_element(
+  ($i:expr, $parser:ident) => ({
+    do_parse!($i,
+         size: vint
+      >> element: flat_map!(take!(size as usize), dbg_dmp!($parser))
+      >> (element)
+    )
+  })
+);
+
 // Segment, the root element, has id 0x18538067
 named!(pub segment_element<SegmentElement>,
   switch!(vid,
-    0x114D9B74 => do_parse!(
-         size: vint
-      >> head: flat_map!(take!(size as usize), dbg_dmp!(seek_head))
-      >> (head)
-    ) |
+    0x114D9B74 => sub_element!(seek_head) |
+    0x1549A966 => sub_element!(info)      |
 
     unknown    => do_parse!(
         size: opt!(vint) >>
@@ -48,7 +56,6 @@ named!(pub segment_element<SegmentElement>,
 pub struct SeekHead {
     positions: Vec<Seek>,
 }
-
 
 //https://datatracker.ietf.org/doc/html/draft-lhomme-cellar-matroska-03#section-7.3.4
 named!(pub seek_head<SegmentElement>,
@@ -84,7 +91,68 @@ named!(pub seek<Seek>,
 );
 
 #[derive(Debug,Clone,PartialEq)]
-pub struct Info {}
+pub struct Info {
+    pub segment_uid: Option<Vec<u8>>,
+    pub segment_filename: Option<String>,
+    pub prev_uid: Option<Vec<u8>>,
+    pub prev_filename: Option<String>,
+    pub next_uid: Option<Vec<u8>>,
+    pub next_filename: Option<String>,
+    pub segment_family: Option<Vec<u8>>,
+    pub chapter_translate: Option<ChapterTranslate>,
+    pub timecode_scale: u64,
+    pub duration: Option<Vec<u8>>, // FIXME should be float
+    pub date_utc: Option<Vec<u8>>, //FIXME: should be date
+    pub title: Option<String>,
+    pub muxing_app: String,
+    pub writing_app: String,
+}
+
+//https://datatracker.ietf.org/doc/html/draft-lhomme-cellar-matroska-03#section-7.3.8
+named!(pub info<SegmentElement>,
+  do_parse!(
+    t: permutation_opt!(
+      dbg_dmp!(complete!(ebml_binary!(0x73A4)))?, // SegmentUID
+      dbg_dmp!(complete!(ebml_str!(0x7384)))?,    // SegmentFIlename FIXME SHOULD BE UTF-8 not str
+      complete!(ebml_binary!(0x3CB923))?,         // PrevUID
+      complete!(ebml_str!(0x3C83AB))?,            // PrevFilename FIXME SHOULD BE UTF-8 not str
+      complete!(ebml_binary!(0x3EB923))?,         // NextUID
+      complete!(ebml_str!(0x3E83BB))?,            // NextFilename FIXME SHOULD BE UTF-8 not str
+      complete!(ebml_binary!(0x4444))?,           // SegmentFamily
+      complete!(chapter_translate)?,              //
+      complete!(ebml_uint!(0x2AD7B1)),            // TimecodeScale
+      complete!(ebml_binary!(0x4489))?,           // Duration: FIXME should be float
+      complete!(ebml_binary!(0x4461))?,           // DateUTC FIXME: should be date
+      complete!(ebml_str!(0x7BA9))?,              // Title FIXME SHOULD BE UTF-8 not str
+      complete!(ebml_str!(0x4D80)),               // MuxingApp FIXME SHOULD BE UTF-8 not str
+      complete!(ebml_str!(0x5741))                // WritingApp FIXME SHOULD BE UTF-8 not str
+    ) >> (SegmentElement::Info(Info {
+      segment_uid: t.0,
+      segment_filename: t.1,
+      prev_uid: t.2,
+      prev_filename: t.3,
+      next_uid: t.4,
+      next_filename: t.5,
+      segment_family: t.6,
+      chapter_translate: t.7,
+      timecode_scale:   t.8,
+      duration: t.9,
+      date_utc: t.10,
+      title: t.11,
+      muxing_app: t.12,
+      writing_app: t.13
+    }))
+  )
+);
+
+#[derive(Debug,Clone,PartialEq)]
+pub struct ChapterTranslate {}
+
+//https://datatracker.ietf.org/doc/html/draft-lhomme-cellar-matroska-03#section-7.3.16
+//TODO
+named!(pub chapter_translate<ChapterTranslate>,
+  dbg_dmp!(ebml_master!(0x6924, value!(ChapterTranslate{})))
+);
 
 #[derive(Debug,Clone,PartialEq)]
 pub struct Tracks {}
