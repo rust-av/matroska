@@ -55,7 +55,7 @@ named!(pub segment_element<SegmentElement>,
     | 0x1043A770 => sub_element!(chapters)
     | 0x1254C367 => sub_element!(value!(SegmentElement::Tags(Tags { })))
     | 0x1941A469 => sub_element!(value!(SegmentElement::Attachments(Attachments { })))
-    | 0x1654AE6B => sub_element!(value!(SegmentElement::Tracks(Tracks { })))
+    | 0x1654AE6B => sub_element!(tracks)
     | 0x1C53BB6B => sub_element!(value!(SegmentElement::Cues(Cues { })))
     | 0xEC       => sub_element!(value!(SegmentElement::Void))
     | unknown    => do_parse!(
@@ -291,7 +291,142 @@ named!(pub reference_frame<ReferenceFrame>,
 
 
 #[derive(Debug,Clone,PartialEq)]
-pub struct Tracks {}
+pub struct Tracks {
+  pub tracks: Vec<TrackEntry>,
+}
+
+//https://datatracker.ietf.org/doc/html/draft-lhomme-cellar-matroska-03#section-7.3.16
+named!(pub tracks<SegmentElement>,
+  map!(many1!(track_entry), |v| SegmentElement::Tracks(Tracks { tracks: v }))
+);
+
+#[derive(Debug,Clone,PartialEq)]
+pub struct TrackEntry {
+  pub track_number: u64,
+  pub track_uid:    u64,
+  pub track_type:   u64,
+  pub flag_enabled: Option<u64>, //FIXME: this flag is mandatory but does not appear in some files?
+  pub flag_default: Option<u64>, //FIXME: this flag is mandatory but does not appear in some files?
+  pub flag_forced:  Option<u64>, //FIXME: this flag is mandatory but does not appear in some files?
+  pub flag_lacing:  Option<u64>, //FIXME: this flag is mandatory but does not appear in some files?
+  pub min_cache:    Option<u64>, //FIXME: this flag is mandatory but does not appear in some files?
+  pub max_cache:    Option<u64>,
+  pub default_duration: Option<u64>,
+  pub default_decoded_field_duration: Option<u64>,
+  pub track_timecode_scale: Option<f64>, //FIXME: this flag is mandatory but does not appear in some files?
+  pub track_offset: Option<i64>,
+  pub max_block_addition_id: Option<u64>, //FIXME: this flag is mandatory but does not appear in some files?
+  pub name: Option<String>,
+  pub language: Option<String>,
+  pub language_ietf: Option<String>,
+  pub codec_id: String,
+  pub codec_private: Option<Vec<u8>>,
+  pub codec_name: Option<String>,
+  pub attachment_link: Option<u64>,
+  pub codec_settings: Option<String>,
+  pub codec_info_url: Option<String>,
+  pub codec_download_url: Option<String>,
+  pub codec_decode_all: Option<u64>,//FIXME: this flag is mandatory but does not appear in some files?
+  pub track_overlay: Option<u64>,
+  pub codec_delay: Option<u64>,
+  pub seek_pre_roll: Option<u64>, //FIXME: this flag is mandatory but does not appear in some files?
+  pub trick_track_uid: Option<u64>,
+  pub trick_track_segment_uid: Option<Vec<u8>>,
+  pub trick_track_flag: Option<u64>,
+  pub trick_master_track_uid: Option<u64>,
+  pub trick_master_track_segment_uid: Option<Vec<u8>>,
+}
+
+named!(pub track_entry<TrackEntry>,
+  ebml_master!(0xAE,
+    do_parse!(
+      t: permutation_opt!(
+        complete!(ebml_uint!(0xD7)),
+        complete!(ebml_uint!(0x73C5)),
+        complete!(ebml_uint!(0x83)),
+        complete!(ebml_uint!(0xB9))?,
+        complete!(ebml_uint!(0x88))?,
+        complete!(ebml_uint!(0x55AA))?,
+        complete!(ebml_uint!(0x9C))?,
+        complete!(ebml_uint!(0x6DE7))?,
+        complete!(ebml_uint!(0x6DF8))?,
+        complete!(ebml_uint!(0x23E383))?,
+        complete!(ebml_uint!(0x234E7A))?,
+        complete!(ebml_float!(0x23314F))?,
+        complete!(ebml_int!(0x537F))?,
+        complete!(ebml_uint!(0x55EE))?,
+        complete!(ebml_str!(0x536E))?,
+        complete!(ebml_str!(0x22B59C))?,
+        complete!(ebml_str!(0x22B59D))?,
+        complete!(ebml_str!(0x86)),
+        complete!(ebml_binary!(0x63A2))?,
+        complete!(ebml_str!(0x258688))?,
+        complete!(ebml_uint!(0x7446))?,
+        complete!(ebml_str!(0x319697))?,
+        complete!(ebml_str!(0x3B4040))?,
+        complete!(ebml_str!(0x26B240))?,
+        dbg_dmp!(complete!(ebml_uint!(0xAA)))?,
+        dbg_dmp!(complete!(ebml_uint!(0x6FAB)))?,
+        dbg_dmp!(complete!(ebml_uint!(0x56AA)))?,
+        dbg_dmp!(complete!(ebml_uint!(0x56BB)))?,
+        //TODO: TrackTranslate
+        dbg_dmp!(complete!(ebml_master!(0x6624, value!(()))))?,
+        //TODO: Video
+        dbg_dmp!(complete!(ebml_master!(0xE0, value!(()))))?,
+        //TODO: Audio
+        dbg_dmp!(complete!(ebml_master!(0xE1, value!(()))))?,
+        //TODO: TrackOperation
+        dbg_dmp!(complete!(ebml_master!(0xE2, value!(()))))?,
+        dbg_dmp!(complete!(ebml_uint!(0xC0)))?,
+        dbg_dmp!(complete!(ebml_binary!(0xC1)))?,
+        dbg_dmp!(complete!(ebml_uint!(0xC6)))?,
+        dbg_dmp!(complete!(ebml_uint!(0xC7)))?,
+        dbg_dmp!(complete!(ebml_binary!(0xC4)))?,
+        //TODO: ContentEncodings
+        dbg_dmp!(complete!(ebml_master!(0x6D80, value!(()))))?
+      ) >> (TrackEntry {
+        track_number: t.0,
+        track_uid: t.1,
+        track_type: t.2,
+        flag_enabled: t.3,
+        flag_default: t.4,
+        flag_forced: t.5,
+        flag_lacing: t.6,
+        min_cache: t.7,
+        max_cache: t.8,
+        default_duration: t.9,
+        default_decoded_field_duration: t.10,
+        track_timecode_scale: t.11,
+        track_offset: t.12,
+        max_block_addition_id: t.13,
+        name: t.14,
+        language: t.15,
+        language_ietf: t.16,
+        codec_id: t.17,
+        codec_private: t.18,
+        codec_name: t.19,
+        attachment_link: t.20,
+        codec_settings: t.21,
+        codec_info_url: t.22,
+        codec_download_url: t.23,
+        codec_decode_all: t.24,
+        track_overlay: t.25,
+        codec_delay: t.26,
+        seek_pre_roll: t.27,
+        //track_translate: t.28,
+        //video: t.29,
+        //audio: t.30,
+        //track_operation: t.31,
+        trick_track_uid: t.32,
+        trick_track_segment_uid: t.33,
+        trick_track_flag: t.34,
+        trick_master_track_uid: t.35,
+        trick_master_track_segment_uid: t.36,
+        //content_encodings: t.37
+      })
+    )
+  )
+);
 
 #[derive(Debug,Clone,PartialEq)]
 pub struct Chapters {}

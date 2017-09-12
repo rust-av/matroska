@@ -115,6 +115,27 @@ macro_rules! succ (
   (17, $submac:ident ! ($($rest:tt)*)) => ($submac!(18, $($rest)*));
   (18, $submac:ident ! ($($rest:tt)*)) => ($submac!(19, $($rest)*));
   (19, $submac:ident ! ($($rest:tt)*)) => ($submac!(20, $($rest)*));
+  (20, $submac:ident ! ($($rest:tt)*)) => ($submac!(21, $($rest)*));
+  (21, $submac:ident ! ($($rest:tt)*)) => ($submac!(22, $($rest)*));
+  (22, $submac:ident ! ($($rest:tt)*)) => ($submac!(23, $($rest)*));
+  (23, $submac:ident ! ($($rest:tt)*)) => ($submac!(24, $($rest)*));
+  (24, $submac:ident ! ($($rest:tt)*)) => ($submac!(25, $($rest)*));
+  (25, $submac:ident ! ($($rest:tt)*)) => ($submac!(26, $($rest)*));
+  (26, $submac:ident ! ($($rest:tt)*)) => ($submac!(27, $($rest)*));
+  (27, $submac:ident ! ($($rest:tt)*)) => ($submac!(28, $($rest)*));
+  (28, $submac:ident ! ($($rest:tt)*)) => ($submac!(29, $($rest)*));
+  (29, $submac:ident ! ($($rest:tt)*)) => ($submac!(30, $($rest)*));
+  (30, $submac:ident ! ($($rest:tt)*)) => ($submac!(31, $($rest)*));
+  (31, $submac:ident ! ($($rest:tt)*)) => ($submac!(32, $($rest)*));
+  (32, $submac:ident ! ($($rest:tt)*)) => ($submac!(33, $($rest)*));
+  (33, $submac:ident ! ($($rest:tt)*)) => ($submac!(34, $($rest)*));
+  (34, $submac:ident ! ($($rest:tt)*)) => ($submac!(35, $($rest)*));
+  (35, $submac:ident ! ($($rest:tt)*)) => ($submac!(36, $($rest)*));
+  (36, $submac:ident ! ($($rest:tt)*)) => ($submac!(37, $($rest)*));
+  (37, $submac:ident ! ($($rest:tt)*)) => ($submac!(38, $($rest)*));
+  (38, $submac:ident ! ($($rest:tt)*)) => ($submac!(39, $($rest)*));
+  (39, $submac:ident ! ($($rest:tt)*)) => ($submac!(40, $($rest)*));
+  (40, $submac:ident ! ($($rest:tt)*)) => ($submac!(41, $($rest)*));
 );
 
 // HACK: for some reason, Rust 1.11 does not accept $res.$it in
@@ -144,6 +165,27 @@ macro_rules! acc (
   (18, $tup:expr) => ($tup.18);
   (19, $tup:expr) => ($tup.19);
   (20, $tup:expr) => ($tup.20);
+  (21, $tup:expr) => ($tup.21);
+  (22, $tup:expr) => ($tup.22);
+  (23, $tup:expr) => ($tup.23);
+  (24, $tup:expr) => ($tup.24);
+  (25, $tup:expr) => ($tup.25);
+  (26, $tup:expr) => ($tup.26);
+  (27, $tup:expr) => ($tup.27);
+  (28, $tup:expr) => ($tup.28);
+  (29, $tup:expr) => ($tup.29);
+  (30, $tup:expr) => ($tup.30);
+  (31, $tup:expr) => ($tup.31);
+  (32, $tup:expr) => ($tup.32);
+  (33, $tup:expr) => ($tup.33);
+  (34, $tup:expr) => ($tup.34);
+  (35, $tup:expr) => ($tup.35);
+  (36, $tup:expr) => ($tup.36);
+  (37, $tup:expr) => ($tup.37);
+  (38, $tup:expr) => ($tup.38);
+  (39, $tup:expr) => ($tup.39);
+  (40, $tup:expr) => ($tup.40);
+  (41, $tup:expr) => ($tup.41);
 );
 
 #[doc(hidden)]

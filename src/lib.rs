@@ -1,3 +1,5 @@
+#![feature(trace_macros)]
+#![recursion_limit="256"]
 #[macro_use]
 extern crate nom;
 extern crate av_format;
