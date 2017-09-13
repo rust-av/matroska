@@ -262,7 +262,7 @@ macro_rules! permutation_opt_iterator (
   };
   ($it:tt, $i:expr, $all_done:expr, $needed:expr, $res:expr, $submac:ident!( $($args:tt)* ), $($rest:tt)*) => {
     if acc!($it, $res) == ::std::option::Option::None {
-      match $submac!($i, $($args)*) {
+      match complete!($i, $submac!($($args)*)) {
         ::nom::IResult::Done(i,o)     => {
           $i = i;
           acc!($it, $res) = ::std::option::Option::Some(o);
@@ -290,7 +290,7 @@ macro_rules! permutation_opt_iterator (
   };
   ($it:tt, $i:expr, $all_done:expr, $needed:expr, $res:expr, $submac:ident!( $($args:tt)* )) => {
     if acc!($it, $res) == ::std::option::Option::None {
-      match $submac!($i, $($args)*) {
+      match complete!($i, $submac!($($args)*)) {
         ::nom::IResult::Done(i,o)     => {
           $i = i;
           acc!($it, $res) = ::std::option::Option::Some(o);

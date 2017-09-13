@@ -126,20 +126,20 @@ pub struct Info {
 named!(pub info<SegmentElement>,
   do_parse!(
     t: permutation_opt!(
-      complete!(ebml_binary!(0x73A4))?, // SegmentUID
-      complete!(ebml_str!(0x7384))?,    // SegmentFIlename FIXME SHOULD BE UTF-8 not str
-      complete!(ebml_binary!(0x3CB923))?,         // PrevUID
-      complete!(ebml_str!(0x3C83AB))?,            // PrevFilename FIXME SHOULD BE UTF-8 not str
-      complete!(ebml_binary!(0x3EB923))?,         // NextUID
-      complete!(ebml_str!(0x3E83BB))?,            // NextFilename FIXME SHOULD BE UTF-8 not str
-      complete!(ebml_binary!(0x4444))?,           // SegmentFamily
-      complete!(chapter_translate)?,              //
-      complete!(ebml_uint!(0x2AD7B1)),            // TimecodeScale
-      complete!(ebml_float!(0x4489))?,           // Duration: FIXME should be float
-      complete!(ebml_binary!(0x4461))?,           // DateUTC FIXME: should be date
-      complete!(ebml_str!(0x7BA9))?,              // Title FIXME SHOULD BE UTF-8 not str
-      complete!(ebml_str!(0x4D80)),               // MuxingApp FIXME SHOULD BE UTF-8 not str
-      complete!(ebml_str!(0x5741))                // WritingApp FIXME SHOULD BE UTF-8 not str
+      ebml_binary!(0x73A4)?, // SegmentUID
+      ebml_str!(0x7384)?,    // SegmentFIlename FIXME SHOULD BE UTF-8 not str
+      ebml_binary!(0x3CB923)?,         // PrevUID
+      ebml_str!(0x3C83AB)?,            // PrevFilename FIXME SHOULD BE UTF-8 not str
+      ebml_binary!(0x3EB923)?,         // NextUID
+      ebml_str!(0x3E83BB)?,            // NextFilename FIXME SHOULD BE UTF-8 not str
+      ebml_binary!(0x4444)?,           // SegmentFamily
+      chapter_translate?,              //
+      ebml_uint!(0x2AD7B1),            // TimecodeScale
+      ebml_float!(0x4489)?,           // Duration: FIXME should be float
+      ebml_binary!(0x4461)?,           // DateUTC FIXME: should be date
+      ebml_str!(0x7BA9)?,              // Title FIXME SHOULD BE UTF-8 not str
+      ebml_str!(0x4D80),               // MuxingApp FIXME SHOULD BE UTF-8 not str
+      ebml_str!(0x5741)                // WritingApp FIXME SHOULD BE UTF-8 not str
     ) >> (SegmentElement::Info(Info {
       segment_uid: t.0,
       segment_filename: t.1,
@@ -183,13 +183,13 @@ pub struct Cluster {
 named!(pub cluster<SegmentElement>,
   do_parse!(
     t: permutation_opt!(
-      complete!(ebml_uint!(0xE7)),
-      complete!(silent_tracks)?,
-      complete!(ebml_uint!(0xA7))?,
-      complete!(ebml_uint!(0xAB))?,
-      complete!(ebml_binary!(0xA3))?,
-      complete!(block_group)?,
-      complete!(ebml_binary!(0xAF))?
+      ebml_uint!(0xE7),
+      silent_tracks?,
+      ebml_uint!(0xA7)?,
+      ebml_uint!(0xAB)?,
+      ebml_binary!(0xA3)?,
+      block_group?,
+      ebml_binary!(0xAF)?
     ) >> (SegmentElement::Cluster(Cluster {
       timecode: t.0,
       silent_tracks: t.1,
@@ -233,17 +233,17 @@ named!(pub block_group<BlockGroup>,
   ebml_master!(0x5854,
     do_parse!(
       t: permutation_opt!(
-        complete!(ebml_binary!(0xA1)),
-        complete!(ebml_binary!(0xA2))?,
-        complete!(block_additions)?,
-        complete!(ebml_uint!(0x9B))?,
-        complete!(ebml_uint!(0xFA)),
-        complete!(ebml_uint!(0xFB))?,
-        complete!(ebml_int!(0xFD))?,
-        complete!(ebml_binary!(0xA4))?,
-        complete!(ebml_int!(0x75A2))?,
-        complete!(slices)?,
-        complete!(reference_frame)?
+        ebml_binary!(0xA1),
+        ebml_binary!(0xA2)?,
+        block_additions?,
+        ebml_uint!(0x9B)?,
+        ebml_uint!(0xFA),
+        ebml_uint!(0xFB)?,
+        ebml_int!(0xFD)?,
+        ebml_binary!(0xA4)?,
+        ebml_int!(0x75A2)?,
+        slices?,
+        reference_frame?
 
       ) >> (BlockGroup {
         block: t.0,
@@ -341,49 +341,49 @@ named!(pub track_entry<TrackEntry>,
   ebml_master!(0xAE,
     do_parse!(
       t: permutation_opt!(
-        complete!(ebml_uint!(0xD7)),
-        complete!(ebml_uint!(0x73C5)),
-        complete!(ebml_uint!(0x83)),
-        complete!(ebml_uint!(0xB9))?,
-        complete!(ebml_uint!(0x88))?,
-        complete!(ebml_uint!(0x55AA))?,
-        complete!(ebml_uint!(0x9C))?,
-        complete!(ebml_uint!(0x6DE7))?,
-        complete!(ebml_uint!(0x6DF8))?,
-        complete!(ebml_uint!(0x23E383))?,
-        complete!(ebml_uint!(0x234E7A))?,
-        complete!(ebml_float!(0x23314F))?,
-        complete!(ebml_int!(0x537F))?,
-        complete!(ebml_uint!(0x55EE))?,
-        complete!(ebml_str!(0x536E))?,
-        complete!(ebml_str!(0x22B59C))?,
-        complete!(ebml_str!(0x22B59D))?,
-        complete!(ebml_str!(0x86)),
-        complete!(ebml_binary!(0x63A2))?,
-        complete!(ebml_str!(0x258688))?,
-        complete!(ebml_uint!(0x7446))?,
-        complete!(ebml_str!(0x319697))?,
-        complete!(ebml_str!(0x3B4040))?,
-        complete!(ebml_str!(0x26B240))?,
-        dbg_dmp!(complete!(ebml_uint!(0xAA)))?,
-        dbg_dmp!(complete!(ebml_uint!(0x6FAB)))?,
-        dbg_dmp!(complete!(ebml_uint!(0x56AA)))?,
-        dbg_dmp!(complete!(ebml_uint!(0x56BB)))?,
+        ebml_uint!(0xD7),
+        ebml_uint!(0x73C5),
+        ebml_uint!(0x83),
+        ebml_uint!(0xB9)?,
+        ebml_uint!(0x88)?,
+        ebml_uint!(0x55AA)?,
+        ebml_uint!(0x9C)?,
+        ebml_uint!(0x6DE7)?,
+        ebml_uint!(0x6DF8)?,
+        ebml_uint!(0x23E383)?,
+        ebml_uint!(0x234E7A)?,
+        ebml_float!(0x23314F)?,
+        ebml_int!(0x537F)?,
+        ebml_uint!(0x55EE)?,
+        ebml_str!(0x536E)?,
+        ebml_str!(0x22B59C)?,
+        ebml_str!(0x22B59D)?,
+        ebml_str!(0x86),
+        ebml_binary!(0x63A2)?,
+        ebml_str!(0x258688)?,
+        ebml_uint!(0x7446)?,
+        ebml_str!(0x319697)?,
+        ebml_str!(0x3B4040)?,
+        ebml_str!(0x26B240)?,
+        ebml_uint!(0xAA)?,
+        dbg_dmp!(ebml_uint!(0x6FAB))?,
+        dbg_dmp!(ebml_uint!(0x56AA))?,
+        dbg_dmp!(ebml_uint!(0x56BB))?,
         //TODO: TrackTranslate
-        dbg_dmp!(complete!(ebml_master!(0x6624, value!(()))))?,
+        dbg_dmp!(ebml_master!(0x6624, value!(())))?,
         //TODO: Video
-        dbg_dmp!(complete!(ebml_master!(0xE0, value!(()))))?,
+        dbg_dmp!(ebml_master!(0xE0, value!(())))?,
         //TODO: Audio
-        dbg_dmp!(complete!(ebml_master!(0xE1, value!(()))))?,
+        dbg_dmp!(ebml_master!(0xE1, value!(())))?,
         //TODO: TrackOperation
-        dbg_dmp!(complete!(ebml_master!(0xE2, value!(()))))?,
-        dbg_dmp!(complete!(ebml_uint!(0xC0)))?,
-        dbg_dmp!(complete!(ebml_binary!(0xC1)))?,
-        dbg_dmp!(complete!(ebml_uint!(0xC6)))?,
-        dbg_dmp!(complete!(ebml_uint!(0xC7)))?,
-        dbg_dmp!(complete!(ebml_binary!(0xC4)))?,
+        dbg_dmp!(ebml_master!(0xE2, value!(())))?,
+        dbg_dmp!(ebml_uint!(0xC0))?,
+        dbg_dmp!(ebml_binary!(0xC1))?,
+        dbg_dmp!(ebml_uint!(0xC6))?,
+        dbg_dmp!(ebml_uint!(0xC7))?,
+        dbg_dmp!(ebml_binary!(0xC4))?,
         //TODO: ContentEncodings
-        dbg_dmp!(complete!(ebml_master!(0x6D80, value!(()))))?
+        dbg_dmp!(ebml_master!(0x6D80, value!(())))?
       ) >> (TrackEntry {
         track_number: t.0,
         track_uid: t.1,
