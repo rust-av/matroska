@@ -10,6 +10,12 @@ macro_rules! permutation_opt (
       loop {
         //println!("current res: {:?}", res);
         let mut all_done = true;
+
+        let void_res = $crate::ebml::skip_void(input);
+        if let ::nom::IResult::Done(i,_) = void_res {
+          input = i;
+          continue;
+        }
         permutation_opt_iterator!(0, input, all_done, needed, res, $($rest)*);
 
         //if we reach that part, it means none of the parsers were able to read anything
