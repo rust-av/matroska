@@ -335,6 +335,8 @@ pub struct TrackEntry {
   pub trick_track_flag: Option<u64>,
   pub trick_master_track_uid: Option<u64>,
   pub trick_master_track_segment_uid: Option<Vec<u8>>,
+  pub video: Option<Video>,
+  pub audio: Option<Audio>,
 }
 
 named!(pub track_entry<TrackEntry>,
@@ -371,10 +373,10 @@ named!(pub track_entry<TrackEntry>,
         dbg_dmp!(ebml_uint!(0x56BB))?,
         //TODO: TrackTranslate
         dbg_dmp!(ebml_master!(0x6624, value!(())))?,
-        //TODO: Video
-        dbg_dmp!(ebml_master!(0xE0, value!(())))?,
+        //TODO: video
+        dbg_dmp!(video)?,//dbg_dmp!(ebml_master!(0xE0, value!(())))?,
         //TODO: Audio
-        dbg_dmp!(ebml_master!(0xE1, value!(())))?,
+        audio?, //dbg_dmp!(ebml_master!(0xE1, value!(())))?,
         //TODO: TrackOperation
         dbg_dmp!(ebml_master!(0xE2, value!(())))?,
         dbg_dmp!(ebml_uint!(0xC0))?,
@@ -414,8 +416,8 @@ named!(pub track_entry<TrackEntry>,
         codec_delay: t.26,
         seek_pre_roll: t.27,
         //track_translate: t.28,
-        //video: t.29,
-        //audio: t.30,
+        video: t.29,
+        audio: t.30,
         //track_operation: t.31,
         trick_track_uid: t.32,
         trick_track_segment_uid: t.33,
@@ -423,6 +425,238 @@ named!(pub track_entry<TrackEntry>,
         trick_master_track_uid: t.35,
         trick_master_track_segment_uid: t.36,
         //content_encodings: t.37
+      })
+    )
+  )
+);
+
+#[derive(Debug,Clone,PartialEq)]
+pub struct Audio {
+  pub sampling_frequency: f64,
+  pub output_sampling_frequency: Option<f64>,
+  pub channels: Option<u64>,
+  pub channel_positions: Option<Vec<u8>>,
+  pub bit_depth: Option<u64>,
+}
+
+named!(pub audio<Audio>,
+  ebml_master!(0xE1,
+    do_parse!(
+      t: permutation_opt!(
+        ebml_float!(0xB5),
+        ebml_float!(0x78B5)?,
+        ebml_uint!(0x9F)?,
+        ebml_binary!(0x7D7B)?,
+        ebml_uint!(0x6264)?
+      ) >> (Audio {
+        sampling_frequency: t.0,
+        output_sampling_frequency: t.1,
+        channels: t.2,
+        channel_positions: t.3,
+        bit_depth: t.4,
+      })
+    )
+  )
+);
+
+#[derive(Debug,Clone,PartialEq)]
+pub struct Video {
+  pub flag_interlaced: Option<u64>,
+  pub field_order: Option<u64>,
+  pub stereo_mode: Option<u64>,
+  pub alpha_mode: Option<u64>,
+  pub old_stereo_mode: Option<u64>,
+  pub pixel_width: u64,
+  pub pixel_height: u64,
+  pub pixel_crop_bottom: Option<u64>,
+  pub pixel_crop_top: Option<u64>,
+  pub pixel_crop_left: Option<u64>,
+  pub pixel_crop_right: Option<u64>,
+  pub display_width: Option<u64>,
+  pub display_height: Option<u64>,
+  pub display_unit: Option<u64>,
+  pub aspect_ratio_type: Option<u64>,
+  pub colour_space: Option<Vec<u8>>,
+  pub gamma_value: Option<f64>,
+  pub frame_rate: Option<f64>,
+  pub colour: Option<Colour>,
+  pub projection: Option<Projection>,
+}
+
+named!(pub video<Video>,
+  ebml_master!(0xE0,
+    do_parse!(
+      t: permutation_opt!(
+        ebml_uint!(0x9A)?,
+        ebml_uint!(0x9D)?,
+        ebml_uint!(0x53B8)?,
+        ebml_uint!(0x53C0)?,
+        ebml_uint!(0x53B9)?,
+        ebml_uint!(0xB0),
+        ebml_uint!(0xBA),
+        ebml_uint!(0x54AA)?,
+        ebml_uint!(0x54BB)?,
+        ebml_uint!(0x54CC)?,
+        ebml_uint!(0x54DD)?,
+        ebml_uint!(0x54B0)?,
+        ebml_uint!(0x54BA)?,
+        ebml_uint!(0x54B2)?,
+        ebml_uint!(0x54B3)?,
+        ebml_binary!(0x2EB524)?,
+        ebml_float!(0x2FB523)?,
+        ebml_float!(0x2383E3)?,
+        colour?,
+        projection?
+      ) >> (Video {
+        flag_interlaced: t.0,
+        field_order: t.1,
+        stereo_mode: t.2,
+        alpha_mode: t.3,
+        old_stereo_mode: t.4,
+        pixel_width: t.5,
+        pixel_height: t.6,
+        pixel_crop_bottom: t.7,
+        pixel_crop_top: t.8,
+        pixel_crop_left: t.9,
+        pixel_crop_right: t.10,
+        display_width: t.11,
+        display_height: t.12,
+        display_unit: t.13,
+        aspect_ratio_type: t.14,
+        colour_space: t.15,
+        gamma_value: t.16,
+        frame_rate: t.17,
+        colour: t.18,
+        projection: t.19,
+      })
+    )
+  )
+);
+
+#[derive(Debug,Clone,PartialEq)]
+pub struct Colour {
+  pub matrix_coefficients: Option<u64>,
+  pub bits_per_channel: Option<u64>,
+  pub chroma_subsampling_horz: Option<u64>,
+  pub chroma_subsampling_vert: Option<u64>,
+  pub cb_subsampling_horz: Option<u64>,
+  pub cb_subsampling_vert: Option<u64>,
+  pub chroma_siting_horz: Option<u64>,
+  pub chroma_siting_vert: Option<u64>,
+  pub range: Option<u64>,
+  pub transfer_characteristics: Option<u64>,
+  pub primaries: Option<u64>,
+  pub max_cll: Option<u64>,
+  pub max_fall: Option<u64>,
+  pub mastering_metadata: Option<MasteringMetadata>,
+}
+
+named!(pub colour<Colour>,
+  ebml_master!(0x55B0,
+    do_parse!(
+      t: permutation_opt!(
+        ebml_uint!(0x55B1)?,
+        ebml_uint!(0x55B2)?,
+        ebml_uint!(0x55B3)?,
+        ebml_uint!(0x55B4)?,
+        ebml_uint!(0x55B5)?,
+        ebml_uint!(0x55B6)?,
+        ebml_uint!(0x55B7)?,
+        ebml_uint!(0x55B8)?,
+        ebml_uint!(0x55B9)?,
+        ebml_uint!(0x55BA)?,
+        ebml_uint!(0x55BB)?,
+        ebml_uint!(0x55BC)?,
+        ebml_uint!(0x55BD)?,
+        mastering_metadata?
+      ) >> (Colour {
+        matrix_coefficients: t.0,
+        bits_per_channel: t.1,
+        chroma_subsampling_horz: t.2,
+        chroma_subsampling_vert: t.3,
+        cb_subsampling_horz: t.4,
+        cb_subsampling_vert: t.5,
+        chroma_siting_horz: t.6,
+        chroma_siting_vert: t.7,
+        range: t.8,
+        transfer_characteristics: t.9,
+        primaries: t.10,
+        max_cll: t.11,
+        max_fall: t.12,
+        mastering_metadata: t.13,
+      })
+    )
+  )
+);
+
+#[derive(Debug,Clone,PartialEq)]
+pub struct MasteringMetadata {
+  pub primary_r_chromaticity_x: Option<f64>,
+  pub primary_r_chromaticity_y: Option<f64>,
+  pub primary_g_chromaticity_x: Option<f64>,
+  pub primary_g_chromaticity_y: Option<f64>,
+  pub primary_b_chromaticity_x: Option<f64>,
+  pub primary_b_chromaticity_y: Option<f64>,
+  pub white_point_chromaticity_x: Option<f64>,
+  pub white_point_chromaticity_y: Option<f64>,
+  pub luminance_max:              Option<f64>,
+  pub luminance_min:              Option<f64>,
+}
+
+named!(pub mastering_metadata<MasteringMetadata>,
+  ebml_master!(0x55D0,
+    do_parse!(
+      t: permutation_opt!(
+        ebml_float!(0x55D1)?,
+        ebml_float!(0x55D2)?,
+        ebml_float!(0x55D3)?,
+        ebml_float!(0x55D4)?,
+        ebml_float!(0x55D5)?,
+        ebml_float!(0x55D6)?,
+        ebml_float!(0x55D7)?,
+        ebml_float!(0x55D8)?,
+        ebml_float!(0x55D9)?,
+        ebml_float!(0x55DA)?
+      ) >> (MasteringMetadata {
+        primary_r_chromaticity_x: t.0,
+        primary_r_chromaticity_y: t.1,
+        primary_g_chromaticity_x: t.2,
+        primary_g_chromaticity_y: t.3,
+        primary_b_chromaticity_x: t.4,
+        primary_b_chromaticity_y: t.5,
+        white_point_chromaticity_x: t.6,
+        white_point_chromaticity_y: t.7,
+        luminance_max: t.8,
+        luminance_min: t.9,
+      })
+    )
+  )
+);
+
+#[derive(Debug,Clone,PartialEq)]
+pub struct Projection {
+  projection_type: u64,
+  projection_private: Option<Vec<u8>>,
+  projection_pose_yaw: f64,
+  projection_pose_pitch: f64,
+  projection_pose_roll: f64,
+}
+
+named!(pub projection<Projection>,
+  ebml_master!(0x7670,
+    do_parse!(
+      t: permutation_opt!(
+        ebml_uint!(0x7671),
+        ebml_binary!(0x7672)?,
+        ebml_float!(0x7673),
+        ebml_float!(0x7674),
+        ebml_float!(0x7675)
+      ) >> (Projection {
+        projection_type: t.0,
+        projection_private: t.1,
+        projection_pose_yaw: t.2,
+        projection_pose_pitch: t.3,
+        projection_pose_roll: t.4,
       })
     )
   )
