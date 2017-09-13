@@ -1,6 +1,6 @@
 use ebml::{vid, vint};
 
-#[derive(Debug,Clone,PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum SegmentElement {
     SeekHead(SeekHead),
     Info(Info),
@@ -23,10 +23,12 @@ named!(pub segment<(u64, Option<u64>)>,
   )
 );
 
-named!(skip,
-       do_parse!(
+named!(
+    skip,
+    do_parse!(
     size: vint >> data: take!(size) >> (data)
-  ));
+  )
+);
 
 #[macro_export]
 macro_rules! sub_element(
@@ -66,7 +68,7 @@ named!(pub segment_element<SegmentElement>,
   )
 );
 
-#[derive(Debug,Clone,PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct SeekHead {
     positions: Vec<Seek>,
 }
@@ -82,7 +84,7 @@ named!(pub seek_head<SegmentElement>,
 );
 
 
-#[derive(Debug,Clone,PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Seek {
     id: Vec<u8>,
     position: u64,
@@ -104,7 +106,7 @@ named!(pub seek<Seek>,
   )
 );
 
-#[derive(Debug,Clone,PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Info {
     pub segment_uid: Option<Vec<u8>>,
     pub segment_filename: Option<String>,
@@ -159,7 +161,7 @@ named!(pub info<SegmentElement>,
   )
 );
 
-#[derive(Debug,Clone,PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct ChapterTranslate {}
 
 //https://datatracker.ietf.org/doc/html/draft-lhomme-cellar-matroska-03#section-7.3.16
@@ -169,7 +171,7 @@ named!(pub chapter_translate<ChapterTranslate>,
 );
 
 //https://datatracker.ietf.org/doc/html/draft-lhomme-cellar-matroska-03#section-7.3.26
-#[derive(Debug,Clone,PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Cluster {
     pub timecode: u64,
     pub silent_tracks: Option<SilentTracks>,
@@ -205,7 +207,7 @@ named!(pub cluster<SegmentElement>,
 named!(simple_blocks< Vec< Vec<u8> > >, many0!(ebml_binary!(0xA3)));
 named!(block_groups< Vec<BlockGroup> >, many0!(block_group));
 
-#[derive(Debug,Clone,PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct SilentTracks {
     numbers: Vec<u64>,
 }
@@ -215,7 +217,7 @@ named!(pub silent_tracks<SilentTracks>,
   ebml_master!(0x5854, map!(many0!(ebml_uint!(0x58D7)), |v| SilentTracks { numbers: v }))
 );
 
-#[derive(Debug,Clone,PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct BlockGroup {
     pub block: Vec<u8>,
     pub block_virtual: Option<Vec<u8>>,
@@ -265,7 +267,7 @@ named!(pub block_group<BlockGroup>,
   )
 );
 
-#[derive(Debug,Clone,PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct BlockAdditions {}
 
 //https://datatracker.ietf.org/doc/html/draft-lhomme-cellar-matroska-03#section-7.3.16
@@ -274,7 +276,7 @@ named!(pub block_additions<BlockAdditions>,
   ebml_master!(0x75A1, value!(BlockAdditions {}))
 );
 
-#[derive(Debug,Clone,PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Slices {}
 
 //https://datatracker.ietf.org/doc/html/draft-lhomme-cellar-matroska-03#section-7.3.46
@@ -283,7 +285,7 @@ named!(pub slices<Slices>,
   ebml_master!(0x8E, value!(Slices {}))
 );
 
-#[derive(Debug,Clone,PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct ReferenceFrame {}
 
 //https://datatracker.ietf.org/doc/html/draft-lhomme-cellar-matroska-03#section-7.3.53
@@ -293,7 +295,7 @@ named!(pub reference_frame<ReferenceFrame>,
 );
 
 
-#[derive(Debug,Clone,PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Tracks {
     pub tracks: Vec<TrackEntry>,
 }
@@ -303,7 +305,7 @@ named!(pub tracks<SegmentElement>,
   map!(many1!(track_entry), |v| SegmentElement::Tracks(Tracks { tracks: v }))
 );
 
-#[derive(Debug,Clone,PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct TrackEntry {
     pub track_number: u64,
     pub track_uid: u64,
@@ -433,7 +435,7 @@ named!(pub track_entry<TrackEntry>,
   )
 );
 
-#[derive(Debug,Clone,PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Audio {
     pub sampling_frequency: f64,
     pub output_sampling_frequency: Option<f64>,
@@ -462,7 +464,7 @@ named!(pub audio<Audio>,
   )
 );
 
-#[derive(Debug,Clone,PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Video {
     pub flag_interlaced: Option<u64>,
     pub field_order: Option<u64>,
@@ -536,7 +538,7 @@ named!(pub video<Video>,
   )
 );
 
-#[derive(Debug,Clone,PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Colour {
     pub matrix_coefficients: Option<u64>,
     pub bits_per_channel: Option<u64>,
@@ -592,7 +594,7 @@ named!(pub colour<Colour>,
   )
 );
 
-#[derive(Debug,Clone,PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct MasteringMetadata {
     pub primary_r_chromaticity_x: Option<f64>,
     pub primary_r_chromaticity_y: Option<f64>,
@@ -636,7 +638,7 @@ named!(pub mastering_metadata<MasteringMetadata>,
   )
 );
 
-#[derive(Debug,Clone,PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Projection {
     projection_type: u64,
     projection_private: Option<Vec<u8>>,
@@ -665,7 +667,7 @@ named!(pub projection<Projection>,
   )
 );
 
-#[derive(Debug,Clone,PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Chapters {}
 
 //https://datatracker.ietf.org/doc/html/draft-lhomme-cellar-matroska-03#section-7.3.199
@@ -675,13 +677,13 @@ named!(pub chapters<SegmentElement>,
   ebml_master!(0x45B9, value!(SegmentElement::Chapters(Chapters{})))
 );
 
-#[derive(Debug,Clone,PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Cues {}
 
-#[derive(Debug,Clone,PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Attachments {}
 
-#[derive(Debug,Clone,PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Tags {}
 
 
@@ -719,11 +721,13 @@ mod tests {
                     let new_index = mkv.offset(i);
                     match o {
                         SegmentElement::Unknown(id, size) => {
-                            println!("[{} -> {}] Unknown {{ id: 0x{:x}, size: {:?} }}",
-                                     index,
-                                     new_index,
-                                     id,
-                                     size);
+                            println!(
+                                "[{} -> {}] Unknown {{ id: 0x{:x}, size: {:?} }}",
+                                index,
+                                new_index,
+                                id,
+                                size
+                            );
                         }
                         o => {
                             println!("[{} -> {}] {:#?}", index, new_index, o);
@@ -734,10 +738,12 @@ mod tests {
                 }
                 e => {
                     let max_index = min(mkv.len(), index + 200);
-                    println!("[{}] {:#?}:\n{}",
-                             index,
-                             e,
-                             (&mkv[index..max_index]).to_hex(16));
+                    println!(
+                        "[{}] {:#?}:\n{}",
+                        index,
+                        e,
+                        (&mkv[index..max_index]).to_hex(16)
+                    );
                     break;
                 }
             }
@@ -770,11 +776,13 @@ mod tests {
                     let new_index = webm.offset(i);
                     match o {
                         SegmentElement::Unknown(id, size) => {
-                            println!("[{} -> {}] Unknown {{ id: 0x{:x}, size: {:?} }}",
-                                     index,
-                                     new_index,
-                                     id,
-                                     size);
+                            println!(
+                                "[{} -> {}] Unknown {{ id: 0x{:x}, size: {:?} }}",
+                                index,
+                                new_index,
+                                id,
+                                size
+                            );
                         }
                         o => {
                             println!("[{} -> {}] {:#?}", index, new_index, o);
@@ -785,10 +793,12 @@ mod tests {
                 }
                 e => {
                     let max_index = min(webm.len(), index + 200);
-                    println!("[{}] {:#?}:\n{}",
-                             index,
-                             e,
-                             (&webm[index..max_index]).to_hex(16));
+                    println!(
+                        "[{}] {:#?}:\n{}",
+                        index,
+                        e,
+                        (&webm[index..max_index]).to_hex(16)
+                    );
                     break;
                 }
             }

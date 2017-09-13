@@ -9,10 +9,11 @@ use std::collections::VecDeque;
 use rational::Rational32;
 
 use ebml::{ebml_header, EBMLHeader};
-use elements::{segment, segment_element, Cluster, SeekHead, Info, Tracks, TrackEntry, SegmentElement};
+use elements::{segment, segment_element, Cluster, SeekHead, Info, Tracks, TrackEntry,
+               SegmentElement};
 use nom::{self, IResult, Offset};
 
-#[derive(Debug,Clone,PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct MkvDemuxer {
     pub header: Option<EBMLHeader>,
     pub seek_head: Option<SeekHead>,
@@ -95,7 +96,9 @@ impl Demuxer for MkvDemuxer {
     fn read_headers(&mut self, buf: &Box<Buffered>, info: &mut GlobalInfo) -> Result<SeekFrom> {
         match self.parse_until_tracks(buf.data()) {
             IResult::Done(i, _) => {
-                info.duration = self.info.as_ref().and_then(|info| info.duration).map(|d| d as u64);
+                info.duration = self.info.as_ref().and_then(|info| info.duration).map(|d| {
+                    d as u64
+                });
                 //self.tracks.as_ref().map(|t| t.tracks.
                 Ok(SeekFrom::Current(buf.data().offset(i) as i64))
             }

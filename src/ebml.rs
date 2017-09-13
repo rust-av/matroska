@@ -291,7 +291,7 @@ do_parse!(
   ));
 
 
-#[derive(Debug,Clone,PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct EBMLHeader {
     pub version: u64,
     pub read_version: u64,
