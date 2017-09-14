@@ -40,7 +40,7 @@ pub fn vint(input: &[u8]) -> IResult<&[u8], u64> {
     let len = v.leading_zeros();
 
     if len == 8 {
-        return IResult::Error(ErrorKind::Custom(1));
+        return IResult::Error(ErrorKind::Custom(100));
     }
 
     if input.len() <= len as usize {
@@ -69,7 +69,7 @@ pub fn vid(input: &[u8]) -> IResult<&[u8], u64> {
     let len = v.leading_zeros();
 
     if len == 8 {
-        return IResult::Error(ErrorKind::Custom(1));
+        return IResult::Error(ErrorKind::Custom(101));
     }
 
     if input.len() <= len as usize {
@@ -112,7 +112,7 @@ pub fn parse_uint_data(input: &[u8], size: u64) -> IResult<&[u8], u64> {
     let mut val = 0;
 
     if size > 8 {
-        return IResult::Error(ErrorKind::Custom(1));
+        return IResult::Error(ErrorKind::Custom(102));
     }
 
     for i in 0..size as usize {
@@ -126,7 +126,7 @@ pub fn parse_int_data(input: &[u8], size: u64) -> IResult<&[u8], i64> {
     let mut val = 0;
 
     if size > 8 {
-        return IResult::Error(ErrorKind::Custom(1));
+        return IResult::Error(ErrorKind::Custom(103));
     }
 
     for i in 0..size as usize {
@@ -170,7 +170,7 @@ pub fn parse_float_data(input: &[u8], size: u64) -> IResult<&[u8], f64> {
     } else if size == 8 {
         flat_map!(input, take!(8), be_f64)
     } else {
-        IResult::Error(ErrorKind::Custom(1))
+        IResult::Error(ErrorKind::Custom(104))
     }
 }
 /*
