@@ -99,7 +99,9 @@ impl Demuxer for MkvDemuxer {
                 info.duration = self.info.as_ref().and_then(|info| info.duration).map(|d| {
                     d as u64
                 });
-                //self.tracks.as_ref().map(|t| t.tracks.
+                if let Some(ref t) = self.tracks {
+                    info.streams = t.tracks.iter().map(|tr| track_to_stream(tr)).collect();
+                }
                 Ok(SeekFrom::Current(buf.data().offset(i) as i64))
             }
             IResult::Incomplete(_) => Err(ErrorKind::MoreDataNeeded.into()),
@@ -185,7 +187,7 @@ fn track_entry_media_kind(t: &TrackEntry) -> Option<MediaKind> {
     }
 }
 
-pub fn track_stream(t: &TrackEntry) -> Stream {
+pub fn track_to_stream(t: &TrackEntry) -> Stream {
     Stream {
     id: t.track_uid as usize,
     index: t.track_number as usize,
@@ -235,6 +237,7 @@ mod tests {
         let mut context = DemuxerContext::new(Box::new(MkvDemuxer::new()),
                                               Box::new(Cursor::new(mkv)));
         println!("DEMUXER CONTEXT read headers: {:?}", context.read_headers());
+        println!("DEMUXER CONTEXT streams: {:?}", context.info.streams);
         println!("DEMUXER CONTEXT event: {:?}", context.read_packet());
         println!("DEMUXER CONTEXT event: {:?}", context.read_packet());
         println!("DEMUXER CONTEXT event: {:?}", context.read_packet());
