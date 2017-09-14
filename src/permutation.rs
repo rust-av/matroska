@@ -211,14 +211,14 @@ macro_rules! permutation_opt_unwrap (
   ($it:tt, ($($parsed:expr),*), $res:ident, $e:ident?, $($rest:tt)*) => (
     succ!($it, permutation_opt_unwrap!(($($parsed),* , acc!($it, $res)), $res, $($rest)*));
   );
-  ($it:tt, ($($parsed:expr),*), $res:ident, $e:ident, $($rest:tt)*) => (
+  ($it:tt, ($($parsed:expr),*), $res:ident, $e:ident, $($rest:tt)*) => ({
     let res = acc!($it, $res);
     if res.is_some() {
       succ!($it, permutation_opt_unwrap!(($($parsed),* , res.unwrap()), $res, $($rest)*))
     } else {
       None
     }
-  );
+  });
   ($it:tt, ($($parsed:expr),*), $res:ident, $submac:ident!( $($args:tt)* )?, $($rest:tt)*) => (
     succ!($it, permutation_opt_unwrap!(($($parsed),* , acc!($it, $res)), $res, $($rest)*));
   );
