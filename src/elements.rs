@@ -302,7 +302,7 @@ pub struct Tracks {
 
 //https://datatracker.ietf.org/doc/html/draft-lhomme-cellar-matroska-03#section-7.3.16
 named!(pub tracks<SegmentElement>,
-  map!(many1!(track_entry), |v| SegmentElement::Tracks(Tracks { tracks: v }))
+  map!(many1!(eat_void!(track_entry)), |v| SegmentElement::Tracks(Tracks { tracks: v }))
 );
 
 #[derive(Debug, Clone, PartialEq)]

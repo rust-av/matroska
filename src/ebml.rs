@@ -282,6 +282,19 @@ macro_rules! ebml_master (
   })
 );
 
+#[macro_export]
+macro_rules! eat_void (
+  ($i: expr, $submac:ident!( $($args:tt)* )) => ({
+    preceded!($i,
+      opt!($crate::ebml::skip_void),
+      $submac!($($args)*)
+    )
+  });
+  ($i: expr, $e:expr) => ({
+    eat_void!($i, call!($e))
+  });
+);
+
 named!(pub skip_void,
 do_parse!(
   id:   verify!(vid, |val:u64| val == 0xEC) >>
