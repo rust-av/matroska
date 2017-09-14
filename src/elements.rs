@@ -295,7 +295,7 @@ named!(pub reference_frame<ReferenceFrame>,
 
 #[derive(Debug,Clone,PartialEq)]
 pub struct Tracks {
-  pub tracks: Vec<TrackEntry>,
+    pub tracks: Vec<TrackEntry>,
 }
 
 //https://datatracker.ietf.org/doc/html/draft-lhomme-cellar-matroska-03#section-7.3.16
@@ -305,41 +305,41 @@ named!(pub tracks<SegmentElement>,
 
 #[derive(Debug,Clone,PartialEq)]
 pub struct TrackEntry {
-  pub track_number: u64,
-  pub track_uid:    u64,
-  pub track_type:   u64,
-  pub flag_enabled: Option<u64>, //FIXME: this flag is mandatory but does not appear in some files?
-  pub flag_default: Option<u64>, //FIXME: this flag is mandatory but does not appear in some files?
-  pub flag_forced:  Option<u64>, //FIXME: this flag is mandatory but does not appear in some files?
-  pub flag_lacing:  Option<u64>, //FIXME: this flag is mandatory but does not appear in some files?
-  pub min_cache:    Option<u64>, //FIXME: this flag is mandatory but does not appear in some files?
-  pub max_cache:    Option<u64>,
-  pub default_duration: Option<u64>,
-  pub default_decoded_field_duration: Option<u64>,
-  pub track_timecode_scale: Option<f64>, //FIXME: this flag is mandatory but does not appear in some files?
-  pub track_offset: Option<i64>,
-  pub max_block_addition_id: Option<u64>, //FIXME: this flag is mandatory but does not appear in some files?
-  pub name: Option<String>,
-  pub language: Option<String>,
-  pub language_ietf: Option<String>,
-  pub codec_id: String,
-  pub codec_private: Option<Vec<u8>>,
-  pub codec_name: Option<String>,
-  pub attachment_link: Option<u64>,
-  pub codec_settings: Option<String>,
-  pub codec_info_url: Option<String>,
-  pub codec_download_url: Option<String>,
-  pub codec_decode_all: Option<u64>,//FIXME: this flag is mandatory but does not appear in some files?
-  pub track_overlay: Option<u64>,
-  pub codec_delay: Option<u64>,
-  pub seek_pre_roll: Option<u64>, //FIXME: this flag is mandatory but does not appear in some files?
-  pub trick_track_uid: Option<u64>,
-  pub trick_track_segment_uid: Option<Vec<u8>>,
-  pub trick_track_flag: Option<u64>,
-  pub trick_master_track_uid: Option<u64>,
-  pub trick_master_track_segment_uid: Option<Vec<u8>>,
-  pub video: Option<Video>,
-  pub audio: Option<Audio>,
+    pub track_number: u64,
+    pub track_uid: u64,
+    pub track_type: u64,
+    pub flag_enabled: Option<u64>, //FIXME: this flag is mandatory but does not appear in some files?
+    pub flag_default: Option<u64>, //FIXME: this flag is mandatory but does not appear in some files?
+    pub flag_forced: Option<u64>, //FIXME: this flag is mandatory but does not appear in some files?
+    pub flag_lacing: Option<u64>, //FIXME: this flag is mandatory but does not appear in some files?
+    pub min_cache: Option<u64>, //FIXME: this flag is mandatory but does not appear in some files?
+    pub max_cache: Option<u64>,
+    pub default_duration: Option<u64>,
+    pub default_decoded_field_duration: Option<u64>,
+    pub track_timecode_scale: Option<f64>, //FIXME: this flag is mandatory but does not appear in some files?
+    pub track_offset: Option<i64>,
+    pub max_block_addition_id: Option<u64>, //FIXME: this flag is mandatory but does not appear in some files?
+    pub name: Option<String>,
+    pub language: Option<String>,
+    pub language_ietf: Option<String>,
+    pub codec_id: String,
+    pub codec_private: Option<Vec<u8>>,
+    pub codec_name: Option<String>,
+    pub attachment_link: Option<u64>,
+    pub codec_settings: Option<String>,
+    pub codec_info_url: Option<String>,
+    pub codec_download_url: Option<String>,
+    pub codec_decode_all: Option<u64>, //FIXME: this flag is mandatory but does not appear in some files?
+    pub track_overlay: Option<u64>,
+    pub codec_delay: Option<u64>,
+    pub seek_pre_roll: Option<u64>, //FIXME: this flag is mandatory but does not appear in some files?
+    pub trick_track_uid: Option<u64>,
+    pub trick_track_segment_uid: Option<Vec<u8>>,
+    pub trick_track_flag: Option<u64>,
+    pub trick_master_track_uid: Option<u64>,
+    pub trick_master_track_segment_uid: Option<Vec<u8>>,
+    pub video: Option<Video>,
+    pub audio: Option<Audio>,
 }
 
 named!(pub track_entry<TrackEntry>,
@@ -435,11 +435,11 @@ named!(pub track_entry<TrackEntry>,
 
 #[derive(Debug,Clone,PartialEq)]
 pub struct Audio {
-  pub sampling_frequency: f64,
-  pub output_sampling_frequency: Option<f64>,
-  pub channels: Option<u64>,
-  pub channel_positions: Option<Vec<u8>>,
-  pub bit_depth: Option<u64>,
+    pub sampling_frequency: f64,
+    pub output_sampling_frequency: Option<f64>,
+    pub channels: Option<u64>,
+    pub channel_positions: Option<Vec<u8>>,
+    pub bit_depth: Option<u64>,
 }
 
 named!(pub audio<Audio>,
@@ -464,26 +464,26 @@ named!(pub audio<Audio>,
 
 #[derive(Debug,Clone,PartialEq)]
 pub struct Video {
-  pub flag_interlaced: Option<u64>,
-  pub field_order: Option<u64>,
-  pub stereo_mode: Option<u64>,
-  pub alpha_mode: Option<u64>,
-  pub old_stereo_mode: Option<u64>,
-  pub pixel_width: u64,
-  pub pixel_height: u64,
-  pub pixel_crop_bottom: Option<u64>,
-  pub pixel_crop_top: Option<u64>,
-  pub pixel_crop_left: Option<u64>,
-  pub pixel_crop_right: Option<u64>,
-  pub display_width: Option<u64>,
-  pub display_height: Option<u64>,
-  pub display_unit: Option<u64>,
-  pub aspect_ratio_type: Option<u64>,
-  pub colour_space: Option<Vec<u8>>,
-  pub gamma_value: Option<f64>,
-  pub frame_rate: Option<f64>,
-  pub colour: Option<Colour>,
-  pub projection: Option<Projection>,
+    pub flag_interlaced: Option<u64>,
+    pub field_order: Option<u64>,
+    pub stereo_mode: Option<u64>,
+    pub alpha_mode: Option<u64>,
+    pub old_stereo_mode: Option<u64>,
+    pub pixel_width: u64,
+    pub pixel_height: u64,
+    pub pixel_crop_bottom: Option<u64>,
+    pub pixel_crop_top: Option<u64>,
+    pub pixel_crop_left: Option<u64>,
+    pub pixel_crop_right: Option<u64>,
+    pub display_width: Option<u64>,
+    pub display_height: Option<u64>,
+    pub display_unit: Option<u64>,
+    pub aspect_ratio_type: Option<u64>,
+    pub colour_space: Option<Vec<u8>>,
+    pub gamma_value: Option<f64>,
+    pub frame_rate: Option<f64>,
+    pub colour: Option<Colour>,
+    pub projection: Option<Projection>,
 }
 
 named!(pub video<Video>,
@@ -538,20 +538,20 @@ named!(pub video<Video>,
 
 #[derive(Debug,Clone,PartialEq)]
 pub struct Colour {
-  pub matrix_coefficients: Option<u64>,
-  pub bits_per_channel: Option<u64>,
-  pub chroma_subsampling_horz: Option<u64>,
-  pub chroma_subsampling_vert: Option<u64>,
-  pub cb_subsampling_horz: Option<u64>,
-  pub cb_subsampling_vert: Option<u64>,
-  pub chroma_siting_horz: Option<u64>,
-  pub chroma_siting_vert: Option<u64>,
-  pub range: Option<u64>,
-  pub transfer_characteristics: Option<u64>,
-  pub primaries: Option<u64>,
-  pub max_cll: Option<u64>,
-  pub max_fall: Option<u64>,
-  pub mastering_metadata: Option<MasteringMetadata>,
+    pub matrix_coefficients: Option<u64>,
+    pub bits_per_channel: Option<u64>,
+    pub chroma_subsampling_horz: Option<u64>,
+    pub chroma_subsampling_vert: Option<u64>,
+    pub cb_subsampling_horz: Option<u64>,
+    pub cb_subsampling_vert: Option<u64>,
+    pub chroma_siting_horz: Option<u64>,
+    pub chroma_siting_vert: Option<u64>,
+    pub range: Option<u64>,
+    pub transfer_characteristics: Option<u64>,
+    pub primaries: Option<u64>,
+    pub max_cll: Option<u64>,
+    pub max_fall: Option<u64>,
+    pub mastering_metadata: Option<MasteringMetadata>,
 }
 
 named!(pub colour<Colour>,
@@ -594,16 +594,16 @@ named!(pub colour<Colour>,
 
 #[derive(Debug,Clone,PartialEq)]
 pub struct MasteringMetadata {
-  pub primary_r_chromaticity_x: Option<f64>,
-  pub primary_r_chromaticity_y: Option<f64>,
-  pub primary_g_chromaticity_x: Option<f64>,
-  pub primary_g_chromaticity_y: Option<f64>,
-  pub primary_b_chromaticity_x: Option<f64>,
-  pub primary_b_chromaticity_y: Option<f64>,
-  pub white_point_chromaticity_x: Option<f64>,
-  pub white_point_chromaticity_y: Option<f64>,
-  pub luminance_max:              Option<f64>,
-  pub luminance_min:              Option<f64>,
+    pub primary_r_chromaticity_x: Option<f64>,
+    pub primary_r_chromaticity_y: Option<f64>,
+    pub primary_g_chromaticity_x: Option<f64>,
+    pub primary_g_chromaticity_y: Option<f64>,
+    pub primary_b_chromaticity_x: Option<f64>,
+    pub primary_b_chromaticity_y: Option<f64>,
+    pub white_point_chromaticity_x: Option<f64>,
+    pub white_point_chromaticity_y: Option<f64>,
+    pub luminance_max: Option<f64>,
+    pub luminance_min: Option<f64>,
 }
 
 named!(pub mastering_metadata<MasteringMetadata>,
@@ -638,11 +638,11 @@ named!(pub mastering_metadata<MasteringMetadata>,
 
 #[derive(Debug,Clone,PartialEq)]
 pub struct Projection {
-  projection_type: u64,
-  projection_private: Option<Vec<u8>>,
-  projection_pose_yaw: f64,
-  projection_pose_pitch: f64,
-  projection_pose_roll: f64,
+    projection_type: u64,
+    projection_private: Option<Vec<u8>>,
+    projection_pose_yaw: f64,
+    projection_pose_pitch: f64,
+    projection_pose_roll: f64,
 }
 
 named!(pub projection<Projection>,
