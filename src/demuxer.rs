@@ -211,17 +211,17 @@ mod tests {
     use nom::{IResult, Offset};
     use av_format::demuxer::context::DemuxerContext;
 
-    const mkv: &'static [u8] = include_bytes!("../assets/single_stream.mkv");
+    const webm: &'static [u8] = include_bytes!("../assets/bbb-vp9-opus.webm");
 
     #[test]
     fn parse_headers() {
         let mut demuxer = MkvDemuxer::new();
 
-        let res = demuxer.parse_until_tracks(mkv);
+        let res = demuxer.parse_until_tracks(webm);
         println!("got parsing res: {:?}", res);
         match res {
             IResult::Done(i, _) => {
-                println!("offset: {} bytes", mkv.offset(i));
+                println!("offset: {} bytes", webm.offset(i));
             }
             e => {
                 println!("could not parse: {:?}", e);
@@ -235,7 +235,7 @@ mod tests {
     #[test]
     fn context() {
         let mut context = DemuxerContext::new(Box::new(MkvDemuxer::new()),
-                                              Box::new(Cursor::new(mkv)));
+                                              Box::new(Cursor::new(webm)));
         println!("DEMUXER CONTEXT read headers: {:?}", context.read_headers());
         println!("DEMUXER CONTEXT streams: {:?}", context.info.streams);
         println!("DEMUXER CONTEXT event: {:?}", context.read_packet());
