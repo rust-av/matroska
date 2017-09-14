@@ -1,7 +1,7 @@
 use av_format::error::*;
 use std::io::SeekFrom;
 use av_data::packet::Packet;
-use av_format::stream::Stream;
+use av_format::stream::*;
 use av_format::buffer::Buffered;
 use av_format::demuxer::demux::{Demuxer, Event};
 use av_format::demuxer::context::GlobalInfo;
@@ -131,29 +131,76 @@ impl Demuxer for MkvDemuxer {
     }
 }
 
-/*
-pub fn track_stream(t: &TrackEntry) -> Stream {
+fn track_entry_codec_id(t: &TrackEntry) -> Option<CodecID> {
+    // TODO: Support V_QUICKTIME and V_MS/VFW/FOURCC
+    match t.codec_id.as_ref() {
+        "A_OPUS" => Some(CodecID::Opus),
+        "V_VP9"  => Some(CodecID::VP9),
+        _ => None
+    }
+}
 
-  Stream {
+fn track_entry_video_kind(t: &TrackEntry) -> Option<MediaKind> {
+    // TODO: Validate that a track::video exists for track::type video before.
+    if let Some(ref video) = t.video {
+        let v = VideoInfo {
+            width : video.pixel_width as usize,
+            height : video.pixel_height as usize,
+            // TODO parse Colour and/or CodecPrivate to extract the format
+            format : None
+        };
+        Some(MediaKind::Video(v))
+    } else {
+        None
+    }
+}
+
+fn track_entry_audio_kind(t: &TrackEntry) -> Option<MediaKind> {
+    // TODO: Validate that a track::video exists for track::type video before.
+    if let Some(ref audio) = t.audio {
+        let rate = if let Some(r) = audio.output_sampling_frequency {
+            r
+        } else {
+            audio.sampling_frequency
+        };
+        // TODO: complete it
+        let a = AudioInfo {
+            samples: 0,
+            rate: rate as usize,
+            map: None,
+            format: None,
+        };
+        Some(MediaKind::Audio(a))
+    } else {
+        None
+    }
+}
+
+fn track_entry_media_kind(t: &TrackEntry) -> Option<MediaKind> {
+    // TODO: Use an enum for the track type
+    match t.track_type {
+        0x1 => track_entry_video_kind(t),
+        0x2 => track_entry_audio_kind(t),
+        _ => None
+    }
+}
+
+pub fn track_stream(t: &TrackEntry) -> Stream {
+    Stream {
     id: t.track_uid as usize,
     index: t.track_number as usize,
     start: None,
     duration: t.default_duration,
     timebase : Rational32::from_integer(1),
+    // TODO: Extend CodecParams and fill it with the remaining information
     params : CodecParams {
-      extradata: Vec<u8>,
-      tag: u32,
-      bit_rate: usize,
-      bits_per_coded_sample: usize,
-      profile: usize,
-      level: usize,
-      codec_id: CodecID,
-      kind: MediaKind::
-
+        extradata: t.codec_private.clone(),
+        bit_rate: 0,
+        codec_id: track_entry_codec_id(t),
+        kind: track_entry_media_kind(t)
     },
   }
 }
-*/
 
 #[cfg(test)]
 mod tests {
