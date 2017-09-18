@@ -1,4 +1,5 @@
 use cookie_factory::*;
+use ebml::EBMLHeader;
 
 pub fn vint_size(i: u64) -> u8 {
     let mut val = 1;
@@ -15,12 +16,10 @@ pub fn vint_size(i: u64) -> u8 {
 
 pub fn log2(i: u64) -> u32 {
     let res = 64 - (i | 1).leading_zeros();
-    println!("log2({}) = {}", i, res);
     res
 }
 
 pub fn vid_size(i: u64) -> u8 {
-    //((log2(i + 1) - 1) / 7 + 1) as u8
     ((log2(i + 1) - 1) / 7) as u8
 }
 
@@ -28,7 +27,6 @@ pub fn gen_vint<'a>(mut input: (&'a mut [u8], usize),
                     mut num: u64)
                     -> Result<(&'a mut [u8], usize), GenError> {
     let needed_bytes = vint_size(num);
-    println!("needed bytes: {}", needed_bytes);
 
     assert!(num < (1u64 << 56) - 1);
 
@@ -57,13 +55,34 @@ pub fn gen_vid<'a>(mut input: (&'a mut [u8], usize),
                    mut num: u64)
                    -> Result<(&'a mut [u8], usize), GenError> {
     let needed_bytes = vid_size(num);
-    println!("needed bytes: {}", needed_bytes);
-
-    //num |= 1u64 << needed_bytes * 7;
 
     let index = 0;
     let mut i = needed_bytes - 1;
 
+    loop {
+
+        match gen_be_u8!(input, (num >> i * 8) as u8) {
+            Ok(next) => {
+                input = next;
+            }
+            Err(e) => return Err(e),
+        }
+
+        if i == 0 {
+            break;
+        }
+        i -= 1;
+    }
+
+    Ok(input)
+}
+
+pub fn gen_uint<'a>(mut input: (&'a mut [u8], usize),
+                    mut num: u64)
+                    -> Result<(&'a mut [u8], usize), GenError> {
+    let needed_bytes = vint_size(num);
+
+    let mut i = needed_bytes - 1;
     loop {
 
         match gen_be_u8!(input, (num >> i * 8) as u8) {
@@ -99,6 +118,28 @@ pub fn gen_u64<'a>(input: (&'a mut [u8], usize),
   )
 }
 
+pub fn gen_u32<'a>(input: (&'a mut [u8], usize),
+                   id: u64,
+                   num: u32)
+                   -> Result<(&'a mut [u8], usize), GenError> {
+    do_gen!(input,
+    gen_call!(gen_vid, id) >>
+    gen_call!(gen_vint, 4)  >>
+    gen_be_u32!(num)
+  )
+}
+
+pub fn gen_u16<'a>(input: (&'a mut [u8], usize),
+                   id: u64,
+                   num: u16)
+                   -> Result<(&'a mut [u8], usize), GenError> {
+    do_gen!(input,
+    gen_call!(gen_vid, id) >>
+    gen_call!(gen_vint, 2)  >>
+    gen_be_u16!(num)
+  )
+}
+
 pub fn gen_u8<'a>(input: (&'a mut [u8], usize),
                   id: u64,
                   num: u8)
@@ -109,6 +150,175 @@ pub fn gen_u8<'a>(input: (&'a mut [u8], usize),
     gen_be_u8!(num)
   )
 }
+
+pub fn gen_i64<'a>(input: (&'a mut [u8], usize),
+                   id: u64,
+                   num: i64)
+                   -> Result<(&'a mut [u8], usize), GenError> {
+    do_gen!(input,
+    gen_call!(gen_vid, id) >>
+    gen_call!(gen_vint, 8)  >>
+    gen_be_i64!(num)
+  )
+}
+
+pub fn gen_i32<'a>(input: (&'a mut [u8], usize),
+                   id: u64,
+                   num: i32)
+                   -> Result<(&'a mut [u8], usize), GenError> {
+    do_gen!(input,
+    gen_call!(gen_vid, id) >>
+    gen_call!(gen_vint, 4)  >>
+    gen_be_i32!(num)
+  )
+}
+
+pub fn gen_i16<'a>(input: (&'a mut [u8], usize),
+                   id: u64,
+                   num: i16)
+                   -> Result<(&'a mut [u8], usize), GenError> {
+    do_gen!(input,
+    gen_call!(gen_vid, id) >>
+    gen_call!(gen_vint, 2)  >>
+    gen_be_i16!(num)
+  )
+}
+
+pub fn gen_i8<'a>(input: (&'a mut [u8], usize),
+                  id: u64,
+                  num: i8)
+                  -> Result<(&'a mut [u8], usize), GenError> {
+    do_gen!(input,
+    gen_call!(gen_vid, id) >>
+    gen_call!(gen_vint, 1)  >>
+    gen_be_i8!(num)
+  )
+}
+
+#[macro_export]
+macro_rules! gen_ebml_size (
+  (($i:expr, $idx:expr), $expected_size:expr, $size:expr) => ({
+    let v = vint_size($size);
+    //println!("size: {}, vint_size: {}, expected_size: {}", $size, v, $expected_size);
+
+    if v > $expected_size {
+      Err(GenError::CustomError(0))
+    } else {
+      gen_call!(($i, $idx), gen_vint, $size)
+    }
+  })
+);
+
+#[macro_export]
+macro_rules! gen_ebml_master (
+  (($i:expr, $idx:expr), $id:expr, $expected_size:expr, $($rest:tt)*) => (
+    do_gen!(($i, $idx),
+                  gen_call!(gen_vid, $id)
+      >> ofs_len: gen_skip!($expected_size)
+      >> start:   do_gen!($($rest)*)
+      >> end:     gen_at_offset!(ofs_len, gen_ebml_size!($expected_size, (end-start) as u64))
+      //>> end:     gen_dbg!(gen_at_offset!(ofs_len, gen_call!(gen_vint, (end-start) as u64)))
+    )
+  );
+  (($i:expr, $idx:expr), $id:expr, $($rest:tt)*) => (
+    gen_ebml_master!(($i, $idx), $id, 8, $($rest)*)
+  );
+  ($input:expr, $id:expr, $expected_size:expr, $($rest:tt)*) => (
+    gen_ebml_master!(($input.0, $input.1), $id, $expected_size, $($rest)*)
+  );
+  ($input:expr, $id:expr, $($rest:tt)*) => (
+    gen_ebml_master!(($input.0, $input.1), $id, 8, $($rest)*)
+  );
+);
+
+#[macro_export]
+macro_rules! gen_ebml_uint (
+  (($i:expr, $idx:expr), $id:expr, $num:expr, $expected_size:expr) => (
+    do_gen!(($i, $idx),
+                  gen_call!(gen_vid, $id)
+      >> ofs_len: gen_skip!($expected_size)
+      >> start:   gen_dbg!(gen_call!(gen_uint, $num))
+      >> end:     gen_at_offset!(ofs_len, gen_ebml_size!($expected_size, (end-start) as u64))
+    )
+  );
+  (($i:expr, $idx:expr), $id:expr, $num:expr) => (
+    gen_ebml_uint!(($i, $idx), $id, $num, 8)
+  );
+);
+
+#[macro_export]
+macro_rules! gen_ebml_str (
+  (($i:expr, $idx:expr), $id:expr, $s:expr) => ({
+    let v = vint_size($s.len() as u64);
+
+    do_gen!(($i, $idx),
+                  gen_call!(gen_vid, $id)
+      >> ofs_len: gen_skip!(v as usize)
+      >> start:   gen_slice!(($s.as_bytes()))
+      >> end:     gen_at_offset!(ofs_len, gen_ebml_size!(v, (end-start) as u64))
+    )
+  });
+);
+
+#[macro_export]
+macro_rules! gen_dbg (
+  (($i:expr, $idx:expr), $submac:ident!( $($args:tt)*)) => ({
+    gen_dbg!(__impl $i, $idx, $submac!($($args)*))
+  });
+
+  ($input:expr, $submac:ident!( $($args:tt)*)) => ({
+
+    let (i, idx) = $input;
+    gen_dbg!(__impl i, idx, $submac!($($args)*))
+  });
+
+  (__impl $i:expr, $idx:expr, $submac:ident!( $($args:tt)* )) => ({
+    use nom::HexDisplay;
+    use std::slice::from_raw_parts_mut;
+
+    let (i, idx) = ($i, $idx);
+
+    let p = i.as_ptr() as usize;
+    let len = i.len();
+    let res = ($submac!((i,idx), $($args)*)).map(|(j,idx2)| idx2 + (j.as_ptr() as usize) - p);
+
+    match res {
+      Ok(index) => {
+        let sl = unsafe {
+          from_raw_parts_mut(p as *mut u8, len)
+        };
+        println!("gen_dbg {}->{}: {}:\n{}", idx, index, stringify!($submac!($($args)*)), (&sl[idx..index]).to_hex(16));
+        Ok((sl, index))
+      },
+      Err(e) => Err(e),
+    }
+  });
+);
+
+//trace_macros!(true);
+pub fn gen_ebml_header<'a>(input: (&'a mut [u8], usize),
+                           h: &EBMLHeader)
+                           -> Result<(&'a mut [u8], usize), GenError> {
+    gen_ebml_master!(input,
+    0x1A45DFA3, 1,
+       gen_dbg!(gen_ebml_uint!(0x4286, h.version, 1))
+    >> gen_ebml_uint!(0x42F7, h.read_version, 1)
+    >> gen_ebml_uint!(0x42F2, h.max_id_length, 1)
+    >> gen_ebml_uint!(0x42F3, h.max_size_length, 1)
+    >> gen_ebml_str!(0x4282, h.doc_type)
+    >> gen_ebml_uint!(0x4287, h.doc_type_version, 1)
+    >> gen_ebml_uint!(0x4285, h.doc_type_read_version, 1)
+
+  )
+}
+
+pub fn gen_u64_a<'a>(input: (&'a mut [u8], usize),
+                     num: u64)
+                     -> Result<(&'a mut [u8], usize), GenError> {
+    gen_dbg!((input.0, input.1), gen_be_u64!(num))
+}
+
+//trace_macros!(false);
 
 #[cfg(test)]
 mod tests {
@@ -249,4 +459,44 @@ mod tests {
   }
 }
 
+    quickcheck! {
+    fn test_ebml_header(version: u8, read_version: u8, max_id_length: u8, max_size_length: u8, doc_type: String,
+      doc_type_version: u8, doc_type_read_version: u8) -> bool {
+      let header = EBMLHeader {
+        version: version as u64,
+        read_version: read_version as u64,
+        max_id_length: max_id_length as u64,
+        max_size_length: max_size_length as u64,
+        doc_type: doc_type,
+        doc_type_version: doc_type_version as u64,
+        doc_type_read_version: doc_type_read_version as u64
+      };
+
+      println!("will serialize: {:#?}", header);
+      let mut data = [0u8; 100];
+      {
+        let gen_res = gen_ebml_header((&mut data[..], 0), &header);
+        println!("gen_res: {:?}", gen_res);
+        // do not fail if quickcheck generated data that is too large
+        match gen_res {
+          Err(GenError::BufferTooSmall(_)) => return true,
+          Err(_) => return false,
+          Ok(_)  => (),
+        }
+      }
+
+      println!("{}", (&data[..]).to_hex(16));
+      let parse_res = ::ebml::ebml_header(&data[..]);
+      println!("parse_res: {:?}", parse_res);
+      match parse_res {
+        IResult::Done(rest, h) => {
+          assert_eq!(header, h);
+          return true;
+        },
+        e => panic!(format!("parse error: {:?}", e)),
+      }
+
+      false
+    }
+  }
 }
