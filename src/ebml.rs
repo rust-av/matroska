@@ -319,14 +319,14 @@ named!(pub ebml_header<EBMLHeader>,
   ebml_master!(0x1A45DFA3,
     do_parse!(
       t: permutation_opt!(
-        complete!(ebml_uint!(0x4286)), // version
-        complete!(ebml_uint!(0x42F7)), // read_version
-        complete!(ebml_uint!(0x42F2)), // max id length
-        complete!(ebml_uint!(0x42F3)), // max size length
-        complete!(ebml_str!(0x4282)),  // doctype
-        complete!(ebml_uint!(0x4287)), // doctype version
-        complete!(ebml_uint!(0x4285)),  // doctype_read version
-        complete!(skip_void)?
+        ebml_uint!(0x4286), // version
+        ebml_uint!(0x42F7), // read_version
+        ebml_uint!(0x42F2), // max id length
+        ebml_uint!(0x42F3), // max size length
+        ebml_str!(0x4282),  // doctype
+        ebml_uint!(0x4287), // doctype version
+        ebml_uint!(0x4285),  // doctype_read version
+        skip_void?
       ) >>
       ({
         EBMLHeader {
