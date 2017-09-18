@@ -70,7 +70,7 @@ named!(pub segment_element<SegmentElement>,
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct SeekHead {
-    positions: Vec<Seek>,
+    pub positions: Vec<Seek>,
 }
 
 //https://datatracker.ietf.org/doc/html/draft-lhomme-cellar-matroska-03#section-7.3.4
@@ -86,8 +86,8 @@ named!(pub seek_head<SegmentElement>,
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Seek {
-    id: Vec<u8>,
-    position: u64,
+    pub id: Vec<u8>,
+    pub position: u64,
 }
 
 //https://datatracker.ietf.org/doc/html/draft-lhomme-cellar-matroska-03#section-7.3.4

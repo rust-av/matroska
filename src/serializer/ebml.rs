@@ -261,6 +261,20 @@ macro_rules! gen_ebml_str (
 );
 
 #[macro_export]
+macro_rules! gen_ebml_binary (
+  (($i:expr, $idx:expr), $id:expr, $s:expr) => ({
+    let v = vint_size($s.len() as u64);
+
+    do_gen!(($i, $idx),
+                  gen_call!(gen_vid, $id)
+      >> ofs_len: gen_skip!(v as usize)
+      >> start:   gen_slice!($s)
+      >> end:     gen_at_offset!(ofs_len, gen_ebml_size!(v, (end-start) as u64))
+    )
+  });
+);
+
+#[macro_export]
 macro_rules! gen_dbg (
   (($i:expr, $idx:expr), $submac:ident!( $($args:tt)*)) => ({
     gen_dbg!(__impl $i, $idx, $submac!($($args)*))

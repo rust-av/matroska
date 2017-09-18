@@ -18,6 +18,7 @@ pub mod permutation;
 #[macro_use]
 pub mod ebml;
 pub mod elements;
+#[macro_use]
 pub mod serializer;
 pub mod demuxer;
 
