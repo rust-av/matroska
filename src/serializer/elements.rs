@@ -50,8 +50,10 @@ mod tests {
 
   fn test_seek_head_serializer(mut seeks: Vec<(u64, Vec<u8>)>) -> bool {
     println!("testing for {:?}", seeks);
+
+    let mut should_fail = false;
     if seeks.len() == 0 {
-      return true;
+      should_fail = true;
     }
 
     for &(_, ref id) in seeks.iter() {
@@ -59,7 +61,12 @@ mod tests {
       if id.len() == 0 {
         println!("id is empty, returning");
         return true;
+        //should_fail = true;
       }
+    }
+
+    if should_fail {
+      println!("the parser should fail");
     }
 
     let capacity = seeks.iter().fold(0, |acc, &(_, ref v)| acc + 8 + v.len() + 100);
@@ -72,20 +79,42 @@ mod tests {
       positions: seeks.iter().cloned().map(|(position, id)| Seek { id, position }).collect()
     };
 
-    {
+    let ser_res = {
       let gen_res = gen_seek_head((&mut data[..], 0), &seek_head);
       println!("gen_res: {:?}", gen_res);
-    }
-    //println!("{}", (&data[..]).to_hex(16));
+      if let Err(e) = gen_res {
+        println!("gen_res is error: {:?}", e);
+        println!("should fail: {:?}", should_fail);
+        return should_fail;
+        /*if should_fail {
+          println!("should fail");
+          return true;
+        }*/
+      }
+    };
+
+    println!("ser_res: {:?}", ser_res);
 
     let parse_res = ::elements::segment_element(&data[..]);
     println!("parse_res: {:?}", parse_res);
     match parse_res {
       IResult::Done(rest, SegmentElement::SeekHead(o)) => {
+        if should_fail {
+          println!("parser should have failed on input for {:?}", seek_head);
+          println!("{}", (&data[..]).to_hex(16));
+          return false;
+        }
+
         assert_eq!(seek_head, o);
         return true;
       },
-      e => panic!(format!("parse error: {:?} for input: {:?}", e, seeks)),
+      e => {
+        if should_fail {
+          return true;
+        }
+
+        panic!(format!("parse error: {:?} for input: {:?}", e, seeks))
+      },
     }
 
     false
