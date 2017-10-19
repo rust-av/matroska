@@ -1,6 +1,6 @@
 use av_format::error::*;
 use std::io::SeekFrom;
-use av_data::packet::Packet;
+//use av_data::packet::Packet;
 use av_format::stream::*;
 use av_format::buffer::Buffered;
 use av_format::demuxer::demux::{Demuxer, Event};
@@ -105,7 +105,10 @@ impl Demuxer for MkvDemuxer {
                 Ok(SeekFrom::Current(buf.data().offset(i) as i64))
             }
             IResult::Incomplete(_) => Err(ErrorKind::MoreDataNeeded.into()),
-            e => Err(ErrorKind::InvalidData.into()),
+            e => {
+              println!("error reading headers: {:?}", e);
+              Err(ErrorKind::InvalidData.into())
+            },
         }
     }
 

@@ -52,7 +52,7 @@ pub fn gen_vint<'a>(mut input: (&'a mut [u8], usize),
 }
 
 pub fn gen_vid<'a>(mut input: (&'a mut [u8], usize),
-                   mut num: u64)
+                   num: u64)
                    -> Result<(&'a mut [u8], usize), GenError> {
     let needed_bytes = vid_size(num);
 
@@ -78,7 +78,7 @@ pub fn gen_vid<'a>(mut input: (&'a mut [u8], usize),
 }
 
 pub fn gen_uint<'a>(mut input: (&'a mut [u8], usize),
-                    mut num: u64)
+                    num: u64)
                     -> Result<(&'a mut [u8], usize), GenError> {
     let needed_bytes = vint_size(num);
 
@@ -213,8 +213,8 @@ macro_rules! gen_ebml_size (
 macro_rules! gen_ebml_master (
   (($i:expr, $idx:expr), $id:expr, $expected_size:expr, $($rest:tt)*) => (
     do_gen!(($i, $idx),
-                  gen_call!(gen_vid, $id)
-      >> ofs_len: gen_skip!($expected_size)
+                  gen_dbg!(gen_call!(gen_vid, $id))
+      >> ofs_len: gen_skip!($expected_size as usize)
       >> start:   do_gen!($($rest)*)
       >> end:     gen_at_offset!(ofs_len, gen_ebml_size!($expected_size, (end-start) as u64))
       //>> end:     gen_dbg!(gen_at_offset!(ofs_len, gen_call!(gen_vint, (end-start) as u64)))
@@ -236,7 +236,7 @@ macro_rules! gen_ebml_uint (
   (($i:expr, $idx:expr), $id:expr, $num:expr, $expected_size:expr) => (
     do_gen!(($i, $idx),
                   gen_call!(gen_vid, $id)
-      >> ofs_len: gen_skip!($expected_size)
+      >> ofs_len: gen_skip!($expected_size as usize)
       >> start:   gen_dbg!(gen_call!(gen_uint, $num))
       >> end:     gen_at_offset!(ofs_len, gen_ebml_size!($expected_size, (end-start) as u64))
     )
