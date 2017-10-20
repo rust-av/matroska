@@ -401,12 +401,7 @@ mod tests {
       permutation_opt!(dbg_dmp!(tag!("abcd")), dbg_dmp!(tag!("efg"))?, dbg_dmp!(tag!("hi")), dbg_dmp!(tag!("jkl"))?)
     );
 
-        let expected1 = (
-            &b"abcd"[..],
-            Some(&b"efg"[..]),
-            &b"hi"[..],
-            Some(&b"jkl"[..]),
-        );
+        let expected1 = (&b"abcd"[..], Some(&b"efg"[..]), &b"hi"[..], Some(&b"jkl"[..]));
         let expected2 = (&b"abcd"[..], None, &b"hi"[..], Some(&b"jkl"[..]));
         let expected3 = (&b"abcd"[..], None, &b"hi"[..], None);
 

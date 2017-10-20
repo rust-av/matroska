@@ -1,12 +1,12 @@
 use ebml::{vid, vint};
 
 #[derive(Debug, Clone, PartialEq)]
-pub enum SegmentElement {
+pub enum SegmentElement<'a> {
     SeekHead(SeekHead),
     Info(Info),
     Tracks(Tracks),
     Chapters(Chapters),
-    Cluster(Cluster),
+    Cluster(Cluster<'a>),
     Cues(Cues),
     Attachments(Attachments),
     Tags(Tags),
@@ -23,12 +23,12 @@ named!(pub segment<(u64, Option<u64>)>,
   )
 );
 
-named!(
-    skip,
-    do_parse!(
+/*
+named!(skip,
+       do_parse!(
     size: vint >> data: take!(size) >> (data)
-  )
-);
+  ));
+*/
 
 #[macro_export]
 macro_rules! sub_element(
@@ -172,12 +172,12 @@ named!(pub chapter_translate<ChapterTranslate>,
 
 //https://datatracker.ietf.org/doc/html/draft-lhomme-cellar-matroska-03#section-7.3.26
 #[derive(Debug, Clone, PartialEq)]
-pub struct Cluster {
+pub struct Cluster<'a> {
     pub timecode: u64,
     pub silent_tracks: Option<SilentTracks>,
     pub position: Option<u64>,
     pub prev_size: Option<u64>,
-    pub simple_block: Vec<Vec<u8>>,
+    pub simple_block: Vec<&'a [u8]>,
     pub block_group: Vec<BlockGroup>,
     pub encrypted_block: Option<Vec<u8>>,
 }
@@ -204,7 +204,7 @@ named!(pub cluster<SegmentElement>,
   )
 );
 
-named!(simple_blocks< Vec< Vec<u8> > >, many0!(ebml_binary!(0xA3)));
+named!(simple_blocks< Vec< &[u8] > >, many0!(ebml_binary_ref!(0xA3)));
 named!(block_groups< Vec<BlockGroup> >, many0!(block_group));
 
 #[derive(Debug, Clone, PartialEq)]

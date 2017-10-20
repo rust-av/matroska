@@ -270,6 +270,20 @@ macro_rules! ebml_binary (
 );
 
 #[macro_export]
+macro_rules! ebml_binary_ref (
+  ($i: expr, $id:expr) => ({
+    use $crate::ebml::{vid, vint};
+
+    do_parse!($i,
+               verify!(vid, |val:u64| val == $id)
+      >> size: vint
+      >> data: take!(size)
+      >> (data)
+    )
+  })
+);
+
+#[macro_export]
 macro_rules! ebml_master (
   ($i: expr, $id:expr, $submac:ident!( $($args:tt)* )) => ({
     use $crate::ebml::{vid, vint};
