@@ -57,11 +57,18 @@ macro_rules! permutation_opt (
 #[doc(hidden)]
 #[macro_export]
 macro_rules! permutation_opt_init (
+  ((), $e:ident+, $($rest:tt)*) => (
+    permutation_opt_init!((::std::vec::Vec::new()), $($rest)*)
+  );
   ((), $e:ident?, $($rest:tt)*) => (
     permutation_opt_init!((::std::option::Option::None), $($rest)*)
   );
   ((), $e:ident, $($rest:tt)*) => (
     permutation_opt_init!((::std::option::Option::None), $($rest)*)
+  );
+
+  ((), $submac:ident!( $($args:tt)* )+, $($rest:tt)*) => (
+    permutation_opt_init!((::std::vec::Vec::new()), $($rest)*)
   );
   ((), $submac:ident!( $($args:tt)* )?, $($rest:tt)*) => (
     permutation_opt_init!((::std::option::Option::None), $($rest)*)
@@ -69,11 +76,19 @@ macro_rules! permutation_opt_init (
   ((), $submac:ident!( $($args:tt)* ), $($rest:tt)*) => (
     permutation_opt_init!((::std::option::Option::None), $($rest)*)
   );
+
+  (($($parsed:expr),*), $e:ident+, $($rest:tt)*) => (
+    permutation_opt_init!(($($parsed),* , ::std::vec::Vec::new()), $($rest)*);
+  );
   (($($parsed:expr),*), $e:ident?, $($rest:tt)*) => (
     permutation_opt_init!(($($parsed),* , ::std::option::Option::None), $($rest)*);
   );
   (($($parsed:expr),*), $e:ident, $($rest:tt)*) => (
     permutation_opt_init!(($($parsed),* , ::std::option::Option::None), $($rest)*);
+  );
+
+  (($($parsed:expr),*), $submac:ident!( $($args:tt)* )+, $($rest:tt)*) => (
+    permutation_opt_init!(($($parsed),* , ::std::vec::Vec::new()), $($rest)*);
   );
   (($($parsed:expr),*), $submac:ident!( $($args:tt)* )?, $($rest:tt)*) => (
     permutation_opt_init!(($($parsed),* , ::std::option::Option::None), $($rest)*);
@@ -81,11 +96,19 @@ macro_rules! permutation_opt_init (
   (($($parsed:expr),*), $submac:ident!( $($args:tt)* ), $($rest:tt)*) => (
     permutation_opt_init!(($($parsed),* , ::std::option::Option::None), $($rest)*);
   );
+
+  (($($parsed:expr),*), $e:ident+) => (
+    ($($parsed),* , ::std::vec::Vec::new())
+  );
   (($($parsed:expr),*), $e:ident?) => (
     ($($parsed),* , ::std::option::Option::None)
   );
   (($($parsed:expr),*), $e:ident) => (
     ($($parsed),* , ::std::option::Option::None)
+  );
+
+  (($($parsed:expr),*), $submac:ident!( $($args:tt)* )+) => (
+    ($($parsed),* , ::std::vec::Vec::new())
   );
   (($($parsed:expr),*), $submac:ident!( $($args:tt)* )?) => (
     ($($parsed),* , ::std::option::Option::None)
@@ -197,6 +220,9 @@ macro_rules! acc (
 #[doc(hidden)]
 #[macro_export]
 macro_rules! permutation_opt_unwrap (
+  ($it:tt,  (), $res:ident, $submac:ident!( $($args:tt)* )+, $($rest:tt)*) => (
+    succ!($it, permutation_opt_unwrap!((acc!($it, $res)), $res, $($rest)*));
+  );
   ($it:tt,  (), $res:ident, $submac:ident!( $($args:tt)* )?, $($rest:tt)*) => (
     succ!($it, permutation_opt_unwrap!((acc!($it, $res)), $res, $($rest)*));
   );
@@ -208,6 +234,10 @@ macro_rules! permutation_opt_unwrap (
       None
     }
   });
+
+  ($it:tt, ($($parsed:expr),*), $res:ident, $e:ident+, $($rest:tt)*) => (
+    permutation_opt_unwrap!($it, ($($parsed),* ), $res, call!($e)+, $($rest)*);
+  );
   ($it:tt, ($($parsed:expr),*), $res:ident, $e:ident?, $($rest:tt)*) => (
     succ!($it, permutation_opt_unwrap!(($($parsed),* , acc!($it, $res)), $res, $($rest)*));
   );
@@ -219,6 +249,10 @@ macro_rules! permutation_opt_unwrap (
       None
     }
   });
+
+  ($it:tt, ($($parsed:expr),*), $res:ident, $submac:ident!( $($args:tt)* )+, $($rest:tt)*) => (
+    succ!($it, permutation_opt_unwrap!(($($parsed),* , acc!($it, $res)), $res, $($rest)*));
+  );
   ($it:tt, ($($parsed:expr),*), $res:ident, $submac:ident!( $($args:tt)* )?, $($rest:tt)*) => (
     succ!($it, permutation_opt_unwrap!(($($parsed),* , acc!($it, $res)), $res, $($rest)*));
   );
@@ -230,6 +264,10 @@ macro_rules! permutation_opt_unwrap (
       None
     }
   });
+
+  ($it:tt, ($($parsed:expr),*), $res:ident, $e:ident+) => (
+    Some(($($parsed),* , acc!($it, $res)))
+  );
   ($it:tt, ($($parsed:expr),*), $res:ident, $e:ident?) => (
     Some(($($parsed),* , { acc!($it, $res) }))
   );
@@ -241,6 +279,11 @@ macro_rules! permutation_opt_unwrap (
       None
     }
   });
+
+
+  ($it:tt, ($($parsed:expr),*), $res:ident, $submac:ident!( $($args:tt)* )+) => (
+    Some(($($parsed),* , acc!($it, $res) ))
+  );
   ($it:tt, ($($parsed:expr),*), $res:ident, $submac:ident!( $($args:tt)* )?) => (
     Some(($($parsed),* , acc!($it, $res) ))
   );
@@ -257,12 +300,34 @@ macro_rules! permutation_opt_unwrap (
 #[doc(hidden)]
 #[macro_export]
 macro_rules! permutation_opt_iterator (
+  ($it:tt,$i:expr, $all_done:expr, $needed:expr, $res:expr, $e:ident+, $($rest:tt)*) => ({
+    permutation_opt_iterator!($it, $i, $all_done, $needed, $res, call!($e)+, $($rest)*);
+  });
   ($it:tt,$i:expr, $all_done:expr, $needed:expr, $res:expr, $e:ident?, $($rest:tt)*) => ({
     permutation_opt_iterator!($it, $i, $all_done, $needed, $res, call!($e), $($rest)*);
   });
   ($it:tt,$i:expr, $all_done:expr, $needed:expr, $res:expr, $e:ident, $($rest:tt)*) => ({
     permutation_opt_iterator!($it, $i, $all_done, $needed, $res, call!($e), $($rest)*);
   });
+
+  ($it:tt, $i:expr, $all_done:expr, $needed:expr, $res:expr, $submac:ident!( $($args:tt)* )+, $($rest:tt)*) => {
+    let res = &mut acc!($it, $res);
+    match complete!($i, $submac!($($args)*)) {
+      ::nom::IResult::Done(i,o)     => {
+        $i = i;
+        res.push(o);
+        continue;
+      },
+      ::nom::IResult::Error(_) => {
+        $all_done = false;
+      },
+      ::nom::IResult::Incomplete(i) => {
+        $needed = ::std::option::Option::Some(i);
+        break;
+      }
+    };
+    succ!($it, permutation_opt_iterator!($i, $all_done, $needed, $res, $($rest)*));
+  };
   ($it:tt, $i:expr, $all_done:expr, $needed:expr, $res:expr, $submac:ident!( $($args:tt)* )?, $($rest:tt)*) => {
     permutation_opt_iterator!($it, $i, $all_done, $needed, $res, $submac!($($args)*), $($rest)*)
   };
@@ -285,12 +350,34 @@ macro_rules! permutation_opt_iterator (
     }
     succ!($it, permutation_opt_iterator!($i, $all_done, $needed, $res, $($rest)*));
   };
+
+  ($it:tt,$i:expr, $all_done:expr, $needed:expr, $res:expr, $e:ident+) => ({
+    permutation_opt_iterator!($it, $i, $all_done, $needed, $res, call!($e));
+  });
   ($it:tt,$i:expr, $all_done:expr, $needed:expr, $res:expr, $e:ident?) => ({
     permutation_opt_iterator!($it, $i, $all_done, $needed, $res, call!($e));
   });
   ($it:tt,$i:expr, $all_done:expr, $needed:expr, $res:expr, $e:ident) => ({
     permutation_opt_iterator!($it, $i, $all_done, $needed, $res, call!($e));
   });
+
+  ($it:tt, $i:expr, $all_done:expr, $needed:expr, $res:expr, $submac:ident!( $($args:tt)* )+) => {
+    let res = &mut acc!($it, $res);
+    match complete!($i, $submac!($($args)*)) {
+      ::nom::IResult::Done(i,o)     => {
+        $i = i;
+        res.push(o);
+        continue;
+      },
+      ::nom::IResult::Error(_) => {
+        $all_done = false;
+      },
+      ::nom::IResult::Incomplete(i) => {
+        $needed = ::std::option::Option::Some(i);
+        break;
+      }
+    };
+  };
   ($it:tt, $i:expr, $all_done:expr, $needed:expr, $res:expr, $submac:ident!( $($args:tt)* )?) => {
     permutation_opt_iterator!($it, $i, $all_done, $needed, $res, $submac!($($args)*));
   };

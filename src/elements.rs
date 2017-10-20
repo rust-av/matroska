@@ -189,8 +189,8 @@ named!(pub cluster<SegmentElement>,
       silent_tracks?,
       ebml_uint!(0xA7)?,
       ebml_uint!(0xAB)?,
-      simple_blocks, //many0!(ebml_binary!(0xA3)),
-      block_groups, //many0!(block_group),
+      ebml_binary_ref!(0xA3)+,
+      block_group+,
       ebml_binary!(0xAF)?
     ) >> (SegmentElement::Cluster(Cluster {
       timecode: t.0,
@@ -204,8 +204,8 @@ named!(pub cluster<SegmentElement>,
   )
 );
 
-named!(simple_blocks< Vec< &[u8] > >, many0!(ebml_binary_ref!(0xA3)));
-named!(block_groups< Vec<BlockGroup> >, many0!(block_group));
+//named!(simple_blocks< Vec< &[u8] > >, many0!(ebml_binary_ref!(0xA3)));
+//named!(block_groups< Vec<BlockGroup> >, many0!(block_group));
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct SilentTracks {
