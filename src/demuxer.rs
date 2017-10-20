@@ -19,7 +19,7 @@ pub struct MkvDemuxer {
     pub seek_head: Option<SeekHead>,
     pub info: Option<Info>,
     pub tracks: Option<Tracks>,
-    pub clusters: Vec<Cluster>,
+    //pub clusters: Vec<Cluster>,
     pub queue: VecDeque<Event>,
 }
 
@@ -30,7 +30,7 @@ impl MkvDemuxer {
             seek_head: None,
             info: None,
             tracks: None,
-            clusters: Vec::new(),
+            //clusters: Vec::new(),
             queue: VecDeque::new(),
         }
     }
@@ -78,7 +78,7 @@ impl MkvDemuxer {
                 }
                 SegmentElement::Cluster(c) => {
                     println!("got a cluster: {:#?}", c);
-                    self.clusters.push(c);
+                    //self.clusters.push(c);
                 }
                 el => {
                     println!("got element: {:#?}", el);
@@ -118,7 +118,7 @@ impl Demuxer for MkvDemuxer {
                 let seek = SeekFrom::Current(buf.data().offset(i) as i64);
                 match element {
                     SegmentElement::Cluster(c) => {
-                        self.clusters.push(c);
+                        //self.clusters.push(c);
                     }
                     el => {
                         println!("got element: {:#?}", el);
