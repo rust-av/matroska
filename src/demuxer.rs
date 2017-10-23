@@ -19,7 +19,6 @@ pub struct MkvDemuxer {
     pub seek_head: Option<SeekHead>,
     pub info: Option<Info>,
     pub tracks: Option<Tracks>,
-    //pub clusters: Vec<Cluster>,
     pub queue: VecDeque<Event>,
     pub blockstream: Vec<u8>,
 }
@@ -31,7 +30,6 @@ impl MkvDemuxer {
             seek_head: None,
             info: None,
             tracks: None,
-            //clusters: Vec::new(),
             queue: VecDeque::new(),
             blockstream: Vec::new(),
         }
@@ -115,13 +113,20 @@ impl Demuxer for MkvDemuxer {
     }
 
     fn read_packet(&mut self, buf: &Box<Buffered>) -> Result<(SeekFrom, Event)> {
-        match segment_element(buf.data()) {
-            IResult::Done(i, element) => {
-                let seek = SeekFrom::Current(buf.data().offset(i) as i64);
-                match element {
-                    SegmentElement::Cluster(c) => {
+        if let Some(event) = self.queue.pop_front() {
+          Ok((SeekFrom::Current(0), event))
+        } else {
+          println!("no more stored packet, parsing a new one");
+          match segment_element(buf.data()) {
+              IResult::Done(i, element) => {
+                  let seek = SeekFrom::Current(buf.data().offset(i) as i64);
+                  match element {
+                      SegmentElement::Cluster(c) => {
                         //self.clusters.push(c);
                         println!("got cluster element at timecode: {}", c.timecode);
+                        let mut packets = c.generate_packets();
+                        self.queue.extend(packets.drain(..));
+                        /*
                         for block in c.simple_block.iter() {
                           println!("got simple block of size {}", block.len());
                           if let IResult::Done(_,o) = simple_block(block) {
@@ -136,19 +141,24 @@ impl Demuxer for MkvDemuxer {
                           println!("got block group of size {}", block_group.block.len());
                           self.blockstream.extend(block_group.block);
                         }
-                    }
-                    el => {
+                        */
+                        if let Some(event) = self.queue.pop_front() {
+                          return Ok((seek, event))
+                        }
+                      }
+                      el => {
                         println!("got element: {:#?}", el);
-                    }
-                }
+                      }
+                  }
 
-                Ok((seek, Event::MoreDataNeeded))
-            }
-            IResult::Incomplete(_) => Ok((SeekFrom::Current(0), Event::MoreDataNeeded)),
-            e => {
-                println!("parsing issue: {:?}", e);
-                Err(ErrorKind::InvalidData.into())
-            }
+                  Ok((seek, Event::MoreDataNeeded))
+              }
+              IResult::Incomplete(_) => Ok((SeekFrom::Current(0), Event::MoreDataNeeded)),
+              e => {
+                  println!("parsing issue: {:?}", e);
+                  Err(ErrorKind::InvalidData.into())
+              }
+          }
         }
     }
 }
@@ -225,12 +235,12 @@ pub fn track_to_stream(t: &TrackEntry) -> Stream {
 }
 
 impl<'a> Cluster<'a> {
-  pub fn generate_packet(&mut self) -> Option<Event> {
-    if self.simple_block.len() > 0 {
-      let block_data = self.simple_block.remove(0);
+  pub fn generate_packets(&self) -> Vec<Event> {
+    let mut v = Vec::new();
 
+    for block_data in self.simple_block.iter() {
       if let IResult::Done(i, block) = simple_block(block_data) {
-        println!("parsing simple block: {:?}", block);
+        //println!("parsing simple block: {:?}", block);
         let packet = Packet {
           data:         i.into(),
           pts:          Some(block.timecode as i64),
@@ -241,14 +251,13 @@ impl<'a> Cluster<'a> {
           is_corrupted: false,
         };
 
-        Some(Event::NewPacket(packet))
+        v.push(Event::NewPacket(packet));
       } else {
         println!("error parsing simple block");
-        None
       }
-    } else {
-      None
     }
+
+    v
   }
 }
 
@@ -286,6 +295,10 @@ mod tests {
                                               Box::new(Cursor::new(webm)));
         println!("DEMUXER CONTEXT read headers: {:?}", context.read_headers());
         println!("DEMUXER CONTEXT streams: {:?}", context.info.streams);
+        println!("DEMUXER CONTEXT event: {:?}", context.read_packet());
+        println!("DEMUXER CONTEXT event: {:?}", context.read_packet());
+        println!("DEMUXER CONTEXT event: {:?}", context.read_packet());
+        println!("DEMUXER CONTEXT event: {:?}", context.read_packet());
         println!("DEMUXER CONTEXT event: {:?}", context.read_packet());
         println!("DEMUXER CONTEXT event: {:?}", context.read_packet());
         println!("DEMUXER CONTEXT event: {:?}", context.read_packet());
