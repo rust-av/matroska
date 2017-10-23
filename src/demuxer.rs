@@ -1,6 +1,6 @@
 use av_format::error::*;
 use std::io::SeekFrom;
-//use av_data::packet::Packet;
+use av_data::packet::Packet;
 use av_format::stream::*;
 use av_format::buffer::Buffered;
 use av_format::demuxer::demux::{Demuxer, Event};
@@ -221,6 +221,34 @@ pub fn track_to_stream(t: &TrackEntry) -> Stream {
         codec_id: track_entry_codec_id(t),
         kind: track_entry_media_kind(t)
     },
+  }
+}
+
+impl<'a> Cluster<'a> {
+  pub fn generate_packet(&mut self) -> Option<Event> {
+    if self.simple_block.len() > 0 {
+      let block_data = self.simple_block.remove(0);
+
+      if let IResult::Done(i, block) = simple_block(block_data) {
+        println!("parsing simple block: {:?}", block);
+        let packet = Packet {
+          data:         i.into(),
+          pts:          Some(block.timecode as i64),
+          dts:          None,
+          pos:          None,
+          stream_index: block.track_number as isize,
+          is_key:       block.keyframe,
+          is_corrupted: false,
+        };
+
+        Some(Event::NewPacket(packet))
+      } else {
+        println!("error parsing simple block");
+        None
+      }
+    } else {
+      None
+    }
   }
 }
 
