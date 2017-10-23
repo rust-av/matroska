@@ -21,6 +21,7 @@ pub struct MkvDemuxer {
     pub tracks: Option<Tracks>,
     //pub clusters: Vec<Cluster>,
     pub queue: VecDeque<Event>,
+    pub blockstream: Vec<u8>,
 }
 
 impl MkvDemuxer {
@@ -32,6 +33,7 @@ impl MkvDemuxer {
             tracks: None,
             //clusters: Vec::new(),
             queue: VecDeque::new(),
+            blockstream: Vec::new(),
         }
     }
 
@@ -119,6 +121,16 @@ impl Demuxer for MkvDemuxer {
                 match element {
                     SegmentElement::Cluster(c) => {
                         //self.clusters.push(c);
+                        println!("got cluster element at timecode: {}", c.timecode);
+                        for block in c.simple_block.iter() {
+                          println!("got simple block of size {}", block.len());
+                          self.blockstream.extend(*block);
+                        }
+
+                        for block_group in c.block_group.iter() {
+                          println!("got block group of size {}", block_group.block.len());
+                          self.blockstream.extend(block_group.block);
+                        }
                     }
                     el => {
                         println!("got element: {:#?}", el);
