@@ -96,9 +96,7 @@ impl Demuxer for MkvDemuxer {
     fn read_headers(&mut self, buf: &Box<Buffered>, info: &mut GlobalInfo) -> Result<SeekFrom> {
         match self.parse_until_tracks(buf.data()) {
             IResult::Done(i, _) => {
-                info.duration = self.info.as_ref().and_then(|info| info.duration).map(|d| {
-                    d as u64
-                });
+                info.duration = self.info.as_ref().and_then(|info| info.duration).map(|d| d as u64);
                 if let Some(ref t) = self.tracks {
                     info.streams = t.tracks.iter().map(|tr| track_to_stream(tr)).collect();
                 }
@@ -106,27 +104,27 @@ impl Demuxer for MkvDemuxer {
             }
             IResult::Incomplete(_) => Err(ErrorKind::MoreDataNeeded.into()),
             e => {
-              println!("error reading headers: {:?}", e);
-              Err(ErrorKind::InvalidData.into())
-            },
+                println!("error reading headers: {:?}", e);
+                Err(ErrorKind::InvalidData.into())
+            }
         }
     }
 
     fn read_packet(&mut self, buf: &Box<Buffered>) -> Result<(SeekFrom, Event)> {
         if let Some(event) = self.queue.pop_front() {
-          Ok((SeekFrom::Current(0), event))
+            Ok((SeekFrom::Current(0), event))
         } else {
-          println!("no more stored packet, parsing a new one");
-          match segment_element(buf.data()) {
-              IResult::Done(i, element) => {
-                  let seek = SeekFrom::Current(buf.data().offset(i) as i64);
-                  match element {
-                      SegmentElement::Cluster(c) => {
-                        //self.clusters.push(c);
-                        println!("got cluster element at timecode: {}", c.timecode);
-                        let mut packets = c.generate_packets();
-                        self.queue.extend(packets.drain(..));
-                        /*
+            println!("no more stored packet, parsing a new one");
+            match segment_element(buf.data()) {
+                IResult::Done(i, element) => {
+                    let seek = SeekFrom::Current(buf.data().offset(i) as i64);
+                    match element {
+                        SegmentElement::Cluster(c) => {
+                            //self.clusters.push(c);
+                            println!("got cluster element at timecode: {}", c.timecode);
+                            let mut packets = c.generate_packets();
+                            self.queue.extend(packets.drain(..));
+                            /*
                         for block in c.simple_block.iter() {
                           println!("got simple block of size {}", block.len());
                           if let IResult::Done(_,o) = simple_block(block) {
@@ -142,23 +140,23 @@ impl Demuxer for MkvDemuxer {
                           self.blockstream.extend(block_group.block);
                         }
                         */
-                        if let Some(event) = self.queue.pop_front() {
-                          return Ok((seek, event))
+                            if let Some(event) = self.queue.pop_front() {
+                                return Ok((seek, event));
+                            }
                         }
-                      }
-                      el => {
-                        println!("got element: {:#?}", el);
-                      }
-                  }
+                        el => {
+                            println!("got element: {:#?}", el);
+                        }
+                    }
 
-                  Ok((seek, Event::MoreDataNeeded))
-              }
-              IResult::Incomplete(_) => Ok((SeekFrom::Current(0), Event::MoreDataNeeded)),
-              e => {
-                  println!("parsing issue: {:?}", e);
-                  Err(ErrorKind::InvalidData.into())
-              }
-          }
+                    Ok((seek, Event::MoreDataNeeded))
+                }
+                IResult::Incomplete(_) => Ok((SeekFrom::Current(0), Event::MoreDataNeeded)),
+                e => {
+                    println!("parsing issue: {:?}", e);
+                    Err(ErrorKind::InvalidData.into())
+                }
+            }
         }
     }
 }
@@ -167,8 +165,8 @@ fn track_entry_codec_id(t: &TrackEntry) -> Option<CodecID> {
     // TODO: Support V_QUICKTIME and V_MS/VFW/FOURCC
     match t.codec_id.as_ref() {
         "A_OPUS" => Some(CodecID::Opus),
-        "V_VP9"  => Some(CodecID::VP9),
-        _ => None
+        "V_VP9" => Some(CodecID::VP9),
+        _ => None,
     }
 }
 
@@ -176,10 +174,10 @@ fn track_entry_video_kind(t: &TrackEntry) -> Option<MediaKind> {
     // TODO: Validate that a track::video exists for track::type video before.
     if let Some(ref video) = t.video {
         let v = VideoInfo {
-            width : video.pixel_width as usize,
-            height : video.pixel_height as usize,
+            width: video.pixel_width as usize,
+            height: video.pixel_height as usize,
             // TODO parse Colour and/or CodecPrivate to extract the format
-            format : None
+            format: None,
         };
         Some(MediaKind::Video(v))
     } else {
@@ -213,52 +211,52 @@ fn track_entry_media_kind(t: &TrackEntry) -> Option<MediaKind> {
     match t.track_type {
         0x1 => track_entry_video_kind(t),
         0x2 => track_entry_audio_kind(t),
-        _ => None
+        _ => None,
     }
 }
 
 pub fn track_to_stream(t: &TrackEntry) -> Stream {
     Stream {
-    id: t.track_uid as usize,
-    index: t.track_number as usize,
-    start: None,
-    duration: t.default_duration,
-    timebase : Rational32::from_integer(1),
-    // TODO: Extend CodecParams and fill it with the remaining information
-    params : CodecParams {
-        extradata: t.codec_private.clone(),
-        bit_rate: 0,
-        codec_id: track_entry_codec_id(t),
-        kind: track_entry_media_kind(t)
-    },
-  }
+        id: t.track_uid as usize,
+        index: t.track_number as usize,
+        start: None,
+        duration: t.default_duration,
+        timebase: Rational32::from_integer(1),
+        // TODO: Extend CodecParams and fill it with the remaining information
+        params: CodecParams {
+            extradata: t.codec_private.clone(),
+            bit_rate: 0,
+            codec_id: track_entry_codec_id(t),
+            kind: track_entry_media_kind(t),
+        },
+    }
 }
 
 impl<'a> Cluster<'a> {
-  pub fn generate_packets(&self) -> Vec<Event> {
-    let mut v = Vec::new();
+    pub fn generate_packets(&self) -> Vec<Event> {
+        let mut v = Vec::new();
 
-    for block_data in self.simple_block.iter() {
-      if let IResult::Done(i, block) = simple_block(block_data) {
-        //println!("parsing simple block: {:?}", block);
-        let packet = Packet {
-          data:         i.into(),
-          pts:          Some(block.timecode as i64),
-          dts:          None,
-          pos:          None,
-          stream_index: block.track_number as isize,
-          is_key:       block.keyframe,
-          is_corrupted: false,
-        };
+        for block_data in self.simple_block.iter() {
+            if let IResult::Done(i, block) = simple_block(block_data) {
+                //println!("parsing simple block: {:?}", block);
+                let packet = Packet {
+                    data: i.into(),
+                    pts: Some(block.timecode as i64),
+                    dts: None,
+                    pos: None,
+                    stream_index: block.track_number as isize,
+                    is_key: block.keyframe,
+                    is_corrupted: false,
+                };
 
-        v.push(Event::NewPacket(packet));
-      } else {
-        println!("error parsing simple block");
-      }
+                v.push(Event::NewPacket(packet));
+            } else {
+                println!("error parsing simple block");
+            }
+        }
+
+        v
     }
-
-    v
-  }
 }
 
 #[cfg(test)]
