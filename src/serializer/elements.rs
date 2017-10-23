@@ -1,6 +1,7 @@
 use cookie_factory::*;
-use elements::{Seek, SeekHead, SegmentElement};
+use elements::{Info, Seek, SeekHead, SegmentElement};
 use super::ebml::{vint_size, gen_vint, gen_vid, gen_uint};
+use serializer::ebml::{gen_u64,gen_f64_ref};
 
 
 pub fn seek_size(s: &Seek) -> u8 {
@@ -45,6 +46,50 @@ pub fn gen_seek_head<'a>(input: (&'a mut [u8], usize),
     gen_many_ref!(&s.positions, gen_seek)
   )
 }
+
+//trace_macros!(true);
+pub fn gen_info<'a>(input: (&'a mut [u8], usize),
+                         i: &Info)
+                         -> Result<(&'a mut [u8], usize), GenError> {
+    //FIXME: probably not large enough
+    let capacity = 2 + i.segment_uid.as_ref().map(|s| s.len()).unwrap_or(0)
+      + 2 + i.segment_filename.as_ref().map(|s| s.len()).unwrap_or(0)
+      + 3 + i.prev_uid.as_ref().map(|s| s.len()).unwrap_or(0)
+      + 3 + i.prev_filename.as_ref().map(|s| s.len()).unwrap_or(0)
+      + 3 + i.next_uid.as_ref().map(|s| s.len()).unwrap_or(0)
+      + 3 + i.next_filename.as_ref().map(|s| s.len()).unwrap_or(0)
+      + 2 + i.segment_family.as_ref().map(|s| s.len()).unwrap_or(0)
+      //FIXME;
+      // chapter translate
+      + 8
+      + 8
+      + 2 + i.date_utc.as_ref().map(|s| s.len()).unwrap_or(0)
+      + 2 + i.title.as_ref().map(|s| s.len()).unwrap_or(0)
+      + 2 + i.muxing_app.len()
+      + 2 + i.writing_app.len();
+
+    let byte_capacity = vint_size(capacity as u64);
+    gen_ebml_master!(input,
+      0x1549A966, byte_capacity,
+      do_gen!(
+           gen_opt!( i.segment_uid, gen_ebml_binary!(0x73A4) )
+        >> gen_opt!( i.segment_filename, gen_ebml_str!(0x7384) )
+        >> gen_opt!( i.prev_uid, gen_ebml_binary!(0x3CB923) )
+        >> gen_opt!( i.prev_filename, gen_ebml_str!(0x3C83AB) )
+        >> gen_opt!( i.next_uid, gen_ebml_binary!(0x3EB923) )
+        >> gen_opt!( i.next_filename, gen_ebml_str!(0x3E83BB) )
+        >> gen_opt!( i.segment_family, gen_ebml_binary!(0x4444) )
+        //>> gen_opt!( i.chapter_translate, gen_chapter_translate )
+        >> gen_call!(gen_u64, 0x2AD7B1, i.timecode_scale)
+        >> gen_opt!( i.duration, gen_call!(gen_f64_ref, 0x4489) )
+        >> gen_opt!( i.date_utc, gen_ebml_binary!(0x4461) )
+        >> gen_opt!( i.title, gen_ebml_str!(0x7BA9) )
+        >> gen_ebml_str!(0x4D80, i.muxing_app)
+        >> gen_ebml_str!(0x5741, i.writing_app)
+      )
+    )
+}
+trace_macros!(false);
 
 #[cfg(test)]
 mod tests {

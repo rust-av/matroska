@@ -195,6 +195,28 @@ pub fn gen_i8<'a>(input: (&'a mut [u8], usize),
   )
 }
 
+pub fn gen_f64<'a>(input: (&'a mut [u8], usize),
+                   id: u64,
+                   num: f64)
+                   -> Result<(&'a mut [u8], usize), GenError> {
+    do_gen!(input,
+    gen_call!(gen_vid, id) >>
+    gen_call!(gen_vint, 8)  >>
+    gen_be_f64!(num)
+  )
+}
+
+pub fn gen_f64_ref<'a>(input: (&'a mut [u8], usize),
+                   id: u64,
+                   num: &f64)
+                   -> Result<(&'a mut [u8], usize), GenError> {
+    do_gen!(input,
+    gen_call!(gen_vid, id) >>
+    gen_call!(gen_vint, 8)  >>
+    gen_be_f64!(*num)
+  )
+}
+
 #[macro_export]
 macro_rules! gen_ebml_size (
   (($i:expr, $idx:expr), $expected_size:expr, $size:expr) => ({
@@ -213,7 +235,7 @@ macro_rules! gen_ebml_size (
 macro_rules! gen_ebml_master (
   (($i:expr, $idx:expr), $id:expr, $expected_size:expr, $($rest:tt)*) => (
     do_gen!(($i, $idx),
-                  gen_dbg!(gen_call!(gen_vid, $id))
+                  gen_call!(gen_vid, $id)
       >> ofs_len: gen_skip!($expected_size as usize)
       >> start:   do_gen!($($rest)*)
       >> end:     gen_at_offset!(ofs_len, gen_ebml_size!($expected_size, (end-start) as u64))
@@ -272,6 +294,24 @@ macro_rules! gen_ebml_binary (
       >> end:     gen_at_offset!(ofs_len, gen_ebml_size!(v, (end-start) as u64))
     )
   });
+);
+
+#[macro_export]
+macro_rules! gen_opt (
+  (($i:expr, $idx:expr), $val:expr, $submac:ident!(  )) => ({
+    if let Some(ref val) = $val {
+      $submac!(($i,$idx), val)
+    } else {
+      Ok(($i,$idx))
+    }
+  });
+  (($i:expr, $idx:expr), $val:expr, $submac:ident!( $($args:tt),+ )) => ({
+    if let Some(ref val) = $val {
+      $submac!(($i,$idx), $($args),+ , val)
+    } else {
+      Ok(($i,$idx))
+    }
+  })
 );
 
 #[macro_export]
