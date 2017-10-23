@@ -178,8 +178,8 @@ pub struct Cluster<'a> {
     pub position: Option<u64>,
     pub prev_size: Option<u64>,
     pub simple_block: Vec<&'a [u8]>,
-    pub block_group: Vec<BlockGroup>,
-    pub encrypted_block: Option<Vec<u8>>,
+    pub block_group: Vec<BlockGroup<'a>>,
+    pub encrypted_block: Option<&'a [u8]>,
 }
 
 named!(pub cluster<SegmentElement>,
@@ -191,7 +191,7 @@ named!(pub cluster<SegmentElement>,
       ebml_uint!(0xAB)?,
       ebml_binary_ref!(0xA3)+,
       block_group+,
-      ebml_binary!(0xAF)?
+      ebml_binary_ref!(0xAF)?
     ) >> (SegmentElement::Cluster(Cluster {
       timecode: t.0,
       silent_tracks: t.1,
@@ -218,8 +218,8 @@ named!(pub silent_tracks<SilentTracks>,
 );
 
 #[derive(Debug, Clone, PartialEq)]
-pub struct BlockGroup {
-    pub block: Vec<u8>,
+pub struct BlockGroup<'a> {
+    pub block: &'a [u8],
     pub block_virtual: Option<Vec<u8>>,
     pub block_additions: Option<BlockAdditions>,
     pub block_duration: Option<u64>,
@@ -238,7 +238,7 @@ named!(pub block_group<BlockGroup>,
   ebml_master!(0x5854,
     do_parse!(
       t: permutation_opt!(
-        ebml_binary!(0xA1),
+        ebml_binary_ref!(0xA1),
         ebml_binary!(0xA2)?,
         block_additions?,
         ebml_uint!(0x9B)?,
