@@ -10,7 +10,7 @@ use rational::Rational32;
 
 use ebml::{ebml_header, EBMLHeader};
 use elements::{segment, segment_element, Cluster, SeekHead, Info, Tracks, TrackEntry,
-               SegmentElement};
+               SegmentElement, simple_block};
 use nom::{self, IResult, Offset};
 
 #[derive(Debug, Clone, PartialEq)]
@@ -124,6 +124,11 @@ impl Demuxer for MkvDemuxer {
                         println!("got cluster element at timecode: {}", c.timecode);
                         for block in c.simple_block.iter() {
                           println!("got simple block of size {}", block.len());
+                          if let IResult::Done(_,o) = simple_block(block) {
+                            println!("parsing simple block: {:?}", o);
+                          } else {
+                            println!("error parsing simple block");
+                          }
                           self.blockstream.extend(*block);
                         }
 

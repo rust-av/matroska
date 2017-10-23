@@ -1,4 +1,5 @@
 use ebml::{vid, vint};
+use nom::{be_u8,be_i16};
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum SegmentElement<'a> {
@@ -294,6 +295,78 @@ named!(pub reference_frame<ReferenceFrame>,
   ebml_master!(0xC8, value!(ReferenceFrame {}))
 );
 
+#[derive(Debug, Clone, PartialEq)]
+pub struct Block {
+  pub track_number: u64,
+  pub timecode:     i16,
+  pub invisible:    bool,
+  pub lacing:       Lacing,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct SimpleBlock {
+  pub track_number: u64,
+  pub timecode:     i16,
+  pub keyframe:     bool,
+  pub invisible:    bool,
+  pub lacing:       Lacing,
+  pub discardable:  bool,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum Lacing {
+  None,
+  Xiph,
+  EBML,
+  FixedSize,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct LacedData {
+  pub frame_count: u8,
+}
+
+named!(pub simple_block<SimpleBlock>,
+  do_parse!(
+       track_number: vint
+    >> timecode:     be_i16
+    >> flags:        map_opt!(be_u8, simple_block_flags)
+    >> (SimpleBlock {
+      track_number: track_number,
+      timecode:     timecode,
+      keyframe:     flags.keyframe,
+      invisible:    flags.invisible,
+      lacing:       flags.lacing,
+      discardable:  flags.discardable,
+    })
+  )
+);
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct SimpleBlockFlags {
+  pub keyframe:     bool,
+  pub invisible:    bool,
+  pub lacing:       Lacing,
+  pub discardable:  bool,
+}
+
+pub fn simple_block_flags(data: u8) -> Option<SimpleBlockFlags> {
+  let lacing_data = ((data << 6) >> 6) >> 5;
+  let lacing = match lacing_data {
+    0 => Lacing::None,
+    1 => Lacing::Xiph,
+    2 => Lacing::FixedSize,
+    3 => Lacing::EBML,
+    _ => return None,
+  };
+
+  Some(SimpleBlockFlags {
+    keyframe:    (data & 1) != 0,
+    invisible:   (data & (1 << 4)) != 0,
+    lacing:      lacing,
+    discardable: (data & (1 << 7)) != 0,
+  })
+}
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Tracks {
