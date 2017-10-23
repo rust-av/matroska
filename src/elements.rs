@@ -35,14 +35,14 @@ macro_rules! sub_element(
   ($i:expr, $parser:ident) => ({
     do_parse!($i,
          size: vint
-      >> element: flat_map!(take!(size as usize), dbg_dmp!($parser))
+      >> element: flat_map!(take!(size as usize), $parser)
       >> (element)
     )
   });
   ($i:expr, $submac:ident!( $($args:tt)* )) => ({
     do_parse!($i,
          size: vint
-      >> element: flat_map!(take!(size as usize), dbg_dmp!($submac!($($args)*)))
+      >> element: flat_map!(take!(size as usize), $submac!($($args)*))
       >> (element)
     )
   });
@@ -373,24 +373,24 @@ named!(pub track_entry<TrackEntry>,
         ebml_str!(0x3B4040)?,
         ebml_str!(0x26B240)?,
         ebml_uint!(0xAA)?,
-        dbg_dmp!(ebml_uint!(0x6FAB))?,
-        dbg_dmp!(ebml_uint!(0x56AA))?,
-        dbg_dmp!(ebml_uint!(0x56BB))?,
+        ebml_uint!(0x6FAB)?,
+        ebml_uint!(0x56AA)?,
+        ebml_uint!(0x56BB)?,
         //TODO: TrackTranslate
-        dbg_dmp!(ebml_master!(0x6624, value!(())))?,
+        ebml_master!(0x6624, value!(()))?,
         //TODO: video
-        dbg_dmp!(video)?,//dbg_dmp!(ebml_master!(0xE0, value!(())))?,
+        video?,
         //TODO: Audio
-        audio?, //dbg_dmp!(ebml_master!(0xE1, value!(())))?,
+        audio?,
         //TODO: TrackOperation
-        dbg_dmp!(ebml_master!(0xE2, value!(())))?,
-        dbg_dmp!(ebml_uint!(0xC0))?,
-        dbg_dmp!(ebml_binary!(0xC1))?,
-        dbg_dmp!(ebml_uint!(0xC6))?,
-        dbg_dmp!(ebml_uint!(0xC7))?,
-        dbg_dmp!(ebml_binary!(0xC4))?,
+        ebml_master!(0xE2, value!(()))?,
+        ebml_uint!(0xC0)?,
+        ebml_binary!(0xC1)?,
+        ebml_uint!(0xC6)?,
+        ebml_uint!(0xC7)?,
+        ebml_binary!(0xC4)?,
         //TODO: ContentEncodings
-        dbg_dmp!(ebml_master!(0x6D80, value!(())))?
+        ebml_master!(0x6D80, value!(()))?
       ) >> (TrackEntry {
         track_number: t.0,
         track_uid: t.1,
