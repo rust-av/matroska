@@ -1,5 +1,5 @@
 use cookie_factory::*;
-use elements::{Info, Seek, SeekHead, SegmentElement};
+use elements::{Info, Seek, SeekHead, SegmentElement, Cluster};
 use super::ebml::{vint_size, gen_vint, gen_vid, gen_uint};
 use serializer::ebml::{gen_u64,gen_f64_ref};
 
@@ -47,7 +47,6 @@ pub fn gen_seek_head<'a>(input: (&'a mut [u8], usize),
   )
 }
 
-//trace_macros!(true);
 pub fn gen_info<'a>(input: (&'a mut [u8], usize),
                          i: &Info)
                          -> Result<(&'a mut [u8], usize), GenError> {
@@ -89,7 +88,61 @@ pub fn gen_info<'a>(input: (&'a mut [u8], usize),
       )
     )
 }
-trace_macros!(false);
+
+#[macro_export]
+macro_rules! my_gen_many (
+    (($i:expr, $idx:expr), $l:expr, $f:ident) => (
+        $l.into_iter().fold(
+            Ok(($i,$idx)),
+            |r,v| {
+                match r {
+                    Err(e) => Err(e),
+                    Ok(x) => { $f(x, v) },
+                }
+            }
+        )
+    );
+    (($i:expr, $idx:expr), $l:expr, $f:ident!( $($args:tt)* )) => (
+        $l.into_iter().fold(
+            Ok(($i,$idx)),
+            |r,v| {
+                match r {
+                    Err(e) => Err(e),
+                    Ok(x) => {
+                      let (i, idx) = x;
+                      $f!((i, idx), $($args)*, v)
+                    },
+                }
+            }
+        )
+    );
+);
+
+pub fn gen_cluster<'a>(input: (&'a mut [u8], usize),
+                         c: &Cluster)
+                         -> Result<(&'a mut [u8], usize), GenError> {
+    let capacity = 2 + 8
+      // FIXME: serialize SilentTracks
+      + 2 + 8
+      + 2 + 8
+      + 2 + c.simple_block.iter().fold(0, |acc, data| acc+ data.len())
+      // FIXME serialize BlockGRoups
+      // FIXME: serialize encrypted block
+      ;
+
+
+    let byte_capacity = vint_size(capacity as u64);
+    gen_ebml_master!(input,
+      0x1F43B675, byte_capacity,
+      do_gen!(
+           gen_ebml_uint!(0xE7, c.timecode)
+        //>> gen_opt!( c.position, gen_ebml_uint!(0xA7) )
+        //>> gen_opt!( c.prev_size, gen_ebml_uint!(0xAB) )
+        >> my_gen_many!( &c.simple_block, gen_ebml_binary!( 0xA3 ) )
+      )
+    )
+}
+
 
 #[cfg(test)]
 mod tests {
