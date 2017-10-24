@@ -136,8 +136,8 @@ pub fn gen_cluster<'a>(input: (&'a mut [u8], usize),
       0x1F43B675, byte_capacity,
       do_gen!(
            gen_ebml_uint!(0xE7, c.timecode)
-        //>> gen_opt!( c.position, gen_ebml_uint!(0xA7) )
-        //>> gen_opt!( c.prev_size, gen_ebml_uint!(0xAB) )
+        >> gen_opt!( c.position, gen_ebml_uint!(0xA7) )
+        >> gen_opt!( c.prev_size, gen_ebml_uint!(0xAB) )
         >> my_gen_many!( &c.simple_block, gen_ebml_binary!( 0xA3 ) )
       )
     )
