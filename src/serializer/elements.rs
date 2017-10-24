@@ -155,7 +155,7 @@ mod tests {
         let parse_res = ::elements::segment_element(&data[..]);
         println!("parse_res: {:?}", parse_res);
         match parse_res {
-            IResult::Done(rest, SegmentElement::SeekHead(o)) => {
+            Ok((rest, SegmentElement::SeekHead(o))) => {
                 if should_fail {
                     println!("parser should have failed on input for {:?}", seek_head);
                     println!("{}", (&data[..]).to_hex(16));

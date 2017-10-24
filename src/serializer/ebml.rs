@@ -392,7 +392,7 @@ mod tests {
         let parse_res = ::ebml::vint(&data[..]);
         println!("parse_res: {:?}", parse_res);
         match parse_res {
-            IResult::Done(rest, o) => {
+            Ok((rest, o)) => {
                 assert_eq!(i, o);
                 return true;
             }
@@ -430,7 +430,7 @@ mod tests {
         let parse_res = ::ebml::vid(&data[..]);
         println!("parse_res: {:?}", parse_res);
         match parse_res {
-            IResult::Done(rest, o) => {
+            Ok((rest, o)) => {
                 println!("id={:08b}, parsed={:08b}", id, o);
                 assert_eq!(id, o);
                 return true;
@@ -459,10 +459,10 @@ mod tests {
         }
         println!("{}", (&data[..]).to_hex(16));
 
-        let parse_res = ebml_uint!(&data[..], id);
+        let parse_res:IResult<&[u8], u64> = ebml_uint!(&data[..], id);
         println!("parse_res: {:?}", parse_res);
         match parse_res {
-            IResult::Done(rest, o) => {
+            Ok((rest, o)) => {
                 assert_eq!(num, o);
                 return true;
             }
@@ -499,10 +499,10 @@ mod tests {
     }
     println!("{}", (&data[..]).to_hex(16));
 
-    let parse_res = ebml_uint!(&data[..], id);
+    let parse_res: IResult<&[u8], u64> = ebml_uint!(&data[..], id);
     println!("parse_res: {:?}", parse_res);
     match parse_res {
-      IResult::Done(rest, o) => {
+      Ok((rest, o)) => {
         assert_eq!(num as u64, o);
         return true;
       },
@@ -543,7 +543,7 @@ mod tests {
       let parse_res = ::ebml::ebml_header(&data[..]);
       println!("parse_res: {:?}", parse_res);
       match parse_res {
-        IResult::Done(rest, h) => {
+        Ok((rest, h)) => {
           assert_eq!(header, h);
           return true;
         },

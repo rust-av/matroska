@@ -7,7 +7,7 @@ readme = "README.md"
 license = "MIT"
 
 [dependencies]
-nom = "^3.1"
+nom = { git = "https://github.com/Geal/nom", branch="result" }
 cookie-factory = "^0.2"
 av-format = {git = "https://github.com/rust-av/rust-av" }
 av-data = {git = "https://github.com/rust-av/rust-av" }

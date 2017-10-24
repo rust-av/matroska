@@ -775,7 +775,7 @@ mod tests {
         let res = segment(&mkv[47..100]);
         println!("{:?}", res);
 
-        if let IResult::Done(i, _) = res {
+        if let Ok((i, _)) = res {
             println!("consumed {} bytes after header", (&mkv[47..]).offset(i));
         }
 
@@ -790,7 +790,7 @@ mod tests {
             let res = segment_element(&mkv[index..]);
 
             match res {
-                IResult::Done(i, o) => {
+                Ok((i, o)) => {
                     let new_index = mkv.offset(i);
                     match o {
                         SegmentElement::Unknown(id, size) => {
@@ -830,7 +830,7 @@ mod tests {
         let res = segment(&webm[40..100]);
         println!("{:?}", res);
 
-        if let IResult::Done(i, _) = res {
+        if let Ok((i, _)) = res {
             println!("consumed {} bytes after header", (&webm[40..]).offset(i));
         }
 
@@ -845,7 +845,7 @@ mod tests {
             let res = segment_element(&webm[index..]);
 
             match res {
-                IResult::Done(i, o) => {
+                Ok((i, o)) => {
                     let new_index = webm.offset(i);
                     match o {
                         SegmentElement::Unknown(id, size) => {

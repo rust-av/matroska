@@ -1,5 +1,5 @@
 
-use nom::{IResult, Needed, ErrorKind};
+use nom::{IResult, Needed, Err};
 
 /*
 struct Document {
@@ -33,18 +33,18 @@ pub struct Element {
 
 pub fn vint(input: &[u8]) -> IResult<&[u8], u64> {
     if input.len() == 0 {
-        return IResult::Incomplete(Needed::Size(1));
+        return Err(Err::Incomplete(Needed::Size(1)));
     }
 
     let v = input[0];
     let len = v.leading_zeros();
 
     if len == 8 {
-        return IResult::Error(ErrorKind::Custom(100));
+        return Err(Err::Error(error_position!(ErrorKind::Custom(100), input)));
     }
 
     if input.len() <= len as usize {
-        return IResult::Incomplete(Needed::Size(1));
+        return  Err(Err::Incomplete(Needed::Size(1)));
     }
 
     let mut val = (v ^ (1 << (7 - len))) as u64;
@@ -55,25 +55,25 @@ pub fn vint(input: &[u8]) -> IResult<&[u8], u64> {
         val = (val << 8) | input[i + 1] as u64;
     }
 
-    IResult::Done(&input[len as usize + 1..], val)
+    Ok((&input[len as usize + 1..], val))
 }
 
 // The ID are represented in the specification as their binary representation
 // do not drop the marker bit.
 pub fn vid(input: &[u8]) -> IResult<&[u8], u64> {
     if input.len() == 0 {
-        return IResult::Incomplete(Needed::Size(1));
+        return  Err(Err::Incomplete(Needed::Size(1)));
     }
 
     let v = input[0];
     let len = v.leading_zeros();
 
     if len == 8 {
-        return IResult::Error(ErrorKind::Custom(101));
+        return  Err(Err::Error(error_position!(ErrorKind::Custom(101), input)));
     }
 
     if input.len() <= len as usize {
-        return IResult::Incomplete(Needed::Size(1));
+        return  Err(Err::Incomplete(Needed::Size(1)));
     }
 
     let mut val = v as u64;
@@ -84,7 +84,7 @@ pub fn vid(input: &[u8]) -> IResult<&[u8], u64> {
         val = (val << 8) | input[i + 1] as u64;
     }
 
-    IResult::Done(&input[len as usize + 1..], val)
+    Ok((&input[len as usize + 1..], val))
 }
 
 /*
@@ -112,21 +112,21 @@ pub fn parse_uint_data(input: &[u8], size: u64) -> IResult<&[u8], u64> {
     let mut val = 0;
 
     if size > 8 {
-        return IResult::Error(ErrorKind::Custom(102));
+        return Err(Err::Error(error_position!(ErrorKind::Custom(102), input)));
     }
 
     for i in 0..size as usize {
         val = (val << 8) | input[i] as u64;
     }
 
-    IResult::Done(&input[size as usize..], val)
+    Ok((&input[size as usize..], val))
 }
 
 pub fn parse_int_data(input: &[u8], size: u64) -> IResult<&[u8], i64> {
     let mut val = 0;
 
     if size > 8 {
-        return IResult::Error(ErrorKind::Custom(103));
+        return Err(Err::Error(error_position!(ErrorKind::Custom(103), input)));
     }
 
     for i in 0..size as usize {
@@ -134,7 +134,7 @@ pub fn parse_int_data(input: &[u8], size: u64) -> IResult<&[u8], i64> {
     }
 
     //FIXME: is that right?
-    IResult::Done(&input[size as usize..], val as i64)
+    Ok((&input[size as usize..], val as i64))
 }
 
 /*
@@ -164,13 +164,13 @@ pub fn parse_binary_data(input: &[u8], size: u64) -> IResult<&[u8], Vec<u8>> {
 pub fn parse_float_data(input: &[u8], size: u64) -> IResult<&[u8], f64> {
     use nom::{be_f32, be_f64};
     if size == 0 {
-        IResult::Done(input, 0f64)
+        Ok((input, 0f64))
     } else if size == 4 {
         map!(input, flat_map!(take!(4), be_f32), |val| val as f64)
     } else if size == 8 {
         flat_map!(input, take!(8), be_f64)
     } else {
-        IResult::Error(ErrorKind::Custom(104))
+         Err(Err::Error(error_position!(ErrorKind::Custom(104), input)))
     }
 }
 /*
@@ -372,7 +372,7 @@ mod tests {
         //        let val01 = [0b01000000, 0b1];
 
         match vint(&val01) {
-            IResult::Done(_, v) => assert!(0 == v),
+            Ok((_, v)) => assert!(0 == v),
             _ => panic!(),
         }
     }
@@ -400,7 +400,7 @@ mod tests {
         let res = ebml_header(&webm[..100]);
         println!("{:?}", res);
 
-        if let IResult::Done(i, _) = res {
+        if let Ok((i, _)) = res {
             println!("offset: {} bytes", webm.offset(i));
         }
         panic!();

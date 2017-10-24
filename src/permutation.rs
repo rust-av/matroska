@@ -2,6 +2,8 @@
 macro_rules! permutation_opt (
   ($i:expr, $($rest:tt)*) => (
     {
+      use ::nom::Convert;
+
       let mut res    = permutation_opt_init!((), $($rest)*);
       let mut input  = $i;
       let mut error  = ::std::option::Option::None;
@@ -12,7 +14,7 @@ macro_rules! permutation_opt (
         let mut all_done = true;
 
         let void_res = $crate::ebml::skip_void(input);
-        if let ::nom::IResult::Done(i,_) = void_res {
+        if let Ok((i,_)) = void_res {
           input = i;
           continue;
         }
@@ -26,28 +28,14 @@ macro_rules! permutation_opt (
         break;
       }
 
-      if let ::std::option::Option::Some(need) = needed {
-        if let ::nom::Needed::Size(sz) = need {
-          ::nom::IResult::Incomplete(
-            ::nom::Needed::Size(
-              ::nom::InputLength::input_len(&($i))  -
-              ::nom::InputLength::input_len(&input) +
-              sz
-            )
-          )
-        } else {
-          ::nom::IResult::Incomplete(::nom::Needed::Unknown)
-        }
+      if let Some(unwrapped_res) = permutation_opt_unwrap!(0, (), res, $($rest)*) {
+        Ok((input, unwrapped_res))
+      } else if let ::std::option::Option::Some(need) = needed {
+        Err(::nom::Err::convert(need))
+      } else if let ::std::option::Option::Some(e) = error {
+        Err(::nom::Err::Error(e))
       } else {
-        if let Some(unwrapped_res) = { permutation_opt_unwrap!(0, (), res, $($rest)*) } {
-          ::nom::IResult::Done(input, unwrapped_res)
-        } else {
-          if let ::std::option::Option::Some(e) = error {
-            ::nom::IResult::Error(e)
-          } else {
-            ::nom::IResult::Error(error_position!(::nom::ErrorKind::Permutation, $i))
-          }
-        }
+        Err(::nom::Err::Error(error_position!(::nom::ErrorKind::Permutation, $i)))
       }
     }
   );
@@ -313,16 +301,16 @@ macro_rules! permutation_opt_iterator (
   ($it:tt, $i:expr, $all_done:expr, $needed:expr, $res:expr, $submac:ident!( $($args:tt)* )+, $($rest:tt)*) => {
     let res = &mut acc!($it, $res);
     match complete!($i, $submac!($($args)*)) {
-      ::nom::IResult::Done(i,o)     => {
+      Ok((i,o))     => {
         $i = i;
         res.push(o);
         continue;
       },
-      ::nom::IResult::Error(_) => {
+      Err(::nom::Err::Error(_)) => {
         $all_done = false;
       },
-      ::nom::IResult::Incomplete(i) => {
-        $needed = ::std::option::Option::Some(i);
+      Err(e) => {
+        $needed = ::std::option::Option::Some(e);
         break;
       }
     };
@@ -334,16 +322,16 @@ macro_rules! permutation_opt_iterator (
   ($it:tt, $i:expr, $all_done:expr, $needed:expr, $res:expr, $submac:ident!( $($args:tt)* ), $($rest:tt)*) => {
     if acc!($it, $res) == ::std::option::Option::None {
       match complete!($i, $submac!($($args)*)) {
-        ::nom::IResult::Done(i,o)     => {
+        Ok((i,o))     => {
           $i = i;
           acc!($it, $res) = ::std::option::Option::Some(o);
           continue;
         },
-        ::nom::IResult::Error(_) => {
+        Err(::nom::Err::Error(_)) => {
           $all_done = false;
         },
-        ::nom::IResult::Incomplete(i) => {
-          $needed = ::std::option::Option::Some(i);
+        Err(e) => {
+          $needed = ::std::option::Option::Some(e);
           break;
         }
       };
@@ -364,16 +352,16 @@ macro_rules! permutation_opt_iterator (
   ($it:tt, $i:expr, $all_done:expr, $needed:expr, $res:expr, $submac:ident!( $($args:tt)* )+) => {
     let res = &mut acc!($it, $res);
     match complete!($i, $submac!($($args)*)) {
-      ::nom::IResult::Done(i,o)     => {
+      Ok((i,o))     => {
         $i = i;
         res.push(o);
         continue;
       },
-      ::nom::IResult::Error(_) => {
+      Err(::nom::Err::Error(_)) => {
         $all_done = false;
       },
-      ::nom::IResult::Incomplete(i) => {
-        $needed = ::std::option::Option::Some(i);
+      Err(e) => {
+        $needed = ::std::option::Option::Some(e);
         break;
       }
     };
@@ -384,16 +372,16 @@ macro_rules! permutation_opt_iterator (
   ($it:tt, $i:expr, $all_done:expr, $needed:expr, $res:expr, $submac:ident!( $($args:tt)* )) => {
     if acc!($it, $res) == ::std::option::Option::None {
       match complete!($i, $submac!($($args)*)) {
-        ::nom::IResult::Done(i,o)     => {
+        Ok((i,o))     => {
           $i = i;
           acc!($it, $res) = ::std::option::Option::Some(o);
           continue;
         },
-        ::nom::IResult::Error(_) => {
+        Err(::nom::Err::Error(_)) => {
           $all_done = false;
         },
-        ::nom::IResult::Incomplete(i) => {
-          $needed = ::std::option::Option::Some(i);
+        Err(e) => {
+          $needed = ::std::option::Option::Some(e);
           break;
         }
       };
@@ -403,9 +391,7 @@ macro_rules! permutation_opt_iterator (
 
 #[cfg(test)]
 mod tests {
-    use nom::Needed;
-    use nom::IResult::*;
-    use nom::ErrorKind;
+    use nom::{Err,Needed};
 
     // reproduce the tag and take macros, because of module import order
     macro_rules! tag (
@@ -435,11 +421,11 @@ mod tests {
         let b       = &$bytes[..m];
 
         let res: ::nom::IResult<_,_> = if reduced != b {
-          ::nom::IResult::Error(error_position!(::nom::ErrorKind::Tag, $i))
+          Err(Err::Error(error_position!(::nom::ErrorKind::Tag, $i)))
         } else if m < blen {
-          ::nom::IResult::Incomplete(::nom::Needed::Size(blen))
+          Err(Err::Incomplete(::nom::Needed::Size(blen)))
         } else {
-          ::nom::IResult::Done(&$i[blen..], reduced)
+          Ok((&$i[blen..], reduced))
         };
         res
       }
@@ -451,9 +437,9 @@ mod tests {
       {
         let cnt = $count as usize;
         let res:::IResult<&[u8],&[u8]> = if $i.len() < cnt {
-          ::nom::IResult::Incomplete(::nom::Needed::Size(cnt))
+          Err(Err::Incomplete(::nom::Needed::Size(cnt)))
         } else {
-          ::nom::IResult::Done(&$i[cnt..],&$i[0..cnt])
+          Ok((&$i[cnt..],&$i[0..cnt]))
         };
         res
       }
@@ -469,17 +455,17 @@ mod tests {
         let expected = (&b"abcd"[..], &b"efg"[..], &b"hi"[..]);
 
         let a = &b"abcdefghijk"[..];
-        assert_eq!(perm(a), Done(&b"jk"[..], expected));
+        assert_eq!(perm(a), Ok((&b"jk"[..], expected)));
         let b = &b"efgabcdhijk"[..];
-        assert_eq!(perm(b), Done(&b"jk"[..], expected));
+        assert_eq!(perm(b), Ok((&b"jk"[..], expected)));
         let c = &b"hiefgabcdjk"[..];
-        assert_eq!(perm(c), Done(&b"jk"[..], expected));
+        assert_eq!(perm(c), Ok((&b"jk"[..], expected)));
 
         let d = &b"efgxyzabcdefghi"[..];
-        assert_eq!(perm(d), Error(error_position!(ErrorKind::Permutation, &b"xyzabcdefghi"[..])));
+        assert_eq!(perm(d), Err(Err::Error(error_position!(ErrorKind::Permutation, &b"xyzabcdefghi"[..]))));
 
         let e = &b"efgabc"[..];
-        assert_eq!(perm(e), Incomplete(Needed::Size(7)));
+        assert_eq!(perm(e), Err(Err::Incomplete(Needed::Size(7))));
     }
 
     #[test]
@@ -493,21 +479,21 @@ mod tests {
         let expected3 = (&b"abcd"[..], None, &b"hi"[..], None);
 
         let a = &b"abcdefghijklm"[..];
-        assert_eq!(perm(a), Done(&b"m"[..], expected1));
+        assert_eq!(perm(a), Ok((&b"m"[..], expected1)));
         let b = &b"efgabcdhijklm"[..];
-        assert_eq!(perm(b), Done(&b"m"[..], expected1));
+        assert_eq!(perm(b), Ok((&b"m"[..], expected1)));
         let c = &b"hiefgabcdjklm"[..];
-        assert_eq!(perm(c), Done(&b"m"[..], expected1));
+        assert_eq!(perm(c), Ok((&b"m"[..], expected1)));
 
         let d = &b"abcdjklhim"[..];
-        assert_eq!(perm(d), Done(&b"m"[..], expected2));
+        assert_eq!(perm(d), Ok((&b"m"[..], expected2)));
         let e = &b"abcdhijklm"[..];
-        assert_eq!(perm(e), Done(&b"m"[..], expected2));
+        assert_eq!(perm(e), Ok((&b"m"[..], expected2)));
 
         let f = &b"abcdhim"[..];
-        assert_eq!(perm(f), Done(&b"m"[..], expected3));
+        assert_eq!(perm(f), Ok((&b"m"[..], expected3)));
         let g = &b"hiabcdm"[..];
-        assert_eq!(perm(g), Done(&b"m"[..], expected3));
+        assert_eq!(perm(g), Ok((&b"m"[..], expected3)));
         /*
     let d = &b"efgxyzabcdefghi"[..];
     assert_eq!(perm(d), Error(error_position!(ErrorKind::Permutation, &b"xyzabcdefghi"[..])));

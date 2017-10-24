@@ -11,7 +11,7 @@ use rational::Rational32;
 use ebml::{ebml_header, EBMLHeader};
 use elements::{segment, segment_element, Cluster, SeekHead, Info, Tracks, TrackEntry,
                SegmentElement, simple_block};
-use nom::{self, IResult, Offset};
+use nom::{self, Err, IResult, Offset};
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct MkvDemuxer {
@@ -44,7 +44,7 @@ impl MkvDemuxer {
 
         loop {
             if self.seek_head.is_some() && self.info.is_some() && self.tracks.is_some() {
-                return IResult::Done(input, ());
+                return Ok((input, ()));
             }
 
             println!("offset: {}", original_input.offset(input));
@@ -55,7 +55,7 @@ impl MkvDemuxer {
                 SegmentElement::SeekHead(s) => {
                     println!("got seek head: {:#?}", s);
                     if self.seek_head.is_some() {
-                        return IResult::Error(nom::ErrorKind::Custom(1));
+                        return Err(Err::Error(error_position!(nom::ErrorKind::Custom(1), input)));
                     } else {
                         self.seek_head = Some(s);
                     }
@@ -63,7 +63,7 @@ impl MkvDemuxer {
                 SegmentElement::Info(i) => {
                     println!("got info: {:#?}", i);
                     if self.info.is_some() {
-                        return IResult::Error(nom::ErrorKind::Custom(1));
+                        return Err(Err::Error(error_position!(nom::ErrorKind::Custom(1), input)));
                     } else {
                         self.info = Some(i);
                     }
@@ -71,7 +71,7 @@ impl MkvDemuxer {
                 SegmentElement::Tracks(t) => {
                     println!("got tracks: {:#?}", t);
                     if self.tracks.is_some() {
-                        return IResult::Error(nom::ErrorKind::Custom(1));
+                        return Err(Err::Error(error_position!(nom::ErrorKind::Custom(1), input)));
                     } else {
                         self.tracks = Some(t);
                     }
@@ -95,14 +95,14 @@ impl Demuxer for MkvDemuxer {
 
     fn read_headers(&mut self, buf: &Box<Buffered>, info: &mut GlobalInfo) -> Result<SeekFrom> {
         match self.parse_until_tracks(buf.data()) {
-            IResult::Done(i, _) => {
+            Ok((i, _)) => {
                 info.duration = self.info.as_ref().and_then(|info| info.duration).map(|d| d as u64);
                 if let Some(ref t) = self.tracks {
                     info.streams = t.tracks.iter().map(|tr| track_to_stream(tr)).collect();
                 }
                 Ok(SeekFrom::Current(buf.data().offset(i) as i64))
             }
-            IResult::Incomplete(_) => Err(ErrorKind::MoreDataNeeded.into()),
+             Err(Err::Incomplete(_)) => Err(ErrorKind::MoreDataNeeded.into()),
             e => {
                 println!("error reading headers: {:?}", e);
                 Err(ErrorKind::InvalidData.into())
@@ -116,7 +116,7 @@ impl Demuxer for MkvDemuxer {
         } else {
             println!("no more stored packet, parsing a new one");
             match segment_element(buf.data()) {
-                IResult::Done(i, element) => {
+                Ok((i, element)) => {
                     let seek = SeekFrom::Current(buf.data().offset(i) as i64);
                     match element {
                         SegmentElement::Cluster(c) => {
@@ -151,7 +151,7 @@ impl Demuxer for MkvDemuxer {
 
                     Ok((seek, Event::MoreDataNeeded))
                 }
-                IResult::Incomplete(_) => Ok((SeekFrom::Current(0), Event::MoreDataNeeded)),
+                 Err(Err::Incomplete(_)) => Ok((SeekFrom::Current(0), Event::MoreDataNeeded)),
                 e => {
                     println!("parsing issue: {:?}", e);
                     Err(ErrorKind::InvalidData.into())
@@ -237,7 +237,7 @@ impl<'a> Cluster<'a> {
         let mut v = Vec::new();
 
         for block_data in self.simple_block.iter() {
-            if let IResult::Done(i, block) = simple_block(block_data) {
+            if let Ok((i, block)) = simple_block(block_data) {
                 //println!("parsing simple block: {:?}", block);
                 let packet = Packet {
                     data: i.into(),
@@ -263,7 +263,7 @@ impl<'a> Cluster<'a> {
 mod tests {
     use super::*;
     use std::io::Cursor;
-    use nom::{IResult, Offset};
+    use nom::Offset;
     use av_format::demuxer::context::DemuxerContext;
 
     const webm: &'static [u8] = include_bytes!("../assets/bbb-vp9-opus.webm");
@@ -275,7 +275,7 @@ mod tests {
         let res = demuxer.parse_until_tracks(webm);
         println!("got parsing res: {:?}", res);
         match res {
-            IResult::Done(i, _) => {
+            Ok((i, _)) => {
                 println!("offset: {} bytes", webm.offset(i));
             }
             e => {
