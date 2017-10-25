@@ -1,7 +1,7 @@
 use cookie_factory::*;
 use elements::{Info, Seek, SeekHead, SegmentElement, Cluster, Tracks, TrackEntry, Audio, Video, Colour, Projection, MasteringMetadata};
 use super::ebml::{vint_size, gen_vint, gen_vid, gen_uint};
-use serializer::ebml::{gen_u64,gen_f64_ref, gen_f64};
+use serializer::ebml::{gen_u64,gen_f64_ref, gen_f64, EbmlSize};
 
 
 pub fn seek_size(s: &Seek) -> u8 {
@@ -20,10 +20,17 @@ pub fn gen_segment<'a>(input: (&'a mut [u8], usize),
   )*/
 }
 
+impl EbmlSize for Seek {
+  fn capacity(&self) -> usize {
+    self.id.size(0x53AB) + self.position.size(0x53AC)
+  }
+}
+
 pub fn gen_seek<'a>(input: (&'a mut [u8], usize),
                     s: &Seek)
                     -> Result<(&'a mut [u8], usize), GenError> {
-    let capacity = 8 + 2 + vint_size(s.id.len() as u64) as u64 + s.id.len() as u64;
+    //let capacity =  8 + 2 + vint_size(s.id.len() as u64) as u64 + s.id.len() as u64;
+    let capacity = s.capacity() as u64;
 
     gen_ebml_master!(input,
     0x4DBB, vint_size(capacity),
@@ -32,12 +39,20 @@ pub fn gen_seek<'a>(input: (&'a mut [u8], usize),
   )
 }
 
+impl EbmlSize for SeekHead {
+  fn capacity(&self) -> usize {
+    self.positions.iter().fold(0, |acc, seek| acc + seek.size(0x4DBB))
+  }
+}
+
 pub fn gen_seek_head<'a>(input: (&'a mut [u8], usize),
                          s: &SeekHead)
                          -> Result<(&'a mut [u8], usize), GenError> {
-    let capacity = s.positions.iter().fold(0u64, |acc, seek| {
+    /*let capacity = s.positions.iter().fold(0u64, |acc, seek| {
         acc + 4 + 8 + 2 + vint_size(seek.id.len() as u64) as u64 + seek.id.len() as u64
-    });
+    });*/
+    let capacity = s.capacity() as u64;
+
     println!("gen_seek_head: calculated capacity: {} -> {} bytes", capacity, vint_size(capacity));
 
     let byte_capacity = vint_size(capacity as u64);
@@ -47,9 +62,22 @@ pub fn gen_seek_head<'a>(input: (&'a mut [u8], usize),
   )
 }
 
+impl EbmlSize for Info {
+  fn capacity(&self) -> usize {
+    self.segment_uid.size(0x73A4) + self.segment_filename.size(0x7384)
+      + self.prev_uid.size(0x3CB923) + self.prev_filename.size(0x3C83AB)
+      + self.next_uid.size(0x3EB923) + self.next_filename.size(0x3E83BB)
+      //FIXME: chapter translate
+      + self.segment_family.size(0x4444)
+      + self.timecode_scale.size(0x2AD7B1) + self.duration.size(0x4489)
+      + self.date_utc.size(0x4461) + self.title.size(0x7BA9)
+      + self.muxing_app.size(0x4D80) + self.writing_app.size(0x5741)
+  }
+}
 pub fn gen_info<'a>(input: (&'a mut [u8], usize),
                          i: &Info)
                          -> Result<(&'a mut [u8], usize), GenError> {
+                           /*
     //FIXME: probably not large enough
     let capacity = 2 + i.segment_uid.as_ref().map(|s| s.len()).unwrap_or(0)
       + 2 + i.segment_filename.as_ref().map(|s| s.len()).unwrap_or(0)
@@ -66,6 +94,8 @@ pub fn gen_info<'a>(input: (&'a mut [u8], usize),
       + 2 + i.title.as_ref().map(|s| s.len()).unwrap_or(0)
       + 2 + i.muxing_app.len()
       + 2 + i.writing_app.len();
+    */
+    let capacity = i.capacity();
 
     let byte_capacity = vint_size(capacity as u64);
     gen_ebml_master!(input,

@@ -1,5 +1,6 @@
 use cookie_factory::*;
 use ebml::EBMLHeader;
+use nom::AsBytes;
 
 pub fn vint_size(i: u64) -> u8 {
     let mut val = 1;
@@ -433,7 +434,72 @@ pub fn gen_u64_a<'a>(input: (&'a mut [u8], usize),
     gen_dbg!((input.0, input.1), gen_be_u64!(num))
 }
 
-//trace_macros!(false);
+pub trait EbmlSize {
+  fn capacity(&self) -> usize;
+
+  fn size(&self, id: u64) -> usize {
+    let id_size = vid_size(id);
+    let self_size = self.capacity();
+    let size_tag_size = vint_size(self_size as u64);
+
+    id_size as usize + size_tag_size as usize + self_size as usize
+  }
+}
+
+impl EbmlSize for u64 {
+  fn capacity(&self) -> usize {
+    vint_size(*self) as usize
+  }
+}
+
+impl EbmlSize for i64 {
+  fn capacity(&self) -> usize {
+    vint_size(*self as u64) as usize
+  }
+}
+
+impl EbmlSize for f64 {
+  fn capacity(&self) -> usize {
+    //FIXME: calculate size
+    8
+  }
+}
+
+impl<T: EbmlSize> EbmlSize for Option<T> {
+  fn capacity(&self) -> usize {
+    match self {
+      &Some(ref value) => {
+        value.capacity()
+      },
+      &None => 0
+    }
+  }
+
+  fn size(&self, id: u64) -> usize {
+    match self {
+      &Some(ref value) => {
+        let id_size = vid_size(id);
+        let self_size = self.capacity();
+        let size_tag_size = vint_size(self_size as u64);
+
+        id_size as usize + size_tag_size as usize + self_size as usize
+      },
+      &None => 0
+    }
+  }
+}
+
+impl EbmlSize for String {
+  fn capacity(&self) -> usize {
+    self.as_bytes().len()
+  }
+}
+
+impl EbmlSize for Vec<u8> {
+  fn capacity(&self) -> usize {
+    (*self).as_bytes().len()
+  }
+}
 
 #[cfg(test)]
 mod tests {
