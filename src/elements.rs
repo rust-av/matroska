@@ -415,6 +415,9 @@ pub struct TrackEntry {
     pub trick_master_track_segment_uid: Option<Vec<u8>>,
     pub video: Option<Video>,
     pub audio: Option<Audio>,
+    //FIXME: missing TrackTranslate
+    //FIXME: missing TrackOperation
+    //FIXME: missing ContentEncodings
 }
 
 named!(pub track_entry<TrackEntry>,
@@ -442,7 +445,7 @@ named!(pub track_entry<TrackEntry>,
         ebml_binary!(0x63A2)?,
         ebml_str!(0x258688)?,
         ebml_uint!(0x7446)?,
-        ebml_str!(0x319697)?,
+        ebml_str!(0x3A9697)?,
         ebml_str!(0x3B4040)?,
         ebml_str!(0x26B240)?,
         ebml_uint!(0xAA)?,
@@ -713,11 +716,11 @@ named!(pub mastering_metadata<MasteringMetadata>,
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Projection {
-    projection_type: u64,
-    projection_private: Option<Vec<u8>>,
-    projection_pose_yaw: f64,
-    projection_pose_pitch: f64,
-    projection_pose_roll: f64,
+    pub projection_type: u64,
+    pub projection_private: Option<Vec<u8>>,
+    pub projection_pose_yaw: f64,
+    pub projection_pose_pitch: f64,
+    pub projection_pose_roll: f64,
 }
 
 named!(pub projection<Projection>,

@@ -101,6 +101,31 @@ pub fn gen_uint<'a>(mut input: (&'a mut [u8], usize),
     Ok(input)
 }
 
+//FIXME: is it the right implementation?
+pub fn gen_int<'a>(mut input: (&'a mut [u8], usize),
+                    num: i64)
+                    -> Result<(&'a mut [u8], usize), GenError> {
+    let needed_bytes = vint_size(num as u64);
+
+    let mut i = needed_bytes - 1;
+    loop {
+
+        match gen_be_i8!(input, (num >> i * 8) as i8) {
+            Ok(next) => {
+                input = next;
+            }
+            Err(e) => return Err(e),
+        }
+
+        if i == 0 {
+            break;
+        }
+        i -= 1;
+    }
+
+    Ok(input)
+}
+
 /*
 pub fn vid_size(id: u64) -> u8 {
   
@@ -269,6 +294,23 @@ macro_rules! gen_ebml_uint (
 );
 
 #[macro_export]
+macro_rules! gen_ebml_int (
+  (($i:expr, $idx:expr), $id:expr, $num:expr, $expected_size:expr) => ({
+    use serializer::ebml::gen_int;
+
+    do_gen!(($i, $idx),
+                  gen_call!(gen_vid, $id)
+      >> ofs_len: gen_skip!($expected_size as usize)
+      >> start:   gen_dbg!(gen_call!(gen_int, $num))
+      >> end:     gen_at_offset!(ofs_len, gen_ebml_size!($expected_size, (end-start) as u64))
+    )
+  });
+  (($i:expr, $idx:expr), $id:expr, $num:expr) => (
+    gen_ebml_int!(($i, $idx), $id, $num, 8)
+  );
+);
+
+#[macro_export]
 macro_rules! gen_ebml_str (
   (($i:expr, $idx:expr), $id:expr, $s:expr) => ({
     let v = vint_size($s.len() as u64);
@@ -313,6 +355,25 @@ macro_rules! gen_opt (
     }
   })
 );
+
+#[macro_export]
+macro_rules! gen_opt_copy (
+  (($i:expr, $idx:expr), $val:expr, $submac:ident!(  )) => ({
+    if let Some(val) = $val {
+      $submac!(($i,$idx), val)
+    } else {
+      Ok(($i,$idx))
+    }
+  });
+  (($i:expr, $idx:expr), $val:expr, $submac:ident!( $($args:tt),+ )) => ({
+    if let Some(val) = $val {
+      $submac!(($i,$idx), $($args),+ , val)
+    } else {
+      Ok(($i,$idx))
+    }
+  })
+);
+
 
 #[macro_export]
 macro_rules! gen_dbg (

@@ -1,7 +1,7 @@
 use cookie_factory::*;
-use elements::{Info, Seek, SeekHead, SegmentElement, Cluster};
+use elements::{Info, Seek, SeekHead, SegmentElement, Cluster, Tracks, TrackEntry, Audio, Video, Colour, Projection, MasteringMetadata};
 use super::ebml::{vint_size, gen_vint, gen_vid, gen_uint};
-use serializer::ebml::{gen_u64,gen_f64_ref};
+use serializer::ebml::{gen_u64,gen_f64_ref, gen_f64};
 
 
 pub fn seek_size(s: &Seek) -> u8 {
@@ -89,6 +89,214 @@ pub fn gen_info<'a>(input: (&'a mut [u8], usize),
     )
 }
 
+
+pub fn gen_tracks<'a>(input: (&'a mut [u8], usize),
+                         t: &Tracks)
+                         -> Result<(&'a mut [u8], usize), GenError> {
+    let capacity = t.tracks.iter().fold(0, |acc, track| acc + size_track_entry(track));
+
+    let byte_capacity = vint_size(capacity as u64);
+    gen_ebml_master!(input,
+      0x1654AE6B, byte_capacity,
+      gen_many_ref!(&t.tracks, gen_track_entry)
+    )
+}
+
+pub fn size_track_entry(t: &TrackEntry) -> usize {
+  0
+}
+
+pub fn gen_track_entry<'a>(input: (&'a mut [u8], usize),
+                         t: &TrackEntry)
+                         -> Result<(&'a mut [u8], usize), GenError> {
+    let capacity = size_track_entry(t);
+
+    let byte_capacity = vint_size(capacity as u64);
+    gen_ebml_master!(input,
+      0xAE, byte_capacity,
+      do_gen!(
+           gen_ebml_uint!(0xD7,   t.track_number)
+        >> gen_ebml_uint!(0x73C5, t.track_uid)
+        >> gen_ebml_uint!(0x83,   t.track_type)
+        >> gen_opt_copy!( t.flag_enabled, gen_ebml_uint!(0xB9))
+        >> gen_opt_copy!( t.flag_default, gen_ebml_uint!(0x88))
+        >> gen_opt_copy!( t.flag_forced,  gen_ebml_uint!(0x55AA))
+        >> gen_opt_copy!( t.flag_lacing,  gen_ebml_uint!(0x9C))
+        >> gen_opt_copy!( t.min_cache,    gen_ebml_uint!(0x6DE7))
+        >> gen_opt_copy!( t.max_cache,    gen_ebml_uint!(0x6DF8))
+        >> gen_opt_copy!( t.default_duration, gen_ebml_uint!(0x23E383))
+        >> gen_opt_copy!( t.default_decoded_field_duration, gen_ebml_uint!(0x234E7A))
+        >> gen_opt_copy!( t.track_timecode_scale, gen_call!(gen_f64, 0x23314F) )
+        >> gen_opt_copy!( t.track_offset, gen_ebml_int!(0x537F) )
+        >> gen_opt_copy!( t.max_block_addition_id, gen_ebml_uint!(0x55EE) )
+        >> gen_opt!( t.name, gen_ebml_str!(0x536E) )
+        >> gen_opt!( t.language, gen_ebml_str!(0x22B59C) )
+        >> gen_opt!( t.language_ietf, gen_ebml_str!(0x22B59D) )
+        >> gen_ebml_str!( 0x86, t.codec_id )
+        >> gen_opt!( t.codec_private, gen_ebml_binary!(0x63A2) )
+        >> gen_opt!( t.codec_name, gen_ebml_str!(0x258688) )
+        >> gen_opt_copy!( t.attachment_link, gen_ebml_uint!(0x7446) )
+        >> gen_opt!( t.codec_settings, gen_ebml_str!(0x3A9697) )
+        >> gen_opt!( t.codec_info_url, gen_ebml_str!(0x3B4040) )
+        >> gen_opt!( t.codec_download_url, gen_ebml_str!(0x26B240) )
+        >> gen_opt_copy!( t.codec_decode_all, gen_ebml_uint!(0xAA) )
+        >> gen_opt_copy!( t.track_overlay, gen_ebml_uint!(0x6FAB) )
+        >> gen_opt_copy!( t.codec_delay, gen_ebml_uint!(0x56AA) )
+        >> gen_opt_copy!( t.seek_pre_roll, gen_ebml_uint!(0x56BB) )
+        >> gen_opt!( t.video, gen_call!(gen_track_entry_video) )
+        >> gen_opt!( t.audio, gen_call!(gen_track_entry_audio) )
+        >> gen_opt_copy!( t.trick_track_uid, gen_ebml_uint!(0xC0) )
+        >> gen_opt!( t.trick_track_segment_uid, gen_ebml_binary!(0xC1) )
+        >> gen_opt_copy!( t.trick_track_flag, gen_ebml_uint!(0xC6) )
+        >> gen_opt_copy!( t.trick_master_track_uid, gen_ebml_uint!(0xC7) )
+        >> gen_opt!( t.trick_master_track_segment_uid, gen_ebml_binary!(0xC4) )
+
+      )
+    )
+}
+
+pub fn size_track_entry_audio(a: &Audio) -> usize {
+  0
+}
+
+pub fn gen_track_entry_audio<'a>(input: (&'a mut [u8], usize),
+                         a: &Audio)
+                         -> Result<(&'a mut [u8], usize), GenError> {
+    let capacity = size_track_entry_audio(a);
+    let byte_capacity = vint_size(capacity as u64);
+
+    gen_ebml_master!(input,
+      0xE1, byte_capacity,
+      do_gen!(
+           gen_call!( gen_f64, 0xB5,   a.sampling_frequency )
+        >> gen_opt_copy!( a.output_sampling_frequency, gen_call!(gen_f64, 0x78B5))
+        >> gen_opt_copy!( a.channels, gen_ebml_uint!(0x9F))
+        >> gen_opt!( a.channel_positions, gen_ebml_binary!(0x7D7B))
+        >> gen_opt_copy!( a.bit_depth, gen_ebml_uint!(0x6264))
+      )
+    )
+}
+
+pub fn size_track_entry_video(v: &Video) -> usize {
+  0
+}
+
+pub fn gen_track_entry_video<'a>(input: (&'a mut [u8], usize),
+                         v: &Video)
+                         -> Result<(&'a mut [u8], usize), GenError> {
+    let capacity = size_track_entry_video(v);
+    let byte_capacity = vint_size(capacity as u64);
+
+    gen_ebml_master!(input,
+      0xE0, byte_capacity,
+      do_gen!(
+           gen_opt_copy!( v.flag_interlaced, gen_ebml_uint!(0x9A))
+        >> gen_opt_copy!( v.field_order, gen_ebml_uint!(0x9D))
+        >> gen_opt_copy!( v.stereo_mode, gen_ebml_uint!(0x53B8))
+        >> gen_opt_copy!( v.alpha_mode, gen_ebml_uint!(0x53C0))
+        >> gen_opt_copy!( v.old_stereo_mode, gen_ebml_uint!(0x53B9))
+        >> gen_ebml_uint!(0xB0, v.pixel_width)
+        >> gen_ebml_uint!(0xBA, v.pixel_height)
+        >> gen_opt_copy!( v.pixel_crop_bottom, gen_ebml_uint!(0x54AA))
+        >> gen_opt_copy!( v.pixel_crop_top, gen_ebml_uint!(0x54BB))
+        >> gen_opt_copy!( v.pixel_crop_left, gen_ebml_uint!(0x54CC))
+        >> gen_opt_copy!( v.pixel_crop_right, gen_ebml_uint!(0x54DD))
+        >> gen_opt_copy!( v.display_width, gen_ebml_uint!(0x54B0))
+        >> gen_opt_copy!( v.display_height, gen_ebml_uint!(0x54BA))
+        >> gen_opt_copy!( v.display_unit, gen_ebml_uint!(0x54B2))
+        >> gen_opt_copy!( v.aspect_ratio_type, gen_ebml_uint!(0x54B3))
+        >> gen_opt!( v.colour_space, gen_ebml_binary!(0x2EB524))
+        >> gen_opt_copy!( v.gamma_value, gen_call!(gen_f64, 0x2FB523))
+        >> gen_opt_copy!( v.frame_rate, gen_call!(gen_f64, 0x2383E3))
+        >> gen_opt!( v.colour, gen_call!(gen_track_entry_video_colour) )
+        >> gen_opt!( v.projection, gen_call!(gen_track_entry_video_projection) )
+      )
+    )
+}
+
+pub fn size_track_entry_video_colour(a: &Colour) -> usize {
+  0
+}
+
+pub fn gen_track_entry_video_colour<'a>(input: (&'a mut [u8], usize),
+                         c: &Colour)
+                         -> Result<(&'a mut [u8], usize), GenError> {
+    let capacity = size_track_entry_video_colour(c);
+    let byte_capacity = vint_size(capacity as u64);
+
+    gen_ebml_master!(input,
+      0x55B0, byte_capacity,
+      do_gen!(
+           gen_opt_copy!( c.matrix_coefficients, gen_ebml_uint!(0x55B1))
+        >> gen_opt_copy!( c.bits_per_channel, gen_ebml_uint!(0x55B2))
+        >> gen_opt_copy!( c.chroma_subsampling_horz, gen_ebml_uint!(0x55B3))
+        >> gen_opt_copy!( c.chroma_subsampling_vert, gen_ebml_uint!(0x55B4))
+        >> gen_opt_copy!( c.cb_subsampling_horz, gen_ebml_uint!(0x55B5))
+        >> gen_opt_copy!( c.cb_subsampling_vert, gen_ebml_uint!(0x55B6))
+        >> gen_opt_copy!( c.chroma_siting_horz, gen_ebml_uint!(0x55B7))
+        >> gen_opt_copy!( c.chroma_siting_vert, gen_ebml_uint!(0x55B8))
+        >> gen_opt_copy!( c.range, gen_ebml_uint!(0x55B9))
+        >> gen_opt_copy!( c.transfer_characteristics, gen_ebml_uint!(0x55BA))
+        >> gen_opt_copy!( c.primaries, gen_ebml_uint!(0x55BB))
+        >> gen_opt_copy!( c.max_cll, gen_ebml_uint!(0x55BC))
+        >> gen_opt_copy!( c.max_fall, gen_ebml_uint!(0x55BD))
+        >> gen_opt!( c.mastering_metadata, gen_call!(gen_track_entry_video_colour_mastering_metadata) )
+      )
+    )
+}
+
+
+pub fn size_track_entry_video_colour_mastering_metadata(m: &MasteringMetadata) -> usize {
+  0
+}
+
+pub fn gen_track_entry_video_colour_mastering_metadata<'a>(input: (&'a mut [u8], usize),
+                         m: &MasteringMetadata)
+                         -> Result<(&'a mut [u8], usize), GenError> {
+    let capacity = size_track_entry_video_colour_mastering_metadata(m);
+    let byte_capacity = vint_size(capacity as u64);
+
+    gen_ebml_master!(input,
+      0x55D0, byte_capacity,
+      do_gen!(
+           gen_opt_copy!( m.primary_r_chromaticity_x, gen_call!(gen_f64, 0x55D1))
+        >> gen_opt_copy!( m.primary_r_chromaticity_y, gen_call!(gen_f64, 0x55D2))
+        >> gen_opt_copy!( m.primary_g_chromaticity_x, gen_call!(gen_f64, 0x55D3))
+        >> gen_opt_copy!( m.primary_g_chromaticity_y, gen_call!(gen_f64, 0x55D4))
+        >> gen_opt_copy!( m.primary_b_chromaticity_x, gen_call!(gen_f64, 0x55D5))
+        >> gen_opt_copy!( m.primary_b_chromaticity_y, gen_call!(gen_f64, 0x55D6))
+        >> gen_opt_copy!( m.white_point_chromaticity_y, gen_call!(gen_f64, 0x55D7))
+        >> gen_opt_copy!( m.white_point_chromaticity_y, gen_call!(gen_f64, 0x55D8))
+        >> gen_opt_copy!( m.luminance_max, gen_call!(gen_f64, 0x55D9))
+        >> gen_opt_copy!( m.luminance_min, gen_call!(gen_f64, 0x55DA))
+      )
+    )
+}
+
+
+pub fn size_track_entry_video_projection(p: &Projection) -> usize {
+  0
+}
+
+pub fn gen_track_entry_video_projection<'a>(input: (&'a mut [u8], usize),
+                         p: &Projection)
+                         -> Result<(&'a mut [u8], usize), GenError> {
+    let capacity = size_track_entry_video_projection(p);
+    let byte_capacity = vint_size(capacity as u64);
+
+    gen_ebml_master!(input,
+      0x7670, byte_capacity,
+      do_gen!(
+           gen_ebml_uint!(0x7671, p.projection_type)
+        >> gen_opt!( p.projection_private, gen_ebml_binary!(0x7672))
+        >> gen_call!( gen_f64, 0x7673, p.projection_pose_yaw )
+        >> gen_call!( gen_f64, 0x7674, p.projection_pose_pitch )
+        >> gen_call!( gen_f64, 0x7675, p.projection_pose_roll )
+      )
+    )
+}
+
+
 #[macro_export]
 macro_rules! my_gen_many (
     (($i:expr, $idx:expr), $l:expr, $f:ident) => (
@@ -136,8 +344,8 @@ pub fn gen_cluster<'a>(input: (&'a mut [u8], usize),
       0x1F43B675, byte_capacity,
       do_gen!(
            gen_ebml_uint!(0xE7, c.timecode)
-        >> gen_opt!( c.position, gen_ebml_uint!(0xA7) )
-        >> gen_opt!( c.prev_size, gen_ebml_uint!(0xAB) )
+        >> gen_opt_copy!( c.position, gen_ebml_uint!(0xA7) )
+        >> gen_opt_copy!( c.prev_size, gen_ebml_uint!(0xAB) )
         >> my_gen_many!( &c.simple_block, gen_ebml_binary!( 0xA3 ) )
       )
     )
