@@ -4,8 +4,8 @@ use av_data::packet::Packet;
 use av_data::timeinfo::TimeInfo;
 use av_format::stream::*;
 use av_format::buffer::Buffered;
-use av_format::demuxer::demux::{Demuxer, Event};
-use av_format::demuxer::context::GlobalInfo;
+use av_format::demuxer::{Demuxer, Event};
+use av_format::demuxer::GlobalInfo;
 use std::collections::VecDeque;
 use rational::Rational64;
 
@@ -92,8 +92,6 @@ impl MkvDemuxer {
 }
 
 impl Demuxer for MkvDemuxer {
-    fn open(&mut self) {}
-
     fn read_headers(&mut self, buf: &Box<Buffered>, info: &mut GlobalInfo) -> Result<SeekFrom> {
         match self.parse_until_tracks(buf.data()) {
             Ok((i, _)) => {
@@ -111,7 +109,7 @@ impl Demuxer for MkvDemuxer {
         }
     }
 
-    fn read_packet(&mut self, buf: &Box<Buffered>) -> Result<(SeekFrom, Event)> {
+    fn read_event(&mut self, buf: &Box<Buffered>) -> Result<(SeekFrom, Event)> {
         if let Some(event) = self.queue.pop_front() {
             Ok((SeekFrom::Current(0), event))
         } else {
@@ -269,7 +267,7 @@ mod tests {
     use super::*;
     use std::io::Cursor;
     use nom::Offset;
-    use av_format::demuxer::context::DemuxerContext;
+    use av_format::demuxer::Context;
 
     const webm: &'static [u8] = include_bytes!("../assets/bbb-vp9-opus.webm");
 
@@ -294,18 +292,18 @@ mod tests {
 
     #[test]
     fn context() {
-        let mut context = DemuxerContext::new(Box::new(MkvDemuxer::new()),
-                                              Box::new(Cursor::new(webm)));
+        let mut context = Context::new(Box::new(MkvDemuxer::new()),
+                                       Box::new(Cursor::new(webm)));
         println!("DEMUXER CONTEXT read headers: {:?}", context.read_headers());
         println!("DEMUXER CONTEXT streams: {:?}", context.info.streams);
-        println!("DEMUXER CONTEXT event: {:?}", context.read_packet());
-        println!("DEMUXER CONTEXT event: {:?}", context.read_packet());
-        println!("DEMUXER CONTEXT event: {:?}", context.read_packet());
-        println!("DEMUXER CONTEXT event: {:?}", context.read_packet());
-        println!("DEMUXER CONTEXT event: {:?}", context.read_packet());
-        println!("DEMUXER CONTEXT event: {:?}", context.read_packet());
-        println!("DEMUXER CONTEXT event: {:?}", context.read_packet());
-        println!("DEMUXER CONTEXT event: {:?}", context.read_packet());
+        println!("DEMUXER CONTEXT event: {:?}", context.read_event());
+        println!("DEMUXER CONTEXT event: {:?}", context.read_event());
+        println!("DEMUXER CONTEXT event: {:?}", context.read_event());
+        println!("DEMUXER CONTEXT event: {:?}", context.read_event());
+        println!("DEMUXER CONTEXT event: {:?}", context.read_event());
+        println!("DEMUXER CONTEXT event: {:?}", context.read_event());
+        println!("DEMUXER CONTEXT event: {:?}", context.read_event());
+        println!("DEMUXER CONTEXT event: {:?}", context.read_event());
         panic!();
     }
 }
