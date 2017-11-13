@@ -1,12 +1,13 @@
 use av_format::error::*;
 use std::io::SeekFrom;
 use av_data::packet::Packet;
+use av_data::timeinfo::TimeInfo;
 use av_format::stream::*;
 use av_format::buffer::Buffered;
 use av_format::demuxer::demux::{Demuxer, Event};
 use av_format::demuxer::context::GlobalInfo;
 use std::collections::VecDeque;
-use rational::Rational32;
+use rational::Rational64;
 
 use ebml::{ebml_header, EBMLHeader};
 use elements::{segment, segment_element, Cluster, SeekHead, Info, Tracks, TrackEntry,
@@ -221,7 +222,7 @@ pub fn track_to_stream(t: &TrackEntry) -> Stream {
         index: t.track_number as usize,
         start: None,
         duration: t.default_duration,
-        timebase: Rational32::from_integer(1),
+        timebase: Rational64::from_integer(1),
         // TODO: Extend CodecParams and fill it with the remaining information
         params: CodecParams {
             extradata: t.codec_private.clone(),
@@ -241,8 +242,12 @@ impl<'a> Cluster<'a> {
                 //println!("parsing simple block: {:?}", block);
                 let packet = Packet {
                     data: i.into(),
-                    pts: Some(block.timecode as i64),
-                    dts: None,
+                    t: TimeInfo {
+                        pts: Some(block.timecode as i64),
+                        dts: None,
+                        duration: None,
+                        timebase: None,
+                    },
                     pos: None,
                     stream_index: block.track_number as isize,
                     is_key: block.keyframe,
