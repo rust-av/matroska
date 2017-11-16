@@ -268,6 +268,7 @@ mod tests {
     use std::io::Cursor;
     use nom::Offset;
     use av_format::demuxer::Context;
+    use av_format::buffer::*;
 
     const webm: &'static [u8] = include_bytes!("../assets/bbb-vp9-opus.webm");
 
@@ -293,7 +294,7 @@ mod tests {
     #[test]
     fn context() {
         let mut context = Context::new(Box::new(MkvDemuxer::new()),
-                                       Box::new(Cursor::new(webm)));
+                                       Box::new(AccReader::new(Cursor::new(webm))));
         println!("DEMUXER CONTEXT read headers: {:?}", context.read_headers());
         println!("DEMUXER CONTEXT streams: {:?}", context.info.streams);
         println!("DEMUXER CONTEXT event: {:?}", context.read_event());
