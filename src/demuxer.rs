@@ -5,6 +5,7 @@ use av_data::timeinfo::TimeInfo;
 use av_format::stream::*;
 use av_format::buffer::Buffered;
 use av_format::demuxer::{Demuxer, Event};
+use av_format::demuxer::{Descr, Descriptor};
 use av_format::demuxer::GlobalInfo;
 use std::collections::VecDeque;
 use rational::Rational64;
@@ -261,6 +262,35 @@ impl<'a> Cluster<'a> {
         v
     }
 }
+
+struct Des {
+    d: Descr,
+}
+
+impl Descriptor for Des {
+    fn create(&self) -> Box<Demuxer> {
+        Box::new(MkvDemuxer::new())
+    }
+    fn describe<'a>(&'a self) -> &'a Descr {
+        &self.d
+    }
+    fn probe(&self, data: &[u8]) -> u8 {
+        match ebml_header(&data[..100]) {
+            Ok(_) => 100,
+            _ => 0,
+        }
+    }
+}
+
+pub const MKV_DESC: &Descriptor = &Des {
+    d: Descr {
+        name: "matroska",
+        demuxer: "mkv",
+        description: "Nom-based Matroska demuxer",
+        extensions: &["mkv", "webm", "mka"],
+        mime: &["video/x-matroska", "audio/x-matroska"],
+    }
+};
 
 #[cfg(test)]
 mod tests {
