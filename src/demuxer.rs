@@ -44,6 +44,10 @@ impl MkvDemuxer {
 
         let (mut input, _) = try_parse!(i1, segment);
 
+        self.seek_head = None;
+        self.info = None;
+        self.tracks = None;
+
         loop {
             if self.seek_head.is_some() && self.info.is_some() && self.tracks.is_some() {
                 return Ok((input, ()));
