@@ -96,6 +96,8 @@ impl MkvDemuxer {
     }
 }
 
+use nom::Needed;
+
 impl Demuxer for MkvDemuxer {
     fn read_headers(&mut self, buf: &Box<Buffered>, info: &mut GlobalInfo) -> Result<SeekFrom> {
         match self.parse_until_tracks(buf.data()) {
@@ -105,8 +107,14 @@ impl Demuxer for MkvDemuxer {
                     info.streams = t.tracks.iter().map(|tr| track_to_stream(tr)).collect();
                 }
                 Ok(SeekFrom::Current(buf.data().offset(i) as i64))
-            }
-             Err(Err::Incomplete(_)) => Err(ErrorKind::MoreDataNeeded.into()),
+            },
+            Err(Err::Incomplete(needed)) => {
+                let sz = match needed {
+                    Needed::Size(size) => size,
+                    _ => 1024,
+                };
+                Err(ErrorKind::MoreDataNeeded(sz).into())
+            },
             e => {
                 println!("error reading headers: {:?}", e);
                 Err(ErrorKind::InvalidData.into())
@@ -128,22 +136,6 @@ impl Demuxer for MkvDemuxer {
                             println!("got cluster element at timecode: {}", c.timecode);
                             let mut packets = c.generate_packets();
                             self.queue.extend(packets.drain(..));
-                            /*
-                        for block in c.simple_block.iter() {
-                          println!("got simple block of size {}", block.len());
-                          if let IResult::Done(_,o) = simple_block(block) {
-                            println!("parsing simple block: {:?}", o);
-                          } else {
-                            println!("error parsing simple block");
-                          }
-                          self.blockstream.extend(*block);
-                        }
-
-                        for block_group in c.block_group.iter() {
-                          println!("got block group of size {}", block_group.block.len());
-                          self.blockstream.extend(block_group.block);
-                        }
-                        */
                             if let Some(event) = self.queue.pop_front() {
                                 return Ok((seek, event));
                             }
@@ -152,10 +144,11 @@ impl Demuxer for MkvDemuxer {
                             println!("got element: {:#?}", el);
                         }
                     }
-
-                    Ok((seek, Event::MoreDataNeeded))
-                }
-                 Err(Err::Incomplete(_)) => Ok((SeekFrom::Current(0), Event::MoreDataNeeded)),
+                    Ok((seek, Event::MoreDataNeeded(0)))
+                },
+                Err(Err::Incomplete(Needed::Size(size))) => {
+                    Err(ErrorKind::MoreDataNeeded(size).into())
+                },
                 e => {
                     println!("parsing issue: {:?}", e);
                     Err(ErrorKind::InvalidData.into())
@@ -322,7 +315,23 @@ mod tests {
         }
 
         println!("demuxer: {:#?}", demuxer);
-        panic!();
+    }
+
+    #[test]
+    fn parse_headers_incremental_buffer() {
+        let mut demuxer = MkvDemuxer::new();
+
+        for n in 100..2000 {
+            let res = demuxer.parse_until_tracks(&webm[0..n]);
+            match res {
+                Ok(_) => println!("Size {} ok", n),
+                Err(Err::Incomplete(needed)) => println!("Incomplete {} needs {:?}", n, needed),
+                Err(e) => {
+                    println!("Error at size {}", n);
+                    panic!();
+                }
+            }
+        }
     }
 
     #[test]
