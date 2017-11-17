@@ -160,11 +160,11 @@ impl Demuxer for MkvDemuxer {
     }
 }
 
-fn track_entry_codec_id(t: &TrackEntry) -> Option<CodecID> {
+fn track_entry_codec_id(t: &TrackEntry) -> Option<String> {
     // TODO: Support V_QUICKTIME and V_MS/VFW/FOURCC
     match t.codec_id.as_ref() {
-        "A_OPUS" => Some(CodecID::Opus),
-        "V_VP9" => Some(CodecID::VP9),
+        "A_OPUS" => Some("opus".to_owned()),
+        "V_VP9" => Some("vp9".to_owned()),
         _ => None,
     }
 }
@@ -194,7 +194,6 @@ fn track_entry_audio_kind(t: &TrackEntry) -> Option<MediaKind> {
         };
         // TODO: complete it
         let a = AudioInfo {
-            samples: 0,
             rate: rate as usize,
             map: None,
             format: None,
