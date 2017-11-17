@@ -104,7 +104,9 @@ impl Demuxer for MkvDemuxer {
             Ok((i, _)) => {
                 info.duration = self.info.as_ref().and_then(|info| info.duration).map(|d| d as u64);
                 if let Some(ref t) = self.tracks {
-                    info.streams = t.tracks.iter().map(|tr| track_to_stream(tr)).collect();
+                    info.streams = t.tracks.iter().map(|tr| {
+                        track_to_stream(self.info.as_ref().unwrap(), tr)
+                    }).collect();
                 }
                 Ok(SeekFrom::Current(buf.data().offset(i) as i64))
             },
@@ -212,13 +214,20 @@ fn track_entry_media_kind(t: &TrackEntry) -> Option<MediaKind> {
     }
 }
 
-pub fn track_to_stream(t: &TrackEntry) -> Stream {
+// TODO: make sure the timecode_scale isn't 0
+pub fn track_to_stream(info: &Info, t: &TrackEntry) -> Stream {
+    let num = if let Some(ts) = t.track_timecode_scale  {
+        (ts * info.timecode_scale as f64) as i64
+    } else {
+        info.timecode_scale as i64
+    };
+
     Stream {
         id: t.track_uid as usize,
         index: t.track_number as usize,
         start: None,
         duration: t.default_duration,
-        timebase: Rational64::from_integer(1),
+        timebase: Rational64::new(num, 1000 * 1000 * 1000),
         // TODO: Extend CodecParams and fill it with the remaining information
         params: CodecParams {
             extradata: t.codec_private.clone(),
