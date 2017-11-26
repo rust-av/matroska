@@ -74,27 +74,10 @@ impl EbmlSize for Info {
       + self.muxing_app.size(0x4D80) + self.writing_app.size(0x5741)
   }
 }
+
 pub fn gen_info<'a>(input: (&'a mut [u8], usize),
                          i: &Info)
                          -> Result<(&'a mut [u8], usize), GenError> {
-                           /*
-    //FIXME: probably not large enough
-    let capacity = 2 + i.segment_uid.as_ref().map(|s| s.len()).unwrap_or(0)
-      + 2 + i.segment_filename.as_ref().map(|s| s.len()).unwrap_or(0)
-      + 3 + i.prev_uid.as_ref().map(|s| s.len()).unwrap_or(0)
-      + 3 + i.prev_filename.as_ref().map(|s| s.len()).unwrap_or(0)
-      + 3 + i.next_uid.as_ref().map(|s| s.len()).unwrap_or(0)
-      + 3 + i.next_filename.as_ref().map(|s| s.len()).unwrap_or(0)
-      + 2 + i.segment_family.as_ref().map(|s| s.len()).unwrap_or(0)
-      //FIXME;
-      // chapter translate
-      + 8
-      + 8
-      + 2 + i.date_utc.as_ref().map(|s| s.len()).unwrap_or(0)
-      + 2 + i.title.as_ref().map(|s| s.len()).unwrap_or(0)
-      + 2 + i.muxing_app.len()
-      + 2 + i.writing_app.len();
-    */
     let capacity = i.capacity();
 
     let byte_capacity = vint_size(capacity as u64);
@@ -120,10 +103,16 @@ pub fn gen_info<'a>(input: (&'a mut [u8], usize),
 }
 
 
+impl EbmlSize for Tracks {
+  fn capacity(&self) -> usize {
+    self.tracks.iter().fold(0, |acc, track| acc + track.size(0xAE))
+  }
+}
+
 pub fn gen_tracks<'a>(input: (&'a mut [u8], usize),
                          t: &Tracks)
                          -> Result<(&'a mut [u8], usize), GenError> {
-    let capacity = t.tracks.iter().fold(0, |acc, track| acc + size_track_entry(track));
+    let capacity = t.capacity();
 
     let byte_capacity = vint_size(capacity as u64);
     gen_ebml_master!(input,
@@ -132,14 +121,34 @@ pub fn gen_tracks<'a>(input: (&'a mut [u8], usize),
     )
 }
 
-pub fn size_track_entry(t: &TrackEntry) -> usize {
-  0
+impl EbmlSize for TrackEntry {
+  fn capacity(&self) -> usize {
+    self.track_number.size(0xD7) + self.track_uid.size(0x73C5) + self.track_type.size(0x83)
+      + self.flag_enabled.size(0xB9) + self.flag_default.size(0x88) + self.flag_forced.size(0x55AA)
+      + self.flag_lacing.size(0x9C) + self.min_cache.size(0x6DE7) + self.max_cache.size(0x6DF8)
+      + self.default_duration.size(0x23E383) + self.default_decoded_field_duration.size(0x234E7A)
+      + self.track_timecode_scale.size(0x23314F) + self.track_offset.size(0x537F)
+      + self.max_block_addition_id.size(0x55EE) + self.name.size(0x536E)
+      + self.language.size(0x22B59C) + self.language_ietf.size(0x22B59D)
+      + self.codec_id.size(0x86) + self.codec_private.size(0x63A2)
+      + self.codec_name.size(0x258688) + self.attachment_link.size(0x7446)
+      + self.codec_settings.size(0x3A9697) + self.codec_info_url.size(0x3B4040)
+      + self.codec_download_url.size(0x26B240) + self.codec_decode_all.size(0xAA)
+      + self.track_overlay.size(0x6FAB) + self.codec_delay.size(0x56AA)
+      + self.seek_pre_roll.size(0x56BB)
+      + self.video.size(0xE0)
+      + self.audio.size(0xE1)
+      + self.trick_track_uid.size(0xC0) + self.trick_track_segment_uid.size(0xC1)
+      + self.trick_track_flag.size(0xC6) + self.trick_master_track_uid.size(0xC7)
+      + self.trick_master_track_segment_uid.size(0xC4)
+  }
 }
+
 
 pub fn gen_track_entry<'a>(input: (&'a mut [u8], usize),
                          t: &TrackEntry)
                          -> Result<(&'a mut [u8], usize), GenError> {
-    let capacity = size_track_entry(t);
+    let capacity = t.capacity();
 
     let byte_capacity = vint_size(capacity as u64);
     gen_ebml_master!(input,
@@ -185,14 +194,18 @@ pub fn gen_track_entry<'a>(input: (&'a mut [u8], usize),
     )
 }
 
-pub fn size_track_entry_audio(a: &Audio) -> usize {
-  0
+impl EbmlSize for Audio {
+  fn capacity(&self) -> usize {
+    self.sampling_frequency.size(0xB5) + self.output_sampling_frequency.size(0x78B5) +
+      self.channels.size(0x9F) + self.channel_positions.size(0x7D7B) +
+      self.bit_depth.size(0x6264)
+  }
 }
 
 pub fn gen_track_entry_audio<'a>(input: (&'a mut [u8], usize),
                          a: &Audio)
                          -> Result<(&'a mut [u8], usize), GenError> {
-    let capacity = size_track_entry_audio(a);
+    let capacity = a.capacity();
     let byte_capacity = vint_size(capacity as u64);
 
     gen_ebml_master!(input,
@@ -207,14 +220,23 @@ pub fn gen_track_entry_audio<'a>(input: (&'a mut [u8], usize),
     )
 }
 
-pub fn size_track_entry_video(v: &Video) -> usize {
-  0
+impl EbmlSize for Video {
+  fn capacity(&self) -> usize {
+    self.flag_interlaced.size(0x9A) + self.field_order.size(0x9D) + self.stereo_mode.size(0x53B8) +
+      self.alpha_mode.size(0x53C0) + self.old_stereo_mode.size(0x53B9) + self.pixel_width.size(0xB0) +
+      self.pixel_height.size(0xBA) + self.pixel_crop_bottom.size(0x54AA) + self.pixel_crop_top.size(0x54BB) +
+      self.pixel_crop_left.size(0x54CC) + self.pixel_crop_right.size(0x54DD) + self.display_width.size(0x54B0) +
+      self.display_height.size(0x54BA) + self.display_unit.size(0x54B2) + self.aspect_ratio_type.size(0x54B3) +
+      self.colour_space.size(0x2EB524) + self.gamma_value.size(0x2FB523) + self.frame_rate.size(0x2383E3) +
+      self.colour.size(0x55B0) + self.projection.size(0x7670)
+  }
 }
+
 
 pub fn gen_track_entry_video<'a>(input: (&'a mut [u8], usize),
                          v: &Video)
                          -> Result<(&'a mut [u8], usize), GenError> {
-    let capacity = size_track_entry_video(v);
+    let capacity = v.capacity();
     let byte_capacity = vint_size(capacity as u64);
 
     gen_ebml_master!(input,
@@ -244,14 +266,20 @@ pub fn gen_track_entry_video<'a>(input: (&'a mut [u8], usize),
     )
 }
 
-pub fn size_track_entry_video_colour(a: &Colour) -> usize {
-  0
+impl EbmlSize for Colour {
+  fn capacity(&self) -> usize {
+    self.matrix_coefficients.size(0x55B1) + self.bits_per_channel.size(0x55B2) + self.chroma_subsampling_horz.size(0x55B3) +
+      self.chroma_subsampling_vert.size(0x55B4) + self.cb_subsampling_horz.size(0x55B5) + self.cb_subsampling_vert.size(0x55B6) +
+      self.chroma_siting_horz.size(0x55B7) + self.chroma_siting_vert.size(0x55B8) + self.range.size(0x55B9) +
+      self.transfer_characteristics.size(0x55BA) + self.primaries.size(0x55BB) + self.max_cll.size(0x55BC) +
+      self.max_fall.size(0x55BD) + self.mastering_metadata.size(0x55D0)
+  }
 }
 
 pub fn gen_track_entry_video_colour<'a>(input: (&'a mut [u8], usize),
                          c: &Colour)
                          -> Result<(&'a mut [u8], usize), GenError> {
-    let capacity = size_track_entry_video_colour(c);
+    let capacity = c.capacity();
     let byte_capacity = vint_size(capacity as u64);
 
     gen_ebml_master!(input,
@@ -276,14 +304,20 @@ pub fn gen_track_entry_video_colour<'a>(input: (&'a mut [u8], usize),
 }
 
 
-pub fn size_track_entry_video_colour_mastering_metadata(m: &MasteringMetadata) -> usize {
-  0
+impl EbmlSize for MasteringMetadata {
+  fn capacity(&self) -> usize {
+    self.primary_r_chromaticity_x.size(0x55D1) + self.primary_r_chromaticity_y.size(0x55D2) +
+      self.primary_g_chromaticity_x.size(0x55D3) + self.primary_g_chromaticity_y.size(0x55D4) +
+      self.primary_b_chromaticity_x.size(0x55D5) + self.primary_b_chromaticity_y.size(0x55D6) +
+      self.white_point_chromaticity_x.size(0x55D7) + self.white_point_chromaticity_y.size(0x55D8) +
+      self.luminance_max.size(0x55D9) + self.luminance_min.size(0x55DA)
+  }
 }
 
 pub fn gen_track_entry_video_colour_mastering_metadata<'a>(input: (&'a mut [u8], usize),
                          m: &MasteringMetadata)
                          -> Result<(&'a mut [u8], usize), GenError> {
-    let capacity = size_track_entry_video_colour_mastering_metadata(m);
+    let capacity = m.capacity();
     let byte_capacity = vint_size(capacity as u64);
 
     gen_ebml_master!(input,
@@ -304,14 +338,19 @@ pub fn gen_track_entry_video_colour_mastering_metadata<'a>(input: (&'a mut [u8],
 }
 
 
-pub fn size_track_entry_video_projection(p: &Projection) -> usize {
-  0
+impl EbmlSize for Projection {
+  fn capacity(&self) -> usize {
+    self.projection_type.size(0x7671) + self.projection_private.size(0x7672) +
+      self.projection_pose_yaw.size(0x7673) + self.projection_pose_pitch.size(0x7674) +
+      self.projection_pose_roll.size(0x7675)
+  }
 }
+
 
 pub fn gen_track_entry_video_projection<'a>(input: (&'a mut [u8], usize),
                          p: &Projection)
                          -> Result<(&'a mut [u8], usize), GenError> {
-    let capacity = size_track_entry_video_projection(p);
+    let capacity = p.capacity();
     let byte_capacity = vint_size(capacity as u64);
 
     gen_ebml_master!(input,
