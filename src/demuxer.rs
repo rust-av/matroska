@@ -231,6 +231,8 @@ pub fn track_to_stream(info: &Info, t: &TrackEntry) -> Stream {
         params: CodecParams {
             extradata: t.codec_private.clone(),
             bit_rate: 0,
+            delay: t.codec_delay.unwrap_or(0) as usize,
+            convergence_window: t.seek_pre_roll.unwrap_or(0) as usize,
             codec_id: track_entry_codec_id(t),
             kind: track_entry_media_kind(t),
         },
