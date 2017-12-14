@@ -7,7 +7,7 @@ use av_format::stream::Stream;
 use av_format::buffer::Buffered;
 use av_format::demuxer::{Demuxer, Event};
 use av_format::demuxer::{Descr, Descriptor};
-use av_format::demuxer::GlobalInfo;
+use av_format::common::GlobalInfo;
 use std::collections::VecDeque;
 use rational::Rational64;
 
