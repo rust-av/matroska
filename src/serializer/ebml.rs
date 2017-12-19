@@ -501,6 +501,24 @@ impl EbmlSize for Vec<u8> {
   }
 }
 
+impl<'a> EbmlSize for &'a [u8] {
+  fn capacity(&self) -> usize {
+    self.len()
+  }
+}
+
+impl<'a> EbmlSize for Vec<&'a [u8]> {
+  fn capacity(&self) -> usize {
+    self.iter().fold(0, |acc, sl| acc + sl.len())
+  }
+}
+
+impl EbmlSize for Vec<u64> {
+  fn capacity(&self) -> usize {
+    self.len() * 8
+  }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

@@ -1,5 +1,6 @@
 use cookie_factory::*;
 use elements::{Info, Seek, SeekHead, SegmentElement, Cluster, Tracks, TrackEntry, Audio, Video, Colour, Projection, MasteringMetadata};
+use elements::{SilentTracks};
 use super::ebml::{vint_size, gen_vint, gen_vid, gen_uint};
 use serializer::ebml::{gen_u64,gen_f64_ref, gen_f64, EbmlSize};
 
@@ -395,31 +396,115 @@ macro_rules! my_gen_many (
     );
 );
 
+#[macro_export]
+macro_rules! my_gen_many_ref (
+    (($i:expr, $idx:expr), $l:expr, $f:ident) => (
+        $l.into_iter().fold(
+            Ok(($i,$idx)),
+            |r,v| {
+                match r {
+                    Err(e) => Err(e),
+                    Ok(x) => { $f(x, *v) },
+                }
+            }
+        )
+    );
+    (($i:expr, $idx:expr), $l:expr, $f:ident!( $($args:tt)* )) => (
+        $l.into_iter().fold(
+            Ok(($i,$idx)),
+            |r,v| {
+                match r {
+                    Err(e) => Err(e),
+                    Ok(x) => {
+                      let (i, idx) = x;
+                      $f!((i, idx), $($args)*, *v)
+                    },
+                }
+            }
+        )
+    );
+);
+
+impl<'a> EbmlSize for Cluster<'a> {
+  fn capacity(&self) -> usize {
+    self.timecode.size(0xE7) + self.silent_tracks.size(0x5854) + self.position.size(0xA7) +
+      self.prev_size.size(0xAB) + self.simple_block.size(0xA3) +
+      // TODO: implement for BlockGroup
+      // self.block_group.size(0xA0) +
+      self.encrypted_block.size(0xAF)
+  }
+}
+
 pub fn gen_cluster<'a>(input: (&'a mut [u8], usize),
                          c: &Cluster)
                          -> Result<(&'a mut [u8], usize), GenError> {
-    let capacity = 2 + 8
-      // FIXME: serialize SilentTracks
-      + 2 + 8
-      + 2 + 8
-      + 2 + c.simple_block.iter().fold(0, |acc, data| acc+ data.len())
-      // FIXME serialize BlockGRoups
-      // FIXME: serialize encrypted block
-      ;
 
-
+    let capacity = c.capacity();
     let byte_capacity = vint_size(capacity as u64);
     gen_ebml_master!(input,
       0x1F43B675, byte_capacity,
       do_gen!(
            gen_ebml_uint!(0xE7, c.timecode)
+        >> gen_opt!( c.silent_tracks, gen_call!(gen_silent_tracks) )
         >> gen_opt_copy!( c.position, gen_ebml_uint!(0xA7) )
         >> gen_opt_copy!( c.prev_size, gen_ebml_uint!(0xAB) )
         >> my_gen_many!( &c.simple_block, gen_ebml_binary!( 0xA3 ) )
+        // TODO: implement for BlockGroup
+        //>> my_gen_many!( &c.block_group, gen_block_group)
+        >> gen_opt!( c.encrypted_block, gen_ebml_binary!( 0xAF ) )
       )
     )
 }
 
+impl EbmlSize for SilentTracks {
+  fn capacity(&self) -> usize {
+    self.numbers.size(0x58D7)
+  }
+}
+
+pub fn gen_silent_tracks<'a>(input: (&'a mut [u8], usize),
+                         s: &SilentTracks)
+                         -> Result<(&'a mut [u8], usize), GenError> {
+
+    let capacity = s.capacity();
+    let byte_capacity = vint_size(capacity as u64);
+    gen_ebml_master!(input,
+      0x5854, byte_capacity,
+      do_gen!(
+        my_gen_many_ref!( &s.numbers, gen_ebml_uint!(0x58D7))
+      )
+    )
+}
+
+/*
+impl<'a> EbmlSize for BlockGroup<'a> {
+  fn capacity(&self) -> usize {
+    self.timecode.size(0xE7) + self.silent_tracks.size(0x5854) + self.position.size(0xA7) +
+      self.prev_size.size(0xAB) + self.simple_block.size(0xA3) + self.block_group.size(0xA0) +
+      self.encrypted_block.size(0xAF)
+  }
+}
+
+pub fn gen_block_group<'a>(input: (&'a mut [u8], usize),
+                         b: &Blockgroup)
+                         -> Result<(&'a mut [u8], usize), GenError> {
+
+    let capacity = c.capacity();
+    let byte_capacity = vint_size(capacity as u64);
+    gen_ebml_master!(input,
+      0x1F43B675, byte_capacity,
+      do_gen!(
+           gen_ebml_uint!(0xE7, c.timecode)
+        >> gen_opt!( c.silent_tracks, gen_call!(gen_silent_tracks) )
+        >> gen_opt_copy!( c.position, gen_ebml_uint!(0xA7) )
+        >> gen_opt_copy!( c.prev_size, gen_ebml_uint!(0xAB) )
+        >> my_gen_many!( &c.simple_block, gen_ebml_binary!( 0xA3 ) )
+        >> my_gen_many!( &c.block_group, gen_block_group)
+        >> gen_opt!( &c.encrypted_block, gen_ebml_binary!( 0xAF ) )
+      )
+    )
+}
+*/
 
 #[cfg(test)]
 mod tests {

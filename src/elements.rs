@@ -210,7 +210,7 @@ named!(pub cluster<SegmentElement>,
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct SilentTracks {
-    numbers: Vec<u64>,
+    pub numbers: Vec<u64>,
 }
 
 //https://datatracker.ietf.org/doc/html/draft-lhomme-cellar-matroska-03#section-7.3.16
