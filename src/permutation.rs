@@ -227,7 +227,7 @@ macro_rules! permutation_opt_unwrap (
     permutation_opt_unwrap!($it, ($($parsed),* ), $res, call!($e)+, $($rest)*);
   );
   ($it:tt, ($($parsed:expr),*), $res:ident, $e:ident?, $($rest:tt)*) => (
-    succ!($it, permutation_opt_unwrap!(($($parsed),* , acc!($it, $res)), $res, $($rest)*));
+    permutation_opt_unwrap!($it, ($($parsed),* ), $res, call!($e)?, $($rest)*);
   );
   ($it:tt, ($($parsed:expr),*), $res:ident, $e:ident, $($rest:tt)*) => ({
     let res = acc!($it, $res);
