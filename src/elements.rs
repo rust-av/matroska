@@ -415,9 +415,9 @@ pub struct TrackEntry {
     pub trick_master_track_segment_uid: Option<Vec<u8>>,
     pub video: Option<Video>,
     pub audio: Option<Audio>,
-    //FIXME: missing TrackTranslate
-    //FIXME: missing TrackOperation
-    //FIXME: missing ContentEncodings
+    pub track_translate: Vec<TrackTranslate>,
+    pub track_operation: Option<TrackOperation>,
+    pub content_encodings: Option<ContentEncodings>,
 }
 
 named!(pub track_entry<TrackEntry>,
@@ -452,21 +452,16 @@ named!(pub track_entry<TrackEntry>,
         ebml_uint!(0x6FAB)?,
         ebml_uint!(0x56AA)?,
         ebml_uint!(0x56BB)?,
-        //TODO: TrackTranslate
-        ebml_master!(0x6624, value!(()))?,
-        //TODO: video
+        track_translate+,
         video?,
-        //TODO: Audio
         audio?,
-        //TODO: TrackOperation
-        ebml_master!(0xE2, value!(()))?,
+        track_operation?,
         ebml_uint!(0xC0)?,
         ebml_binary!(0xC1)?,
         ebml_uint!(0xC6)?,
         ebml_uint!(0xC7)?,
         ebml_binary!(0xC4)?,
-        //TODO: ContentEncodings
-        ebml_master!(0x6D80, value!(()))?
+        content_encodings?
       ) >> (TrackEntry {
         track_number: t.0,
         track_uid: t.1,
@@ -496,16 +491,188 @@ named!(pub track_entry<TrackEntry>,
         track_overlay: t.25,
         codec_delay: t.26,
         seek_pre_roll: t.27,
-        //track_translate: t.28,
+        track_translate: t.28,
         video: t.29,
         audio: t.30,
-        //track_operation: t.31,
+        track_operation: t.31,
         trick_track_uid: t.32,
         trick_track_segment_uid: t.33,
         trick_track_flag: t.34,
         trick_master_track_uid: t.35,
         trick_master_track_segment_uid: t.36,
-        //content_encodings: t.37
+        content_encodings: t.37
+      })
+    )
+  )
+);
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct TrackTranslate {
+  pub edition_uid: Vec<u64>,
+  pub codec: u64,
+  pub track_id: u64,
+
+}
+
+named!(pub track_translate<TrackTranslate>,
+  ebml_master!(0x6624,
+    do_parse!(
+      t: permutation_opt!(
+        ebml_uint!(0x66FC)+,
+        ebml_uint!(0x66BF),
+        ebml_uint!(0x66A5)
+      ) >> (TrackTranslate {
+        edition_uid: t.0,
+        codec: t.1,
+        track_id: t.2,
+      })
+    )
+  )
+);
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct TrackOperation {
+  pub combine_planes: Option<TrackCombinePlanes>,
+  pub join_blocks:    Option<TrackJoinBlocks>,
+}
+
+named!(pub track_operation<TrackOperation>,
+  ebml_master!(0xE2,
+    do_parse!(
+      t: permutation_opt!(
+        track_combine_planes?,
+        track_join_blocks?
+      ) >> (TrackOperation {
+        combine_planes: t.0,
+        join_blocks:    t.1,
+      })
+    )
+  )
+);
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct TrackCombinePlanes {
+  pub track_planes: Vec<TrackPlane>,
+}
+
+named!(pub track_combine_planes<TrackCombinePlanes>,
+  ebml_master!(0xE3, map!(many1!(track_plane), |v| TrackCombinePlanes { track_planes: v }))
+);
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct TrackPlane {
+  pub uid: u64,
+  pub plane_type: u64,
+}
+
+named!(pub track_plane<TrackPlane>,
+  ebml_master!(0xE4,
+    do_parse!(
+      t: permutation_opt!(
+        ebml_uint!(0xE5),
+        ebml_uint!(0xE6)
+      ) >> (TrackPlane {
+        uid:        t.0,
+        plane_type: t.1,
+      })
+    )
+  )
+);
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct TrackJoinBlocks {
+  pub uid: Vec<u64>,
+}
+
+named!(pub track_join_blocks<TrackJoinBlocks>,
+  ebml_master!(0xE9, map!(many1!(ebml_uint!(0xED)), |v| TrackJoinBlocks { uid: v }))
+);
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct ContentEncodings {
+  pub content_encoding: Vec<ContentEncoding>,
+}
+
+named!(pub content_encodings<ContentEncodings>,
+  ebml_master!(0x6D80, map!(many1!(content_encoding), |v| ContentEncodings { content_encoding: v }))
+);
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct ContentEncoding {
+  order: u64,
+  scope: u64,
+  encoding_type: u64,
+  compression: Option<ContentCompression>,
+  encryption: Option<ContentEncryption>,
+}
+
+named!(pub content_encoding<ContentEncoding>,
+  ebml_master!(0x6240,
+    do_parse!(
+      t: permutation_opt!(
+        ebml_uint!(0x5031),
+        ebml_uint!(0x5032),
+        ebml_uint!(0x5033),
+        content_compression?,
+        content_encryption?
+      ) >> (ContentEncoding {
+        order:         t.0,
+        scope:         t.1,
+        encoding_type: t.2,
+        compression:   t.3,
+        encryption:    t.4
+      })
+    )
+  )
+);
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct ContentCompression {
+  algo: u64,
+  settings: Option<u64>,
+}
+
+named!(pub content_compression<ContentCompression>,
+  ebml_master!(0x5034,
+    do_parse!(
+      t: permutation_opt!(
+        ebml_uint!(0x4254),
+        ebml_uint!(0x4255)?
+      ) >> (ContentCompression {
+        algo:     t.0,
+        settings: t.1,
+      })
+    )
+  )
+);
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct ContentEncryption {
+  enc_algo: Option<u64>,
+  enc_key_id: Option<Vec<u8>>,
+  signature: Option<Vec<u8>>,
+  sig_key_id: Option<Vec<u8>>,
+  sig_algo: Option<u64>,
+  sig_hash_algo: Option<u64>,
+}
+
+named!(pub content_encryption<ContentEncryption>,
+  ebml_master!(0x5035,
+    do_parse!(
+      t: permutation_opt!(
+        ebml_uint!(0x47E1)?,
+        ebml_binary!(0x47E2)?,
+        ebml_binary!(0x47E3)?,
+        ebml_binary!(0x47E4)?,
+        ebml_uint!(0x47E5)?,
+        ebml_uint!(0x47E6)?
+      ) >> (ContentEncryption {
+        enc_algo:      t.0,
+        enc_key_id:    t.1,
+        signature:     t.2,
+        sig_key_id:    t.3,
+        sig_algo:      t.4,
+        sig_hash_algo: t.5,
       })
     )
   )
