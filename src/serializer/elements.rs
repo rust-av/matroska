@@ -494,7 +494,7 @@ pub fn gen_simple_block_header<'a>(input: (&'a mut [u8], usize),
   }
 
   flags |= match s.lacing {
-    Lacing::None => 0u8,
+    Lacing::None      => 0u8,
     Lacing::Xiph      => 0b00100000u8,
     Lacing::FixedSize => 0b01000000u8,
     Lacing::EBML      => 0b01100000u8,
@@ -509,6 +509,46 @@ pub fn gen_simple_block_header<'a>(input: (&'a mut [u8], usize),
     gen_be_i16!(s.timecode) >>
     gen_be_u8!(flags)
   )
+}
+pub fn gen_laced_frames<'a>(input: (&'a mut [u8], usize),
+                            lacing: Lacing,
+                            frames: &[&[u8]])
+                            -> Result<(&'a mut [u8], usize), GenError> {
+  match lacing {
+    Lacing::None      => Err(GenError::InvalidData),
+    Lacing::Xiph      => gen_xiph_laced_frames(input, frames),
+    Lacing::EBML      => gen_ebml_laced_frames(input, frames),
+    Lacing::FixedSize => gen_fixed_size_laced_frames(input, frames),
+  }
+}
+
+pub fn gen_xiph_laced_frames<'a>(input: (&'a mut [u8], usize),
+                            frames: &[&[u8]])
+                            -> Result<(&'a mut [u8], usize), GenError> {
+  if frames.len() == 0 {
+    return Err(GenError::InvalidData);
+  }
+
+  /*
+  let sizes: Vec<usize> = frames.iter().map(|frame| frame.len()).collect();
+  do_gen!(input,
+    gen_be_u8!((frames.len() - 1) as u8) >>
+
+  )
+  */
+  Err(GenError::NotYetImplemented)
+}
+
+pub fn gen_ebml_laced_frames<'a>(input: (&'a mut [u8], usize),
+                            frames: &[&[u8]])
+                            -> Result<(&'a mut [u8], usize), GenError> {
+  Err(GenError::NotYetImplemented)
+}
+
+pub fn gen_fixed_size_laced_frames<'a>(input: (&'a mut [u8], usize),
+                            frames: &[&[u8]])
+                            -> Result<(&'a mut [u8], usize), GenError> {
+  Err(GenError::NotYetImplemented)
 }
 
 /*
