@@ -1,8 +1,10 @@
 use cookie_factory::*;
-use elements::{Info, Seek, SeekHead, SegmentElement, Cluster, Tracks, TrackEntry, Audio, Video, Colour, Projection, MasteringMetadata};
+use elements::{Info, Seek, SeekHead, SegmentElement, Cluster, Tracks,
+  TrackEntry, Audio, Video, Colour, Projection, MasteringMetadata,
+  SimpleBlock, Lacing};
 use elements::{SilentTracks};
 use super::ebml::{vint_size, gen_vint, gen_vid, gen_uint};
-use serializer::ebml::{gen_u64,gen_f64_ref, gen_f64, EbmlSize};
+use serializer::ebml::{gen_u64, gen_f64_ref, gen_f64, EbmlSize};
 
 
 pub fn seek_size(s: &Seek) -> u8 {
@@ -474,6 +476,39 @@ pub fn gen_silent_tracks<'a>(input: (&'a mut [u8], usize),
         my_gen_many_ref!( &s.numbers, gen_ebml_uint!(0x58D7))
       )
     )
+}
+
+pub fn gen_simple_block_header<'a>(input: (&'a mut [u8], usize),
+                                   s: &SimpleBlock)
+                                   -> Result<(&'a mut [u8], usize), GenError> {
+
+
+  let mut flags = 0u8;
+
+  if s.keyframe {
+    flags |= 0b0001u8;
+  }
+
+  if s.invisible {
+    flags |= 0b00010000u8;
+  }
+
+  flags |= match s.lacing {
+    Lacing::None => 0u8,
+    Lacing::Xiph      => 0b00100000u8,
+    Lacing::FixedSize => 0b01000000u8,
+    Lacing::EBML      => 0b01100000u8,
+  };
+
+  if s.discardable {
+    flags |= 0b10000000u8;
+  }
+
+  do_gen!(input,
+    gen_call!(gen_vint, s.track_number) >>
+    gen_be_i16!(s.timecode) >>
+    gen_be_u8!(flags)
+  )
 }
 
 /*
