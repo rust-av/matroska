@@ -38,11 +38,11 @@ impl Muxer for MkvMuxer {
 
       let offset: usize = match gen_ebml_header((buf, 0), &self.header) {
         Err(GenError::BufferTooSmall(sz)) => {
-          return Err(ErrorKind::MoreDataNeeded(sz).into());
+          return Err(Error::MoreDataNeeded(sz));
         },
         Err(e) => {
           println!("muxing error: {:?}", e);
-          return Err(ErrorKind::InvalidData.into());
+          return Err(Error::InvalidData);
         },
         Ok((sl, sz)) => {
           sl.as_ptr() as usize + sz - origin
