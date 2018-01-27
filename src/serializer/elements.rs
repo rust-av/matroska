@@ -515,7 +515,7 @@ pub fn gen_laced_frames<'a>(input: (&'a mut [u8], usize),
                             frames: &[&[u8]])
                             -> Result<(&'a mut [u8], usize), GenError> {
   match lacing {
-    Lacing::None      => Err(GenError::InvalidData),
+    Lacing::None      => Err(GenError::NotYetImplemented),
     Lacing::Xiph      => gen_xiph_laced_frames(input, frames),
     Lacing::EBML      => gen_ebml_laced_frames(input, frames),
     Lacing::FixedSize => gen_fixed_size_laced_frames(input, frames),
@@ -526,7 +526,7 @@ pub fn gen_xiph_laced_frames<'a>(input: (&'a mut [u8], usize),
                             frames: &[&[u8]])
                             -> Result<(&'a mut [u8], usize), GenError> {
   if frames.len() == 0 {
-    return Err(GenError::InvalidData);
+    return Err(GenError::NotYetImplemented);
   }
 
   /*
