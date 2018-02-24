@@ -54,13 +54,13 @@ impl MkvDemuxer {
                 return Ok((input, ()));
             }
 
-            println!("offset: {}", original_input.offset(input));
+            // println!("offset: {}", original_input.offset(input));
 
             let (i3, element) = try_parse!(input, segment_element);
 
             match element {
                 SegmentElement::SeekHead(s) => {
-                    println!("got seek head: {:#?}", s);
+                    // println!("got seek head: {:#?}", s);
                     if self.seek_head.is_some() {
                         return Err(Err::Error(error_position!(nom::ErrorKind::Custom(1), input)));
                     } else {
@@ -68,7 +68,7 @@ impl MkvDemuxer {
                     }
                 }
                 SegmentElement::Info(i) => {
-                    println!("got info: {:#?}", i);
+                    // println!("got info: {:#?}", i);
                     if self.info.is_some() {
                         return Err(Err::Error(error_position!(nom::ErrorKind::Custom(1), input)));
                     } else {
@@ -76,7 +76,7 @@ impl MkvDemuxer {
                     }
                 }
                 SegmentElement::Tracks(t) => {
-                    println!("got tracks: {:#?}", t);
+                    // println!("got tracks: {:#?}", t);
                     if self.tracks.is_some() {
                         return Err(Err::Error(error_position!(nom::ErrorKind::Custom(1), input)));
                     } else {
@@ -84,11 +84,11 @@ impl MkvDemuxer {
                     }
                 }
                 SegmentElement::Cluster(c) => {
-                    println!("got a cluster: {:#?}", c);
+                    // println!("got a cluster: {:#?}", c);
                     //self.clusters.push(c);
                 }
                 el => {
-                    println!("got element: {:#?}", el);
+                    // println!("got element: {:#?}", el);
                 }
             }
 
@@ -119,7 +119,7 @@ impl Demuxer for MkvDemuxer {
                 Err(Error::MoreDataNeeded(sz))
             },
             e => {
-                println!("error reading headers: {:?}", e);
+                // println!("error reading headers: {:?}", e);
                 Err(Error::InvalidData)
             }
         }
@@ -129,14 +129,14 @@ impl Demuxer for MkvDemuxer {
         if let Some(event) = self.queue.pop_front() {
             Ok((SeekFrom::Current(0), event))
         } else {
-            println!("no more stored packet, parsing a new one");
+            // println!("no more stored packet, parsing a new one");
             match segment_element(buf.data()) {
                 Ok((i, element)) => {
                     let seek = SeekFrom::Current(buf.data().offset(i) as i64);
                     match element {
                         SegmentElement::Cluster(c) => {
                             //self.clusters.push(c);
-                            println!("got cluster element at timecode: {}", c.timecode);
+                            // println!("got cluster element at timecode: {}", c.timecode);
                             let mut packets = c.generate_packets();
                             self.queue.extend(packets.drain(..));
                             if let Some(event) = self.queue.pop_front() {
@@ -144,7 +144,7 @@ impl Demuxer for MkvDemuxer {
                             }
                         }
                         el => {
-                            println!("got element: {:#?}", el);
+                            // println!("got element: {:#?}", el);
                         }
                     }
                     Ok((seek, Event::MoreDataNeeded(0)))
