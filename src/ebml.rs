@@ -390,8 +390,7 @@ mod tests {
     fn mkv_header() {
         println!("{}", single_stream[..8].to_hex(8));
         println!("{:b} {:b}", single_stream[0], single_stream[1]);
-        println!("{:?}", ebml_header(&single_stream[..100]));
-        panic!();
+        println!("{:?}", ebml_header(&single_stream[..100]).unwrap());
     }
 
     #[test]
@@ -402,7 +401,8 @@ mod tests {
 
         if let Ok((i, _)) = res {
             println!("offset: {} bytes", webm.offset(i));
+        } else {
+          panic!();
         }
-        panic!();
     }
 }

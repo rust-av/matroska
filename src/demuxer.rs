@@ -338,8 +338,7 @@ mod tests {
                 Ok(_) => println!("Size {} ok", n),
                 Err(Err::Incomplete(needed)) => println!("Incomplete {} needs {:?}", n, needed),
                 Err(e) => {
-                    println!("Error at size {}", n);
-                    panic!();
+                    panic!("Error at size {}", n);
                 }
             }
         }
@@ -349,16 +348,15 @@ mod tests {
     fn context() {
         let mut context = Context::new(Box::new(MkvDemuxer::new()),
                                        Box::new(AccReader::new(Cursor::new(webm))));
-        println!("DEMUXER CONTEXT read headers: {:?}", context.read_headers());
+        println!("DEMUXER CONTEXT read headers: {:?}", context.read_headers().unwrap());
         println!("DEMUXER CONTEXT streams: {:?}", context.info.streams);
-        println!("DEMUXER CONTEXT event: {:?}", context.read_event());
-        println!("DEMUXER CONTEXT event: {:?}", context.read_event());
-        println!("DEMUXER CONTEXT event: {:?}", context.read_event());
-        println!("DEMUXER CONTEXT event: {:?}", context.read_event());
-        println!("DEMUXER CONTEXT event: {:?}", context.read_event());
-        println!("DEMUXER CONTEXT event: {:?}", context.read_event());
-        println!("DEMUXER CONTEXT event: {:?}", context.read_event());
-        println!("DEMUXER CONTEXT event: {:?}", context.read_event());
-        panic!();
+        println!("DEMUXER CONTEXT event: {:?}", context.read_event().unwrap());
+        println!("DEMUXER CONTEXT event: {:?}", context.read_event().unwrap());
+        println!("DEMUXER CONTEXT event: {:?}", context.read_event().unwrap());
+        println!("DEMUXER CONTEXT event: {:?}", context.read_event().unwrap());
+        println!("DEMUXER CONTEXT event: {:?}", context.read_event().unwrap());
+        println!("DEMUXER CONTEXT event: {:?}", context.read_event().unwrap());
+        println!("DEMUXER CONTEXT event: {:?}", context.read_event().unwrap());
+        println!("DEMUXER CONTEXT event: {:?}", context.read_event().unwrap());
     }
 }

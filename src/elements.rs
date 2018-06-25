@@ -947,9 +947,9 @@ mod tests {
 
         if let Ok((i, _)) = res {
             println!("consumed {} bytes after header", (&mkv[47..]).offset(i));
+        } else {
+            panic!("res: {:?}", res);
         }
-
-        panic!();
     }
 
     #[test]
@@ -992,7 +992,7 @@ mod tests {
             }
         }
 
-        panic!();
+        //panic!();
     }
 
     #[test]
@@ -1002,9 +1002,9 @@ mod tests {
 
         if let Ok((i, _)) = res {
             println!("consumed {} bytes after header", (&webm[40..]).offset(i));
+        } else {
+            panic!("res: {:?}", res);
         }
-
-        panic!();
     }
 
     #[test]
@@ -1047,6 +1047,5 @@ mod tests {
             }
         }
 
-        panic!();
     }
 }

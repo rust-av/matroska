@@ -465,7 +465,7 @@ mod tests {
         assert_eq!(perm(d), Err(Err::Error(error_position!(ErrorKind::Permutation, &b"xyzabcdefghi"[..]))));
 
         let e = &b"efgabc"[..];
-        assert_eq!(perm(e), Err(Err::Incomplete(Needed::Size(7))));
+        assert_eq!(perm(e), Err(Err::Incomplete(Needed::Size(4))));
     }
 
     #[test]
