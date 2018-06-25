@@ -126,11 +126,11 @@ impl Demuxer for MkvDemuxer {
                     Needed::Size(size) => size,
                     _ => 1024,
                 };
-                Err(ErrorKind::MoreDataNeeded(sz).into())
+                Err(Error::MoreDataNeeded(sz).into())
             },
             e => {
                 println!("error reading headers: {:?}", e);
-                Err(ErrorKind::InvalidData.into())
+                Err(Error::InvalidData.into())
             }
         }
     }
@@ -160,11 +160,11 @@ impl Demuxer for MkvDemuxer {
                     Ok((seek, Event::MoreDataNeeded(0)))
                 },
                 Err(Err::Incomplete(Needed::Size(size))) => {
-                    Err(ErrorKind::MoreDataNeeded(size).into())
+                    Err(Error::MoreDataNeeded(size).into())
                 },
                 e => {
                     println!("parsing issue: {:?}", e);
-                    Err(ErrorKind::InvalidData.into())
+                    Err(Error::InvalidData.into())
                 }
             }
         }
