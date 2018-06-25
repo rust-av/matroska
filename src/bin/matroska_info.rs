@@ -237,9 +237,9 @@ fn run(filename: &str) -> std::io::Result<()> {
                 SegmentElement::SeekHead(_) | SegmentElement::Info(_) | SegmentElement::Tracks(_) => {
                   panic!("unexpected seek head, info or tracks element");
                 },
-                SegmentElement::Cluster(_) => {
+                SegmentElement::Cluster(c) => {
                   println!("|+ Cluster");
-                  //eprintln!("got a cluster: {:#?}", c);
+                  eprintln!("got a cluster: {:#?}", c);
                 },
                 SegmentElement::Void => {
                   println!("|+ EbmlVoid");

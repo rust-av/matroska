@@ -14,6 +14,10 @@ path = "src/lib.rs"
 name = "matroska_info"
 path = "src/bin/matroska_info.rs"
 
+[[bin]]
+name = "matroska_remux"
+path = "src/bin/matroska_remux.rs"
+
 [dependencies]
 nom = { git = "https://github.com/Geal/nom", branch="result" }
 cookie-factory = "^0.2"
