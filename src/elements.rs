@@ -378,7 +378,7 @@ named!(pub tracks<SegmentElement>,
   map!(many1!(eat_void!(track_entry)), |v| SegmentElement::Tracks(Tracks { tracks: v }))
 );
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq,Default)]
 pub struct TrackEntry {
     pub track_number: u64,
     pub track_uid: u64,
@@ -678,7 +678,7 @@ named!(pub content_encryption<ContentEncryption>,
   )
 );
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq,Default)]
 pub struct Audio {
     pub sampling_frequency: f64,
     pub output_sampling_frequency: Option<f64>,
@@ -707,7 +707,7 @@ named!(pub audio<Audio>,
   )
 );
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq,Default)]
 pub struct Video {
     pub flag_interlaced: u64,
     pub field_order: u64,
