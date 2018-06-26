@@ -285,7 +285,7 @@ macro_rules! gen_ebml_uint (
     do_gen!(($i, $idx),
                   gen_call!(gen_vid, $id)
       >> ofs_len: gen_skip!($expected_size as usize)
-      >> start:   gen_dbg!(gen_call!(gen_uint, $num))
+      >> start:   gen_call!(gen_uint, $num)
       >> end:     gen_at_offset!(ofs_len, gen_ebml_size!($expected_size, (end-start) as u64))
     )
   );
@@ -302,7 +302,7 @@ macro_rules! gen_ebml_int (
     do_gen!(($i, $idx),
                   gen_call!(gen_vid, $id)
       >> ofs_len: gen_skip!($expected_size as usize)
-      >> start:   gen_dbg!(gen_call!(gen_int, $num))
+      >> start:   gen_call!(gen_int, $num)
       >> end:     gen_at_offset!(ofs_len, gen_ebml_size!($expected_size, (end-start) as u64))
     )
   });
@@ -417,7 +417,7 @@ pub fn gen_ebml_header<'a>(input: (&'a mut [u8], usize),
                            -> Result<(&'a mut [u8], usize), GenError> {
     gen_ebml_master!(input,
     0x1A45DFA3, 1,
-       gen_dbg!(gen_ebml_uint!(0x4286, h.version, 1))
+       gen_ebml_uint!(0x4286, h.version, 1)
     >> gen_ebml_uint!(0x42F7, h.read_version, 1)
     >> gen_ebml_uint!(0x42F2, h.max_id_length, 1)
     >> gen_ebml_uint!(0x42F3, h.max_size_length, 1)
