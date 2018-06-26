@@ -107,7 +107,7 @@ named!(pub seek<Seek>,
   )
 );
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq,Default)]
 pub struct Info {
     pub segment_uid: Option<Vec<u8>>,
     pub segment_filename: Option<String>,

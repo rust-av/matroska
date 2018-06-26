@@ -22,6 +22,13 @@ pub fn gen_segment<'a>(input: (&'a mut [u8], usize),
     gen_call!(gen_vint, 4)
   )*/
 }
+pub fn gen_segment_header<'a>(input: (&'a mut [u8], usize), size: u64)
+                       -> Result<(&'a mut [u8], usize), GenError> {
+  do_gen!(input,
+    gen_call!(gen_vid, 0x18538067) >>
+    gen_call!(gen_vint, size)
+  )
+}
 
 impl EbmlSize for Seek {
   fn capacity(&self) -> usize {

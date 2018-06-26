@@ -9,22 +9,185 @@ use av_data::packet::Packet;
 use ebml::EBMLHeader;
 use elements::{SeekHead,Info,Tracks,Cluster};
 use serializer::ebml::gen_ebml_header;
-use serializer::elements::{gen_seek_head, gen_info, gen_tracks};
+use serializer::elements::{gen_segment_header, gen_seek_head, gen_info, gen_tracks};
 use cookie_factory::GenError;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct MkvMuxer {
   header:    EBMLHeader,
   seek_head: SeekHead,
-  info:      Info,
-  tracks:    Tracks,
+  info:      Option<Info>,
+  tracks:    Option<Tracks>,
 }
 
 impl MkvMuxer {
-  pub fn new(header: EBMLHeader, seek_head: SeekHead, info: Info, tracks: Tracks) -> MkvMuxer {
+  pub fn Matroska() -> MkvMuxer {
     MkvMuxer {
-      header, seek_head, info, tracks
+      header: EBMLHeader {
+        version: 1,
+        read_version: 1,
+        max_id_length: 4,
+        max_size_length: 8,
+        doc_type: String::from("matroska"),
+        doc_type_version: 4,
+        doc_type_read_version: 2,
+      },
+      seek_head: SeekHead {
+        positions: Vec::new()
+      },
+      info: None,
+      tracks: None
     }
+  }
+
+  pub fn Webm() -> MkvMuxer {
+    MkvMuxer {
+      header: EBMLHeader {
+        version: 1,
+        read_version: 1,
+        max_id_length: 4,
+        max_size_length: 8,
+        doc_type: String::from("webm"),
+        doc_type_version: 1,
+        doc_type_read_version: 1,
+      },
+      seek_head: SeekHead {
+        positions: Vec::new()
+      },
+      info: None,
+      tracks: None
+    }
+  }
+
+  pub fn write_ebml_header(&mut self, buf: &mut Vec<u8>) -> Result<()> {
+      let mut origin = (&buf).as_ptr() as usize;
+
+      let mut needed = 0usize;
+      let mut offset = 0usize;
+      loop {
+        if needed > 0 {
+          let len = needed + buf.len();
+          buf.resize(len, 0);
+          needed = 0;
+          origin = (&buf).as_ptr() as usize;
+        }
+
+        match gen_ebml_header((buf, 0), &self.header) {
+          Err(GenError::BufferTooSmall(sz)) => {
+            needed = sz;
+          },
+          Err(e) => {
+            println!("muxing error: {:?}", e);
+            return Err(Error::InvalidData);
+          },
+          Ok((sl, sz)) => {
+            offset = sl.as_ptr() as usize + sz - origin;
+            break;
+          }
+        };
+      }
+      buf.truncate(offset);
+
+      Ok(())
+  }
+
+  pub fn write_segment_header(&mut self, buf: &mut Vec<u8>, size: usize) -> Result<()> {
+      let mut origin = (&buf).as_ptr() as usize;
+
+      let mut needed = 0usize;
+      let mut offset = 0usize;
+      loop {
+        if needed > 0 {
+          let len = needed + buf.len();
+          buf.resize(len, 0);
+          needed = 0;
+          origin = (&buf).as_ptr() as usize;
+        }
+
+        match gen_segment_header((buf, 0), size as u64) {
+          Err(GenError::BufferTooSmall(sz)) => {
+            needed = sz;
+          },
+          Err(e) => {
+            println!("muxing error: {:?}", e);
+            return Err(Error::InvalidData);
+          },
+          Ok((sl, sz)) => {
+            offset = sl.as_ptr() as usize + sz - origin;
+            break;
+          }
+        };
+      }
+      buf.truncate(offset);
+
+      Ok(())
+  }
+
+  pub fn write_seek_head(&mut self, buf: &mut Vec<u8>) -> Result<()> {
+      let mut origin = (&buf).as_ptr() as usize;
+
+      let mut needed = 0usize;
+      let mut offset = 0usize;
+      loop {
+        if needed > 0 {
+          let len = needed + buf.len();
+          buf.resize(len, 0);
+          needed = 0;
+          origin = (&buf).as_ptr() as usize;
+        }
+
+        match gen_seek_head((buf, 0), &self.seek_head) {
+          Err(GenError::BufferTooSmall(sz)) => {
+            needed = sz;
+          },
+          Err(e) => {
+            println!("muxing error: {:?}", e);
+            return Err(Error::InvalidData);
+          },
+          Ok((sl, sz)) => {
+            offset = sl.as_ptr() as usize + sz - origin;
+            break;
+          }
+        };
+      }
+      buf.truncate(offset);
+
+      Ok(())
+  }
+
+  pub fn write_info(&mut self, buf: &mut Vec<u8>) -> Result<()> {
+    if let Some(ref info) = self.info.as_ref() {
+
+      let mut origin = (&buf).as_ptr() as usize;
+      let mut needed = 0usize;
+      let mut offset = 0usize;
+      loop {
+        if needed > 0 {
+          let len = needed + buf.len();
+          buf.resize(len, 0);
+          needed = 0;
+          origin = (&buf).as_ptr() as usize;
+        }
+
+        match gen_info((buf, 0), info) {
+          Err(GenError::BufferTooSmall(sz)) => {
+            needed = sz;
+          },
+          Err(e) => {
+            println!("muxing error: {:?}", e);
+            return Err(Error::InvalidData);
+          },
+          Ok((sl, sz)) => {
+            offset = sl.as_ptr() as usize + sz - origin;
+            break;
+          }
+        };
+      }
+      println!("info: offset {:?}", offset);
+      buf.truncate(offset);
+    }
+    Ok(())
+
   }
 }
 
@@ -34,22 +197,22 @@ impl Muxer for MkvMuxer {
     }
 
     fn write_header(&mut self, buf: &mut Vec<u8>) -> Result<()> {
-      let origin = (&buf).as_ptr() as usize;
+      let mut ebml_header = Vec::new();
+      self.write_ebml_header(&mut ebml_header)?;
+      let mut seek_head = Vec::new();
+      self.write_seek_head(&mut seek_head)?;
+      let mut info = Vec::new();
+      self.write_info(&mut info)?;
 
-      let offset: usize = match gen_ebml_header((buf, 0), &self.header) {
-        Err(GenError::BufferTooSmall(sz)) => {
-          return Err(Error::MoreDataNeeded(sz));
-        },
-        Err(e) => {
-          println!("muxing error: {:?}", e);
-          return Err(Error::InvalidData);
-        },
-        Ok((sl, sz)) => {
-          sl.as_ptr() as usize + sz - origin
-        }
-      };
+      let size = ebml_header.len() + seek_head.len() + info.len();
+      let mut segment_header = Vec::new();
+      self.write_segment_header(&mut segment_header, size)?;
 
-      buf.truncate(offset);
+      buf.extend_from_slice(&ebml_header);
+      buf.extend_from_slice(&segment_header);
+      buf.extend_from_slice(&seek_head);
+      buf.extend_from_slice(&info);
+
       Ok(())
     }
 
@@ -74,6 +237,14 @@ impl Muxer for MkvMuxer {
     }
 
     fn set_global_info(&mut self, info: GlobalInfo) -> Result<()> {
+      let info = Info {
+        muxing_app: String::from("rust-av"),
+        writing_app: String::from("rust-av"),
+        duration: info.duration.map(|d| d as f64),
+        ..Default::default()
+      };
+
+      self.info = Some(info);
       Ok(())
     }
 
