@@ -281,34 +281,39 @@ macro_rules! gen_ebml_master (
 
 #[macro_export]
 macro_rules! gen_ebml_uint (
-  (($i:expr, $idx:expr), $id:expr, $num:expr, $expected_size:expr) => (
+  (($i:expr, $idx:expr), $id:expr, $num:expr, $expected_size:expr) => ({
+    let needed_bytes = vint_size($expected_size as u64);
+
     do_gen!(($i, $idx),
                   gen_call!(gen_vid, $id)
-      >> ofs_len: gen_skip!($expected_size as usize)
+      >> ofs_len: gen_skip!(needed_bytes as usize)
       >> start:   gen_call!(gen_uint, $num)
-      >> end:     gen_at_offset!(ofs_len, gen_ebml_size!($expected_size, (end-start) as u64))
+      >> end:     gen_at_offset!(ofs_len, gen_dbg!(gen_ebml_size!($expected_size, (end-start) as u64)))
     )
-  );
-  (($i:expr, $idx:expr), $id:expr, $num:expr) => (
-    gen_ebml_uint!(($i, $idx), $id, $num, 8)
-  );
+  });
+  (($i:expr, $idx:expr), $id:expr, $num:expr) => ({
+    let v = vint_size($num);
+    gen_ebml_uint!(($i, $idx), $id, $num, v)
+  });
 );
 
 #[macro_export]
 macro_rules! gen_ebml_int (
   (($i:expr, $idx:expr), $id:expr, $num:expr, $expected_size:expr) => ({
     use serializer::ebml::gen_int;
+    let needed_bytes = vint_size($expected_size as u64);
 
     do_gen!(($i, $idx),
                   gen_call!(gen_vid, $id)
-      >> ofs_len: gen_skip!($expected_size as usize)
+      >> ofs_len: gen_skip!(needed_bytes as usize)
       >> start:   gen_call!(gen_int, $num)
       >> end:     gen_at_offset!(ofs_len, gen_ebml_size!($expected_size, (end-start) as u64))
     )
   });
-  (($i:expr, $idx:expr), $id:expr, $num:expr) => (
-    gen_ebml_int!(($i, $idx), $id, $num, 8)
-  );
+  (($i:expr, $idx:expr), $id:expr, $num:expr) => ({
+    let v = vint_size($num as u64);
+    gen_ebml_int!(($i, $idx), $id, $num, v)
+  });
 );
 
 #[macro_export]
