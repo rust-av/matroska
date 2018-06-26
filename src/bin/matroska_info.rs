@@ -148,9 +148,7 @@ fn run(filename: &str) -> std::io::Result<()> {
                         println!("|  + Video track");
                         println!("|    + Pixel width: {}", v.pixel_width);
                         println!("|    + Pixel height: {}", v.pixel_height);
-                        if let Some(inter) = v.flag_interlaced {
-                          println!("|    + Interlaced: {}", inter);
-                        }
+                        println!("|    + Interlaced: {}", v.flag_interlaced);
                         if let Some(width) = v.display_width {
                           println!("|    + Display width: {}", width);
                         }
@@ -168,9 +166,7 @@ fn run(filename: &str) -> std::io::Result<()> {
                         if let Some(frequency) = a.output_sampling_frequency {
                           println!("|    + Output sampling freqeuncy: {}", frequency);
                         }
-                        if let Some(channels) = a.channels {
-                          println!("|    + Channels: {}", channels);
-                        }
+                        println!("|    + Channels: {}", a.channels);
                         if let Some(ref channel_positions) = a.channel_positions {
                           println!("|    + Channel position: {:?}", channel_positions);
                         }

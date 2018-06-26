@@ -223,7 +223,7 @@ pub fn gen_track_entry_audio<'a>(input: (&'a mut [u8], usize),
       do_gen!(
            gen_call!( gen_f64, 0xB5,   a.sampling_frequency )
         >> gen_opt_copy!( a.output_sampling_frequency, gen_call!(gen_f64, 0x78B5))
-        >> gen_opt_copy!( a.channels, gen_ebml_uint!(0x9F))
+        >> gen_ebml_uint!(0x9F, a.channels)
         >> gen_opt!( a.channel_positions, gen_ebml_binary!(0x7D7B))
         >> gen_opt_copy!( a.bit_depth, gen_ebml_uint!(0x6264))
       )
@@ -248,12 +248,13 @@ pub fn gen_track_entry_video<'a>(input: (&'a mut [u8], usize),
                          -> Result<(&'a mut [u8], usize), GenError> {
     let capacity = v.capacity();
     let byte_capacity = vint_size(capacity as u64);
+    println!("gen_track_entry_video: width {} height {}", v.pixel_width, v.pixel_height);
 
     gen_ebml_master!(input,
       0xE0, byte_capacity,
       do_gen!(
-           gen_opt_copy!( v.flag_interlaced, gen_ebml_uint!(0x9A))
-        >> gen_opt_copy!( v.field_order, gen_ebml_uint!(0x9D))
+           gen_ebml_uint!(0x9A, v.flag_interlaced, 1)
+        >> gen_ebml_uint!(0x9D, v.field_order, 1)
         >> gen_opt_copy!( v.stereo_mode, gen_ebml_uint!(0x53B8))
         >> gen_opt_copy!( v.alpha_mode, gen_ebml_uint!(0x53C0))
         >> gen_opt_copy!( v.old_stereo_mode, gen_ebml_uint!(0x53B9))
