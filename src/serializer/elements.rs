@@ -253,8 +253,8 @@ pub fn gen_track_entry_video<'a>(input: (&'a mut [u8], usize),
     gen_ebml_master!(input,
       0xE0, byte_capacity,
       do_gen!(
-           gen_ebml_uint!(0x9A, v.flag_interlaced, 1)
-        >> gen_ebml_uint!(0x9D, v.field_order, 1)
+          gen_opt_copy!( v.flag_interlaced, gen_ebml_uint!(0x9A))
+        >> gen_opt_copy!( v.field_order, gen_ebml_uint!(0x9D))
         >> gen_opt_copy!( v.stereo_mode, gen_ebml_uint!(0x53B8))
         >> gen_opt_copy!( v.alpha_mode, gen_ebml_uint!(0x53C0))
         >> gen_opt_copy!( v.old_stereo_mode, gen_ebml_uint!(0x53B9))

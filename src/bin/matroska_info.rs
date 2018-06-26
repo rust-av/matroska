@@ -148,7 +148,9 @@ fn run(filename: &str) -> std::io::Result<()> {
                         println!("|  + Video track");
                         println!("|    + Pixel width: {}", v.pixel_width);
                         println!("|    + Pixel height: {}", v.pixel_height);
-                        println!("|    + Interlaced: {}", v.flag_interlaced);
+                        if let Some(inter) = v.flag_interlaced {
+                          println!("|    + Interlaced: {}", inter);
+                        }
                         if let Some(width) = v.display_width {
                           println!("|    + Display width: {}", width);
                         }

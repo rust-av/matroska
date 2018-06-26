@@ -709,8 +709,8 @@ named!(pub audio<Audio>,
 
 #[derive(Debug, Clone, PartialEq,Default)]
 pub struct Video {
-    pub flag_interlaced: u64,
-    pub field_order: u64,
+    pub flag_interlaced: Option<u64>,
+    pub field_order: Option<u64>,
     pub stereo_mode: Option<u64>,
     pub alpha_mode: Option<u64>,
     pub old_stereo_mode: Option<u64>,
@@ -735,8 +735,8 @@ named!(pub video<Video>,
   ebml_master!(0xE0,
     do_parse!(
       t: permutation_opt!(
-        ebml_uint!(0x9A),
-        ebml_uint!(0x9D),
+        dbg_dmp!(ebml_uint!(0x9A))?,
+        ebml_uint!(0x9D)?,
         ebml_uint!(0x53B8)?,
         ebml_uint!(0x53C0)?,
         ebml_uint!(0x53B9)?,
