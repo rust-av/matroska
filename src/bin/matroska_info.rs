@@ -26,7 +26,7 @@ fn main() {
 fn run(filename: &str) -> std::io::Result<()> {
     let mut file = File::open(filename)?;
 
-    let capacity = 16384;
+    let capacity = 5242880;
     let mut b = Buffer::with_capacity(capacity);
 
     // we write into the `&mut[u8]` returned by `space()`
@@ -82,7 +82,7 @@ fn run(filename: &str) -> std::io::Result<()> {
         }
 
         // refill the buffer
-        let sz = file.read(b.space()).expect("should write");
+        let sz = file.read(b.space()).expect("should read");
         b.fill(sz);
         /*
         eprintln!(
@@ -182,11 +182,11 @@ fn run(filename: &str) -> std::io::Result<()> {
                     } else {
                         tracks = Some(t);
                     }
-                }
-                SegmentElement::Cluster(_) => {
-                    println!("|+ Cluster");
-                    //eprintln!("got a cluster: {:#?}", c);
                 },
+                /*SegmentElement::Cluster(c) => {
+                    println!("|+ Cluster");
+                    eprintln!("got a cluster: {:#?}", c);
+                },*/
                 SegmentElement::Void => {
                     println!("|+ EbmlVoid");
                 },
@@ -204,9 +204,18 @@ fn run(filename: &str) -> std::io::Result<()> {
 
 
     loop {
+        if b.available_space() == 0 {
+          b.shift();
+          if b.available_space() == 0 {
+            println!("buffer is already full,  cannot refill");
+            break;
+          }
+        }
+
         // refill the buffer
-        let sz = file.read(b.space()).expect("should write");
+        let sz = file.read(b.space()).expect("should read");
         b.fill(sz);
+
         /*
         eprintln!(
             "refill: {} more bytes, available data: {} bytes, consumed: {} bytes",
@@ -233,11 +242,11 @@ fn run(filename: &str) -> std::io::Result<()> {
 
             match element {
                 SegmentElement::SeekHead(_) | SegmentElement::Info(_) | SegmentElement::Tracks(_) => {
-                  panic!("unexpected seek head, info or tracks element");
+                  panic!("unexpected seek head, info or tracks element: {:?}", element);
                 },
                 SegmentElement::Cluster(c) => {
                   println!("|+ Cluster");
-                  eprintln!("got a cluster: {:#?}", c);
+                  //eprintln!("got a cluster: {:#?}", c);
                 },
                 SegmentElement::Void => {
                   println!("|+ EbmlVoid");
