@@ -86,7 +86,7 @@ pub fn gen_uint<'a>(mut input: (&'a mut [u8], usize),
     let mut i = needed_bytes - 1;
     loop {
 
-        match gen_be_u8!(input, (num >> i * 8) as u8) {
+        match gen_be_u8!(input, (num.wrapping_shr((i * 8).into())) as u8) {
             Ok(next) => {
                 input = next;
             }
