@@ -81,6 +81,15 @@ fn run(filename: &str) -> std::io::Result<()> {
             break;
         }
 
+        println!("available space: {}", b.available_space());
+        if b.available_space() == 0 {
+          b.shift();
+          if b.available_space() == 0 {
+            println!("buffer is already full,  cannot refill");
+            break;
+          }
+        }
+
         // refill the buffer
         let sz = file.read(b.space()).expect("should read");
         b.fill(sz);
@@ -246,6 +255,13 @@ fn run(filename: &str) -> std::io::Result<()> {
                 },
                 SegmentElement::Cluster(c) => {
                   println!("|+ Cluster");
+                  println!("|+   timecode: {}", c.timecode);
+                  println!("|+   silent_tracks: {:?}", c.silent_tracks);
+                  println!("|+   position: {:?}", c.position);
+                  println!("|+   prev_size: {:?}", c.prev_size);
+                  println!("|+   simple_block: {} elements", c.simple_block.len());
+                  println!("|+   block_group: {} elements", c.block_group.len());
+                  println!("|+   encrypted_block: {:?} bytes", c.encrypted_block.as_ref().map(|s| s.len()));
                   //eprintln!("got a cluster: {:#?}", c);
                 },
                 SegmentElement::Void => {
