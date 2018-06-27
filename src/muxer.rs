@@ -11,8 +11,8 @@ use av_data::params::{MediaKind};
 use ebml::EBMLHeader;
 use elements::{SeekHead,Info,Tracks,Cluster,TrackEntry, Audio, Video, Lacing, SimpleBlock};
 use serializer::ebml::gen_ebml_header;
-use serializer::elements::{gen_segment_header, gen_seek_head, gen_info, gen_tracks,
-  gen_simple_block_header, gen_cluster};
+use serializer::elements::{gen_segment_header, gen_segment_header_unknown_size,
+  gen_seek_head, gen_info, gen_tracks, gen_simple_block_header, gen_cluster};
 use cookie_factory::GenError;
 
 use nom::HexDisplay;
@@ -118,7 +118,8 @@ impl MkvMuxer {
           origin = (&buf).as_ptr() as usize;
         }
 
-        match gen_segment_header((buf, 0), size as u64) {
+        //match gen_segment_header((buf, 0), size as u64) {
+        match gen_segment_header_unknown_size((buf, 0)) {
           Err(GenError::BufferTooSmall(sz)) => {
             needed = sz;
           },
