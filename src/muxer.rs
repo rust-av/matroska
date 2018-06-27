@@ -9,19 +9,23 @@ use av_data::params::{MediaKind};
 
 
 use ebml::EBMLHeader;
-use elements::{SeekHead,Info,Tracks,Cluster,TrackEntry, Audio, Video};
+use elements::{SeekHead,Info,Tracks,Cluster,TrackEntry, Audio, Video, Lacing, SimpleBlock};
 use serializer::ebml::gen_ebml_header;
-use serializer::elements::{gen_segment_header, gen_seek_head, gen_info, gen_tracks};
+use serializer::elements::{gen_segment_header, gen_seek_head, gen_info, gen_tracks,
+  gen_simple_block_header, gen_cluster};
 use cookie_factory::GenError;
 
 use nom::HexDisplay;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct MkvMuxer {
-  header:    EBMLHeader,
-  seek_head: SeekHead,
-  info:      Option<Info>,
-  tracks:    Option<Tracks>,
+  header:     EBMLHeader,
+  seek_head:  SeekHead,
+  info:       Option<Info>,
+  tracks:     Option<Tracks>,
+  blocks:     Vec<Vec<u8>>,
+  blocks_len: usize,
+  timecode:   Option<u64>,
 }
 
 impl MkvMuxer {
@@ -40,7 +44,10 @@ impl MkvMuxer {
         positions: Vec::new()
       },
       info: None,
-      tracks: None
+      tracks: None,
+      blocks: Vec::new(),
+      blocks_len: 0,
+      timecode: None,
     }
   }
 
@@ -59,7 +66,10 @@ impl MkvMuxer {
         positions: Vec::new()
       },
       info: None,
-      tracks: None
+      tracks: None,
+      blocks: Vec::new(),
+      blocks_len: 0,
+      timecode: None,
     }
   }
 
@@ -221,7 +231,7 @@ impl MkvMuxer {
           }
         };
       }
-      println!("info: offset {:?}", offset);
+      println!("tracks: offset {:?}", offset);
       buf.truncate(offset);
     }
     Ok(())
@@ -242,7 +252,6 @@ impl Muxer for MkvMuxer {
       self.write_info(&mut info)?;
       let mut tracks = Vec::new();
       self.write_tracks(&mut tracks)?;
-      println!("tracks:\n{}", (&tracks[..]).to_hex(16));
 
       let size = ebml_header.len() + seek_head.len() + info.len() + tracks.len();
       println!("segment size: {}", size);
@@ -259,22 +268,153 @@ impl Muxer for MkvMuxer {
     }
 
     fn write_packet(&mut self, buf: &mut Vec<u8>, pkt: Arc<Packet>) -> Result<()> {
-      let origin = (&buf).as_ptr() as usize;
+      let mut v = Vec::with_capacity(16);
 
-      let cluster = Cluster {
-        timecode: 0,
-        silent_tracks: None,
-        position: None,
-        prev_size: None,
-        simple_block: Vec::new(),
-        block_group: Vec::new(),
-        encrypted_block: None,
+      let s = SimpleBlock {
+        track_number: pkt.stream_index as u64,
+        timecode: pkt.t.pts.or(pkt.t.dts).unwrap_or(0) as i16,
+        keyframe: pkt.is_key,
+        invisible: false,
+        lacing: Lacing::None,
+        discardable: false,
       };
+
+      let mut origin = (&v).as_ptr() as usize;
+      let mut needed = 0usize;
+      let mut offset = 0usize;
+      loop {
+        if needed > 0 {
+          let len = needed + v.len();
+          v.resize(len, 0);
+          needed = 0;
+          origin = (&v).as_ptr() as usize;
+        }
+
+        match gen_simple_block_header((&mut v, 0), &s) {
+          Err(GenError::BufferTooSmall(sz)) => {
+            needed = sz;
+          },
+          Err(e) => {
+            println!("tracks muxing error: {:?}", e);
+            return Err(Error::InvalidData);
+          },
+          Ok((sl, sz)) => {
+            offset = sl.as_ptr() as usize + sz - origin;
+            break;
+          }
+        };
+      }
+      v.truncate(offset);
+
+      v.extend(pkt.data.iter());
+      let len = v.len();
+      self.blocks.push(v);
+      self.blocks_len += len;
+
+      if self.timecode.is_none() {
+        self.timecode = Some(pkt.t.pts.or(pkt.t.dts).unwrap_or(0) as u64);
+      }
+
+      if pkt.is_key || self.blocks_len >= 5242880 {
+        let nb = self.blocks.len();
+        println!("writing {} simple blocks in {} bytes", nb, self.blocks_len);
+
+        {
+          let simple_blocks: Vec<&[u8]> = self.blocks.iter().map(|v| &v[..]).collect();
+
+          let mut cluster = Cluster {
+            timecode: self.timecode.take().unwrap(),
+            silent_tracks: None,
+            position: None,
+            prev_size: None,
+            simple_block: simple_blocks,
+            block_group: Vec::new(),
+            encrypted_block: None,
+          };
+
+          let mut origin = (&buf).as_ptr() as usize;
+          let mut needed = 0usize;
+          let mut offset = 0usize;
+          loop {
+            if needed > 0 {
+              let len = needed + buf.len();
+              buf.resize(len, 0);
+              needed = 0;
+              origin = (&buf).as_ptr() as usize;
+            }
+
+            match gen_cluster((buf, 0), &cluster) {
+              Err(GenError::BufferTooSmall(sz)) => {
+                needed = sz;
+              },
+              Err(e) => {
+                println!("cluster muxing error: {:?}", e);
+                return Err(Error::InvalidData);
+              },
+              Ok((sl, sz)) => {
+                offset = sl.as_ptr() as usize + sz - origin;
+                break;
+              }
+            };
+          }
+          println!("cluster: offset {:?}", offset);
+          buf.truncate(offset);
+        }
+
+        self.blocks.truncate(0);
+        self.blocks_len = 0;
+      }
 
       Ok(())
     }
 
     fn write_trailer(&mut self, buf: &mut Vec<u8>) -> Result<()> {
+      let nb = self.blocks.len();
+
+      if nb > 0 {
+        println!("writing last cluster: {} simple blocks in {} bytes", nb, self.blocks_len);
+
+        let simple_blocks: Vec<&[u8]> = self.blocks.iter().map(|v| &v[..]).collect();
+
+        let mut cluster = Cluster {
+          timecode: self.timecode.take().unwrap(),
+          silent_tracks: None,
+          position: None,
+          prev_size: None,
+          simple_block: simple_blocks,
+          block_group: Vec::new(),
+          encrypted_block: None,
+        };
+
+        let mut origin = (&buf).as_ptr() as usize;
+        let mut needed = 0usize;
+        let mut offset = 0usize;
+        loop {
+          if needed > 0 {
+            let len = needed + buf.len();
+            buf.resize(len, 0);
+            needed = 0;
+            origin = (&buf).as_ptr() as usize;
+          }
+
+          match gen_cluster((buf, 0), &cluster) {
+            Err(GenError::BufferTooSmall(sz)) => {
+              needed = sz;
+            },
+            Err(e) => {
+              println!("cluster muxing error: {:?}", e);
+              return Err(Error::InvalidData);
+            },
+            Ok((sl, sz)) => {
+              offset = sl.as_ptr() as usize + sz - origin;
+              break;
+            }
+          };
+        }
+        println!("cluster: offset {:?}", offset);
+        buf.truncate(offset);
+      }
+
       Ok(())
     }
 
