@@ -9,13 +9,12 @@ use av_data::params::{MediaKind};
 
 
 use ebml::EBMLHeader;
-use elements::{SeekHead,Seek,Info,Tracks,Cluster,TrackEntry, Audio, Video, Lacing, SimpleBlock, segment_element};
-use serializer::ebml::{gen_ebml_header, EbmlSize, vint_size};
-use serializer::elements::{gen_segment_header, gen_segment_header_unknown_size,
-  gen_seek_head, gen_info, gen_tracks, gen_simple_block_header, gen_cluster};
+use elements::{SeekHead,Seek,Info,Tracks,Cluster,TrackEntry, Audio, Video, Lacing, SimpleBlock};
+use serializer::ebml::{gen_ebml_header, EbmlSize};
+use serializer::elements::{gen_segment_header_unknown_size, gen_seek_head,
+  gen_info, gen_tracks, gen_simple_block_header, gen_cluster};
 use cookie_factory::GenError;
 
-use nom::HexDisplay;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct MkvMuxer {
@@ -29,7 +28,7 @@ pub struct MkvMuxer {
 }
 
 impl MkvMuxer {
-  pub fn Matroska() -> MkvMuxer {
+  pub fn matroska() -> MkvMuxer {
     MkvMuxer {
       header: EBMLHeader {
         version: 1,
@@ -51,7 +50,7 @@ impl MkvMuxer {
     }
   }
 
-  pub fn Webm() -> MkvMuxer {
+  pub fn webm() -> MkvMuxer {
     MkvMuxer {
       header: EBMLHeader {
         version: 1,
@@ -77,12 +76,11 @@ impl MkvMuxer {
       let mut origin = (&buf).as_ptr() as usize;
 
       let mut needed = 0usize;
-      let mut offset = 0usize;
+      let offset;
       loop {
         if needed > 0 {
           let len = needed + buf.len();
           buf.resize(len, 0);
-          needed = 0;
           origin = (&buf).as_ptr() as usize;
         }
 
@@ -105,16 +103,15 @@ impl MkvMuxer {
       Ok(())
   }
 
-  pub fn write_segment_header(&mut self, buf: &mut Vec<u8>, size: usize) -> Result<()> {
+  pub fn write_segment_header(&mut self, buf: &mut Vec<u8>, _size: usize) -> Result<()> {
       let mut origin = (&buf).as_ptr() as usize;
 
       let mut needed = 0usize;
-      let mut offset = 0usize;
+      let offset;
       loop {
         if needed > 0 {
           let len = needed + buf.len();
           buf.resize(len, 0);
-          needed = 0;
           origin = (&buf).as_ptr() as usize;
         }
 
@@ -142,12 +139,11 @@ impl MkvMuxer {
       let mut origin = (&buf).as_ptr() as usize;
 
       let mut needed = 0usize;
-      let mut offset = 0usize;
+      let offset;
       loop {
         if needed > 0 {
           let len = needed + buf.len();
           buf.resize(len, 0);
-          needed = 0;
           origin = (&buf).as_ptr() as usize;
         }
 
@@ -175,12 +171,11 @@ impl MkvMuxer {
 
       let mut origin = (&buf).as_ptr() as usize;
       let mut needed = 0usize;
-      let mut offset = 0usize;
+      let mut offset;
       loop {
         if needed > 0 {
           let len = needed + buf.len();
           buf.resize(len, 0);
-          needed = 0;
           origin = (&buf).as_ptr() as usize;
         }
 
@@ -208,12 +203,11 @@ impl MkvMuxer {
 
       let mut origin = (&buf).as_ptr() as usize;
       let mut needed = 0usize;
-      let mut offset = 0usize;
+      let mut offset;
       loop {
         if needed > 0 {
           let len = needed + buf.len();
           buf.resize(len, 0);
-          needed = 0;
           origin = (&buf).as_ptr() as usize;
         }
 
@@ -257,9 +251,6 @@ impl Muxer for MkvMuxer {
       let mut tracks = Vec::new();
       self.write_tracks(&mut tracks)?;
 
-      let info_size_capacity = vint_size(info.len() as u64);
-      let tracks_size_capacity = vint_size(tracks.len() as u64);
-
       let info_seek = Seek {
         id: vec![0x15, 0x49, 0xA9, 0x66],
         position: 0
@@ -285,8 +276,6 @@ impl Muxer for MkvMuxer {
       let mut seek_head = Vec::new();
       self.write_seek_head(&mut seek_head)?;
 
-      let size = ebml_header.len() + seek_head.len() + info.len() + tracks.len();
-
       buf.extend_from_slice(&seek_head);
       buf.extend_from_slice(&info);
       buf.extend_from_slice(&tracks);
@@ -308,12 +297,11 @@ impl Muxer for MkvMuxer {
 
       let mut origin = (&v).as_ptr() as usize;
       let mut needed = 0usize;
-      let mut offset = 0usize;
+      let offset;
       loop {
         if needed > 0 {
           let len = needed + v.len();
           v.resize(len, 0);
-          needed = 0;
           origin = (&v).as_ptr() as usize;
         }
 
@@ -343,12 +331,11 @@ impl Muxer for MkvMuxer {
       }
 
       if pkt.is_key || self.blocks_len >= 5242880 {
-        let nb = self.blocks.len();
 
         {
           let simple_blocks: Vec<&[u8]> = self.blocks.iter().map(|v| &v[..]).collect();
 
-          let mut cluster = Cluster {
+          let cluster = Cluster {
             timecode: self.timecode.take().unwrap(),
             silent_tracks: None,
             position: None,
@@ -361,12 +348,11 @@ impl Muxer for MkvMuxer {
           buf.resize(cluster.size(0x1F43B675), 0);
           let mut origin = (&buf).as_ptr() as usize;
           let mut needed = 0usize;
-          let mut offset = 0usize;
+          let offset;
           loop {
             if needed > 0 {
               let len = needed + buf.len();
               buf.resize(len, 0);
-              needed = 0;
               origin = (&buf).as_ptr() as usize;
             }
 
@@ -401,7 +387,7 @@ impl Muxer for MkvMuxer {
 
         let simple_blocks: Vec<&[u8]> = self.blocks.iter().map(|v| &v[..]).collect();
 
-        let mut cluster = Cluster {
+        let cluster = Cluster {
           timecode: self.timecode.take().unwrap(),
           silent_tracks: None,
           position: None,
@@ -414,12 +400,11 @@ impl Muxer for MkvMuxer {
         buf.resize(cluster.size(0x1F43B675), 0);
         let mut origin = (&buf).as_ptr() as usize;
         let mut needed = 0usize;
-        let mut offset = 0usize;
+        let offset;
         loop {
           if needed > 0 {
             let len = needed + buf.len();
             buf.resize(len, 0);
-            needed = 0;
             origin = (&buf).as_ptr() as usize;
           }
 
@@ -460,11 +445,12 @@ impl Muxer for MkvMuxer {
       Ok(())
     }
 
-    fn set_option<'a>(&mut self, key: &str, val: Value<'a>) -> Result<()> {
+    fn set_option<'a>(&mut self, _key: &str, _val: Value<'a>) -> Result<()> {
       Ok(())
     }
 }
 
+#[allow(dead_code)]
 fn offset<'a>(original: &(&'a[u8], usize), subslice: &(&'a[u8], usize)) -> usize {
   let first = original.0.as_ptr() as usize;
   let second = subslice.0.as_ptr() as usize;

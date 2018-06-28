@@ -57,7 +57,6 @@ pub fn gen_vid<'a>(mut input: (&'a mut [u8], usize),
                    -> Result<(&'a mut [u8], usize), GenError> {
     let needed_bytes = vid_size(num);
 
-    let index = 0;
     let mut i = needed_bytes - 1;
 
     loop {
@@ -494,7 +493,7 @@ impl<T: EbmlSize> EbmlSize for Option<T> {
 
   fn size(&self, id: u64) -> usize {
     match self {
-      &Some(ref value) => {
+      &Some(_) => {
         let id_size = vid_size(id);
         let self_size = self.capacity();
         let size_tag_size = vint_size(self_size as u64);

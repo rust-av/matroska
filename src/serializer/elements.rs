@@ -1,10 +1,10 @@
 use cookie_factory::*;
-use elements::{Info, Seek, SeekHead, SegmentElement, Cluster, Tracks,
+use elements::{Info, Seek, SeekHead, Cluster, Tracks,
   TrackEntry, Audio, Video, Colour, Projection, MasteringMetadata,
   SimpleBlock, Lacing};
 use elements::{SilentTracks};
 use super::ebml::{vint_size, gen_vint, gen_vid, gen_uint};
-use serializer::ebml::{gen_u64, gen_f64_ref, gen_f64, EbmlSize};
+use serializer::ebml::{gen_f64_ref, gen_f64, EbmlSize};
 
 
 pub fn seek_size(s: &Seek) -> u8 {
@@ -13,15 +13,17 @@ pub fn seek_size(s: &Seek) -> u8 {
     vint_size(vint_size((s.id.len() + 10) as u64) as u64)
 }
 
+/*
 pub fn gen_segment<'a>(input: (&'a mut [u8], usize),
                        s: &SegmentElement)
                        -> Result<(&'a mut [u8], usize), GenError> {
     unimplemented!();
-    /*do_gen!(input,
+    do_gen!(input,
     gen_call!(gen_vid, 0x18538067) >>
     gen_call!(gen_vint, 4)
-  )*/
+  )
 }
+*/
 
 pub fn gen_segment_header<'a>(input: (&'a mut [u8], usize), size: u64)
                        -> Result<(&'a mut [u8], usize), GenError> {
@@ -534,7 +536,7 @@ pub fn gen_laced_frames<'a>(input: (&'a mut [u8], usize),
   }
 }
 
-pub fn gen_xiph_laced_frames<'a>(input: (&'a mut [u8], usize),
+pub fn gen_xiph_laced_frames<'a>(_input: (&'a mut [u8], usize),
                             frames: &[&[u8]])
                             -> Result<(&'a mut [u8], usize), GenError> {
   if frames.len() == 0 {
@@ -551,14 +553,14 @@ pub fn gen_xiph_laced_frames<'a>(input: (&'a mut [u8], usize),
   Err(GenError::NotYetImplemented)
 }
 
-pub fn gen_ebml_laced_frames<'a>(input: (&'a mut [u8], usize),
-                            frames: &[&[u8]])
+pub fn gen_ebml_laced_frames<'a>(_input: (&'a mut [u8], usize),
+                            _frames: &[&[u8]])
                             -> Result<(&'a mut [u8], usize), GenError> {
   Err(GenError::NotYetImplemented)
 }
 
-pub fn gen_fixed_size_laced_frames<'a>(input: (&'a mut [u8], usize),
-                            frames: &[&[u8]])
+pub fn gen_fixed_size_laced_frames<'a>(_input: (&'a mut [u8], usize),
+                            _frames: &[&[u8]])
                             -> Result<(&'a mut [u8], usize), GenError> {
   Err(GenError::NotYetImplemented)
 }

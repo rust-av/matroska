@@ -83,12 +83,8 @@ impl MkvDemuxer {
                         self.tracks = Some(t);
                     }
                 }
-                SegmentElement::Cluster(c) => {
-                    // println!("got a cluster: {:#?}", c);
-                    //self.clusters.push(c);
-                }
                 el => {
-                    // println!("got element: {:#?}", el);
+                    println!("got element: {:#?}", el);
                 }
             }
 
@@ -119,7 +115,7 @@ impl Demuxer for MkvDemuxer {
                 Err(Error::MoreDataNeeded(sz))
             },
             e => {
-                // println!("error reading headers: {:?}", e);
+                println!("error reading headers: {:?}", e);
                 Err(Error::InvalidData)
             }
         }
@@ -143,7 +139,7 @@ impl Demuxer for MkvDemuxer {
                                 return Ok((seek, event));
                             }
                         }
-                        el => {
+                        _el => {
                             // println!("got element: {:#?}", el);
                         }
                     }

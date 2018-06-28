@@ -1,3 +1,4 @@
+#![allow(unused_assignments)]
 use ebml::{vid, vint};
 use nom::{be_u8, be_i16};
 
