@@ -27,10 +27,13 @@ use matroska::demuxer::{MkvDemuxer, MKV_DESC};
 use matroska::muxer::MkvMuxer;
 
 fn main() {
+  //const webm: &'static [u8] = include_bytes!("../../assets/big-buck-bunny_trailer.webm");
   const webm: &'static [u8] = include_bytes!("../../assets/bbb-vp9-opus.webm");
+  //const webm: &'static [u8] = include_bytes!("../../assets/single_stream.mkv");
   let d = MKV_DESC.create();
   let c = Cursor::new(webm);
-  let acc = AccReader::with_capacity(4096, c);
+  //let acc = AccReader::with_capacity(5242880, c);
+  let acc = AccReader::with_capacity(20000, c);
   let input = Box::new(acc);
   let mut demuxer = demuxer::Context::new(d, input);
 
@@ -46,7 +49,6 @@ fn main() {
   muxer.set_global_info(demuxer.info.clone()).unwrap();
   muxer.write_header().unwrap();
 
-  /*
   loop {
     match demuxer.read_event() {
       Ok(event) => {
@@ -67,6 +69,5 @@ fn main() {
       }
     }
   }
-  */
 }
 
