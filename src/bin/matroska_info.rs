@@ -53,7 +53,6 @@ fn run(filename: &str) -> std::io::Result<()> {
     };
 
     let mut _consumed = length;
-    //println!("consumed {} bytes", length);
     b.consume(length);
 
     let length = {
@@ -68,7 +67,6 @@ fn run(filename: &str) -> std::io::Result<()> {
         }
     };
 
-    //eprintln!("consumed {} bytes", length);
     b.consume(length);
 
     // handle first elements
@@ -81,7 +79,6 @@ fn run(filename: &str) -> std::io::Result<()> {
             break;
         }
 
-        println!("available space: {}", b.available_space());
         if b.available_space() == 0 {
           b.shift();
           if b.available_space() == 0 {
@@ -93,14 +90,6 @@ fn run(filename: &str) -> std::io::Result<()> {
         // refill the buffer
         let sz = file.read(b.space()).expect("should read");
         b.fill(sz);
-        /*
-        eprintln!(
-            "refill: {} more bytes, available data: {} bytes, consumed: {} bytes",
-            sz,
-            b.available_data(),
-            consumed
-        );
-        */
 
         // if there's no more available data in the buffer after a write, that means we reached
         // the end of the file
@@ -113,12 +102,13 @@ fn run(filename: &str) -> std::io::Result<()> {
                 Ok((i, o)) => (i, o),
                 Err(Err::Error(e)) |
                 Err(Err::Failure(e)) => panic!("failed parsing: {:?}", e),
-                Err(Err::Incomplete(_)) => continue,
+                Err(Err::Incomplete(i)) => {
+                  continue
+                },
             };
 
             match element {
                 SegmentElement::SeekHead(s) => {
-                    //eprintln!("got seek head: {:#?}", s);
                     println!("|+ Seek head");
                     if seek_head.is_some() {
                         panic!("already got a SeekHead element");
@@ -273,6 +263,9 @@ fn run(filename: &str) -> std::io::Result<()> {
                 SegmentElement::Cues(_) => {
                   println!("|+ Cues");
                 }
+                SegmentElement::Unknown(id, data) => {
+                    panic!("offset {:X?}: got unknown element: {:X?} {:#?}", _consumed, id, data);
+                },
                 el => {
                     panic!("got unexpected element: {:#?}", el);
                 }
