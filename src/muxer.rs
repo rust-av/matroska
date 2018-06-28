@@ -198,7 +198,6 @@ impl MkvMuxer {
           }
         };
       }
-      println!("info: offset {:?}", offset);
       buf.truncate(offset);
     }
     Ok(())
@@ -232,7 +231,6 @@ impl MkvMuxer {
           }
         };
       }
-      println!("tracks: offset {:?}", offset);
       buf.truncate(offset);
     }
     Ok(())
@@ -288,7 +286,6 @@ impl Muxer for MkvMuxer {
       self.write_seek_head(&mut seek_head)?;
 
       let size = ebml_header.len() + seek_head.len() + info.len() + tracks.len();
-      println!("segment size: {}", size);
 
       buf.extend_from_slice(&seek_head);
       buf.extend_from_slice(&info);
@@ -347,7 +344,6 @@ impl Muxer for MkvMuxer {
 
       if pkt.is_key || self.blocks_len >= 5242880 {
         let nb = self.blocks.len();
-        println!("writing {} simple blocks in {} bytes", nb, self.blocks_len);
 
         {
           let simple_blocks: Vec<&[u8]> = self.blocks.iter().map(|v| &v[..]).collect();
@@ -388,7 +384,6 @@ impl Muxer for MkvMuxer {
               }
             };
           }
-          println!("cluster: offset {:?}", offset);
           buf.truncate(offset);
         }
 
@@ -403,7 +398,6 @@ impl Muxer for MkvMuxer {
       let nb = self.blocks.len();
 
       if nb > 0 {
-        println!("writing last cluster: {} simple blocks in {} bytes", nb, self.blocks_len);
 
         let simple_blocks: Vec<&[u8]> = self.blocks.iter().map(|v| &v[..]).collect();
 
@@ -443,7 +437,6 @@ impl Muxer for MkvMuxer {
             }
           };
         }
-        println!("cluster: offset {:?}", offset);
         buf.truncate(offset);
       }
 
@@ -451,7 +444,6 @@ impl Muxer for MkvMuxer {
     }
 
     fn set_global_info(&mut self, info: GlobalInfo) -> Result<()> {
-      println!("info.streams: {:#?}", info.streams);
       self.tracks = Some(Tracks {
         tracks: info.streams.iter().map(stream_to_track).collect()
       });
@@ -540,9 +532,6 @@ pub fn stream_to_track(s: &Stream) -> TrackEntry {
     },
     _ => {}
   }
-
-  println!("genetrated track entry:\nuid:{}, number:{}, type:{}", t.track_uid, t.track_number, t.track_type);
-
 
   t
 }

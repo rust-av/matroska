@@ -735,7 +735,7 @@ named!(pub video<Video>,
   ebml_master!(0xE0,
     do_parse!(
       t: permutation_opt!(
-        dbg_dmp!(ebml_uint!(0x9A))?,
+        ebml_uint!(0x9A)?,
         ebml_uint!(0x9D)?,
         ebml_uint!(0x53B8)?,
         ebml_uint!(0x53C0)?,

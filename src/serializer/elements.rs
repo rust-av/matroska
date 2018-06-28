@@ -68,12 +68,7 @@ impl EbmlSize for SeekHead {
 pub fn gen_seek_head<'a>(input: (&'a mut [u8], usize),
                          s: &SeekHead)
                          -> Result<(&'a mut [u8], usize), GenError> {
-    /*let capacity = s.positions.iter().fold(0u64, |acc, seek| {
-        acc + 4 + 8 + 2 + vint_size(seek.id.len() as u64) as u64 + seek.id.len() as u64
-    });*/
     let capacity = s.capacity() as u64;
-
-    println!("gen_seek_head: calculated capacity: {} -> {} bytes", capacity, vint_size(capacity));
 
     let byte_capacity = vint_size(capacity as u64);
     gen_ebml_master!(input,
@@ -258,7 +253,6 @@ pub fn gen_track_entry_video<'a>(input: (&'a mut [u8], usize),
                          -> Result<(&'a mut [u8], usize), GenError> {
     let capacity = v.capacity();
     let byte_capacity = vint_size(capacity as u64);
-    println!("gen_track_entry_video: width {} height {}", v.pixel_width, v.pixel_height);
 
     gen_ebml_master!(input,
       0xE0, byte_capacity,
