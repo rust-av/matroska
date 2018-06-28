@@ -112,7 +112,7 @@ pub fn gen_info<'a>(input: (&'a mut [u8], usize),
         >> gen_opt!( i.next_filename, gen_ebml_str!(0x3E83BB) )
         >> gen_opt!( i.segment_family, gen_ebml_binary!(0x4444) )
         //>> gen_opt!( i.chapter_translate, gen_chapter_translate )
-        >> gen_call!(gen_u64, 0x2AD7B1, i.timecode_scale)
+        >> gen_ebml_uint!(0x2AD7B1, i.timecode_scale)
         >> gen_opt!( i.duration, gen_call!(gen_f64_ref, 0x4489) )
         >> gen_opt!( i.date_utc, gen_ebml_binary!(0x4461) )
         >> gen_opt!( i.title, gen_ebml_str!(0x7BA9) )

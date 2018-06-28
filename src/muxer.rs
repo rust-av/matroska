@@ -460,6 +460,7 @@ impl Muxer for MkvMuxer {
         muxing_app: String::from("rust-av"),
         writing_app: String::from("rust-av"),
         duration: info.duration.map(|d| d as f64),
+        timecode_scale: 1000000,
         ..Default::default()
       };
 
