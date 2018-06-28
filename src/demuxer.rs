@@ -164,9 +164,11 @@ impl Demuxer for MkvDemuxer {
 fn track_entry_codec_id(t: &TrackEntry) -> Option<String> {
     // TODO: Support V_QUICKTIME and V_MS/VFW/FOURCC
     match t.codec_id.as_ref() {
-        "A_OPUS" => Some("opus".to_owned()),
-        "V_VP8" => Some("vp8".to_owned()),
-        "V_VP9" => Some("vp9".to_owned()),
+        "A_OPUS"   => Some("opus".to_owned()),
+        "A_VORBIS" => Some("vorbis".to_owned()),
+        "V_AV1"    => Some("av1".to_owned()),
+        "V_VP8"    => Some("vp8".to_owned()),
+        "V_VP9"    => Some("vp9".to_owned()),
         _ => None,
     }
 }
