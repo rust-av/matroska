@@ -260,11 +260,10 @@ macro_rules! gen_ebml_size (
 #[macro_export]
 macro_rules! gen_ebml_master (
   (($i:expr, $idx:expr), $id:expr, $expected_size:expr, $($rest:tt)*) => ({
-    let needed_bytes = vint_size($expected_size as u64);
 
     do_gen!(($i, $idx),
                   gen_call!(gen_vid, $id)
-      >> ofs_len: gen_skip!(needed_bytes as usize)
+      >> ofs_len: gen_skip!($expected_size as usize)
       >> start:   do_gen!($($rest)*)
       >> end:     gen_at_offset!(ofs_len, gen_ebml_size!($expected_size, (end-start) as u64))
       //>> end:     gen_dbg!(gen_at_offset!(ofs_len, gen_call!(gen_vint, (end-start) as u64)))
