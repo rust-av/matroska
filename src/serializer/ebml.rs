@@ -418,12 +418,23 @@ macro_rules! gen_dbg (
   });
 );
 
+impl EbmlSize for EBMLHeader {
+  fn capacity(&self) -> usize {
+    self.version.size(0x4286) + self.read_version.size(0x42F7) +
+      self.max_id_length.size(0x42F2) + self.max_size_length.size(0x42F3) +
+      self.doc_type.size(0x4282) + self.doc_type_version.size(0x4287) +
+      self.doc_type_read_version.size(0x4285)
+  }
+}
+
 //trace_macros!(true);
 pub fn gen_ebml_header<'a>(input: (&'a mut [u8], usize),
                            h: &EBMLHeader)
                            -> Result<(&'a mut [u8], usize), GenError> {
+    let capacity = h.capacity() as u64;
+
     gen_ebml_master!(input,
-    0x1A45DFA3, 1,
+    0x1A45DFA3, vint_size(capacity),
        gen_ebml_uint!(0x4286, h.version, 1)
     >> gen_ebml_uint!(0x42F7, h.read_version, 1)
     >> gen_ebml_uint!(0x42F2, h.max_id_length, 1)

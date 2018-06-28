@@ -489,11 +489,11 @@ pub fn stream_to_track(s: &Stream) -> TrackEntry {
   match s.params.kind {
     Some(MediaKind::Video(ref v)) => {
       t.track_type = 0x1;
-      /*t.video = Some(Video {
+      t.video = Some(Video {
         pixel_width:  v.width as u64,
         pixel_height: v.height as u64,
         ..Default::default()
-      });*/
+      });
     },
     Some(MediaKind::Audio(ref a)) => {
       t.track_type = 0x2;
