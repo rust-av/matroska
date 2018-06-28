@@ -362,6 +362,7 @@ impl Muxer for MkvMuxer {
             encrypted_block: None,
           };
 
+          buf.resize(cluster.size(0x1F43B675), 0);
           let mut origin = (&buf).as_ptr() as usize;
           let mut needed = 0usize;
           let mut offset = 0usize;
@@ -416,6 +417,7 @@ impl Muxer for MkvMuxer {
           encrypted_block: None,
         };
 
+        buf.resize(cluster.size(0x1F43B675), 0);
         let mut origin = (&buf).as_ptr() as usize;
         let mut needed = 0usize;
         let mut offset = 0usize;
