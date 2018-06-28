@@ -9,8 +9,8 @@ use av_data::params::{MediaKind};
 
 
 use ebml::EBMLHeader;
-use elements::{SeekHead,Info,Tracks,Cluster,TrackEntry, Audio, Video, Lacing, SimpleBlock};
-use serializer::ebml::gen_ebml_header;
+use elements::{SeekHead,Seek,Info,Tracks,Cluster,TrackEntry, Audio, Video, Lacing, SimpleBlock, segment_element};
+use serializer::ebml::{gen_ebml_header, EbmlSize, vint_size};
 use serializer::elements::{gen_segment_header, gen_segment_header_unknown_size,
   gen_seek_head, gen_info, gen_tracks, gen_simple_block_header, gen_cluster};
 use cookie_factory::GenError;
@@ -247,20 +247,49 @@ impl Muxer for MkvMuxer {
     fn write_header(&mut self, buf: &mut Vec<u8>) -> Result<()> {
       let mut ebml_header = Vec::new();
       self.write_ebml_header(&mut ebml_header)?;
-      let mut seek_head = Vec::new();
-      self.write_seek_head(&mut seek_head)?;
+      let mut segment_header = Vec::new();
+      //127 corresponds to unknown size
+      self.write_segment_header(&mut segment_header, 127)?;
+
+      buf.extend_from_slice(&ebml_header);
+      buf.extend_from_slice(&segment_header);
+
       let mut info = Vec::new();
       self.write_info(&mut info)?;
       let mut tracks = Vec::new();
       self.write_tracks(&mut tracks)?;
 
+      let info_size_capacity = vint_size(info.len() as u64);
+      let tracks_size_capacity = vint_size(tracks.len() as u64);
+
+      let info_seek = Seek {
+        id: vec![0x15, 0x49, 0xA9, 0x66],
+        position: 0
+      };
+      let tracks_seek = Seek {
+        id: vec![0x16, 0x54, 0xAE, 0x6B],
+        position: 0
+      };
+      let cluster_seek = Seek {
+        id: vec![0x1F, 0x43, 0xB6, 0x75],
+        position: 0
+      };
+      self.seek_head.positions.push(info_seek);
+      self.seek_head.positions.push(tracks_seek);
+      self.seek_head.positions.push(cluster_seek);
+
+      self.seek_head.positions[0].position = self.seek_head.size(0x114D9B74) as u64;
+      self.seek_head.positions[1].position = (self.seek_head.size(0x114D9B74) +
+        info.size(0x1549A966)) as u64;
+      self.seek_head.positions[2].position = (self.seek_head.size(0x114D9B74) +
+        info.size(0x1549A966) + tracks.size(0x1654AE6B)) as u64;
+
+      let mut seek_head = Vec::new();
+      self.write_seek_head(&mut seek_head)?;
+
       let size = ebml_header.len() + seek_head.len() + info.len() + tracks.len();
       println!("segment size: {}", size);
-      let mut segment_header = Vec::new();
-      self.write_segment_header(&mut segment_header, size)?;
 
-      buf.extend_from_slice(&ebml_header);
-      buf.extend_from_slice(&segment_header);
       buf.extend_from_slice(&seek_head);
       buf.extend_from_slice(&info);
       buf.extend_from_slice(&tracks);
