@@ -14,9 +14,9 @@ use matroska::demuxer::MKV_DESC;
 use matroska::muxer::MkvMuxer;
 
 fn main() {
-  //const webm: &'static [u8] = include_bytes!("../../assets/big-buck-bunny_trailer.webm");
-  const WEBM: &'static [u8] = include_bytes!("../../assets/bbb-vp9-opus.webm");
-  //const webm: &'static [u8] = include_bytes!("../../assets/single_stream.mkv");
+  //const webm: &'static [u8] = include_bytes!("../assets/big-buck-bunny_trailer.webm");
+  const WEBM: &'static [u8] = include_bytes!("../assets/bbb-vp9-opus.webm");
+  //const webm: &'static [u8] = include_bytes!("../assets/single_stream.mkv");
   let d = MKV_DESC.create();
   let c = Cursor::new(WEBM);
   //let acc = AccReader::with_capacity(5242880, c);
