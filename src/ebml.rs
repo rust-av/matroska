@@ -311,7 +311,7 @@ macro_rules! eat_void (
 
 named!(pub skip_void,
 do_parse!(
-  id:   verify!(vid, |val:u64| val == 0xEC) >>
+        verify!(vid, |val:u64| val == 0xEC) >>
   size: vint >>
   data: take!(size) >>
   (data)
@@ -359,6 +359,7 @@ named!(pub ebml_header<EBMLHeader>,
 );
 
 #[cfg(test)]
+#[allow(non_upper_case_globals)]
 mod tests {
     use super::*;
     use nom::{HexDisplay, Offset};

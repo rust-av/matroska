@@ -433,20 +433,6 @@ mod tests {
     );
   );
 
-    macro_rules! take(
-    ($i:expr, $count:expr) => (
-      {
-        let cnt = $count as usize;
-        let res:::IResult<&[u8],&[u8]> = if $i.len() < cnt {
-          Err(Err::Incomplete(::nom::Needed::Size(cnt)))
-        } else {
-          Ok((&$i[cnt..],&$i[0..cnt]))
-        };
-        res
-      }
-    );
-  );
-
     #[test]
     fn permutation() {
         named!(perm<(&[u8], &[u8], &[u8])>,

@@ -553,14 +553,12 @@ mod tests {
         let parse_res = ::ebml::vint(&data[..]);
         println!("parse_res: {:?}", parse_res);
         match parse_res {
-            Ok((rest, o)) => {
+            Ok((_rest, o)) => {
                 assert_eq!(i, o);
                 return true;
             }
             e => panic!(format!("parse error: {:?}", e)),
         }
-
-        false
     }
 
     quickcheck! {
@@ -591,15 +589,13 @@ mod tests {
         let parse_res = ::ebml::vid(&data[..]);
         println!("parse_res: {:?}", parse_res);
         match parse_res {
-            Ok((rest, o)) => {
+            Ok((_rest, o)) => {
                 println!("id={:08b}, parsed={:08b}", id, o);
                 assert_eq!(id, o);
                 return true;
             }
             e => panic!(format!("parse error: {:?}", e)),
         }
-
-        false
     }
 
     #[test]
@@ -623,14 +619,12 @@ mod tests {
         let parse_res:IResult<&[u8], u64> = ebml_uint!(&data[..], id);
         println!("parse_res: {:?}", parse_res);
         match parse_res {
-            Ok((rest, o)) => {
+            Ok((_rest, o)) => {
                 assert_eq!(num, o);
                 return true;
             }
             e => panic!(format!("parse error: {:?}", e)),
         }
-
-        false
     }
 
     quickcheck! {
@@ -663,14 +657,12 @@ mod tests {
     let parse_res: IResult<&[u8], u64> = ebml_uint!(&data[..], id);
     println!("parse_res: {:?}", parse_res);
     match parse_res {
-      Ok((rest, o)) => {
+      Ok((_rest, o)) => {
         assert_eq!(num as u64, o);
         return true;
       },
       e => panic!(format!("parse error: {:?}", e)),
     }
-
-    false
   }
 }
 
@@ -704,14 +696,12 @@ mod tests {
       let parse_res = ::ebml::ebml_header(&data[..]);
       println!("parse_res: {:?}", parse_res);
       match parse_res {
-        Ok((rest, h)) => {
+        Ok((_rest, h)) => {
           assert_eq!(header, h);
           return true;
         },
         e => panic!(format!("parse error: {:?}", e)),
       }
-
-      false
     }
   }
 }

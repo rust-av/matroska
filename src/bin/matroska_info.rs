@@ -102,7 +102,7 @@ fn run(filename: &str) -> std::io::Result<()> {
                 Ok((i, o)) => (i, o),
                 Err(Err::Error(e)) |
                 Err(Err::Failure(e)) => panic!("failed parsing: {:?}", e),
-                Err(Err::Incomplete(i)) => {
+                Err(Err::Incomplete(_i)) => {
                   continue
                 },
             };

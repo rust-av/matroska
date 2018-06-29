@@ -300,6 +300,7 @@ pub const MKV_DESC: &Descriptor = &Des {
 };
 
 #[cfg(test)]
+#[allow(non_upper_case_globals)]
 mod tests {
     use super::*;
     use std::io::Cursor;
@@ -337,7 +338,7 @@ mod tests {
                 Ok(_) => println!("Size {} ok", n),
                 Err(Err::Incomplete(needed)) => println!("Incomplete {} needs {:?}", n, needed),
                 Err(e) => {
-                    panic!("Error at size {}", n);
+                    panic!("Error at size {}: {:?}", n, e);
                 }
             }
         }

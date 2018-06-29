@@ -602,7 +602,7 @@ mod tests {
     use std::iter::repeat;
     use elements::SegmentElement;
 
-    fn test_seek_head_serializer(mut seeks: Vec<(u64, Vec<u8>)>) -> bool {
+    fn test_seek_head_serializer(seeks: Vec<(u64, Vec<u8>)>) -> bool {
         println!("testing for {:?}", seeks);
 
         let mut should_fail = false;
@@ -660,7 +660,7 @@ mod tests {
         let parse_res = ::elements::segment_element(&data[..]);
         println!("parse_res: {:?}", parse_res);
         match parse_res {
-            Ok((rest, SegmentElement::SeekHead(o))) => {
+            Ok((_rest, SegmentElement::SeekHead(o))) => {
                 if should_fail {
                     println!("parser should have failed on input for {:?}", seek_head);
                     println!("{}", (&data[..]).to_hex(16));
@@ -678,8 +678,6 @@ mod tests {
                 panic!(format!("parse error: {:?} for input: {:?}", e, seeks))
             }
         }
-
-        false
     }
 
     quickcheck! {

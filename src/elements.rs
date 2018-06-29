@@ -974,6 +974,7 @@ pub struct Tags {}
 
 
 #[cfg(test)]
+#[allow(non_upper_case_globals)]
 mod tests {
     use super::*;
     use nom::{HexDisplay, Offset};
