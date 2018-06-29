@@ -6,8 +6,8 @@ macro_rules! permutation_opt (
 
       let mut res    = permutation_opt_init!((), $($rest)*);
       let mut input  = $i;
-      let mut error  = ::std::option::Option::None;
       let mut needed = ::std::option::Option::None;
+      let mut permutation_error: Option<::nom::Context<&[u8],u32>>  = ::std::option::Option::None;
 
       loop {
         //println!("current res: {:?}", res);
@@ -23,7 +23,7 @@ macro_rules! permutation_opt (
         //if we reach that part, it means none of the parsers were able to read anything
         if !all_done {
           //FIXME: should wrap the error returned by the child parser
-          error = ::std::option::Option::Some(error_position!(::nom::ErrorKind::Permutation, input));
+          permutation_error = ::std::option::Option::Some(error_position!(input, ::nom::ErrorKind::Permutation));
         }
         break;
       }
@@ -31,11 +31,12 @@ macro_rules! permutation_opt (
       if let Some(unwrapped_res) = permutation_opt_unwrap!(0, (), res, $($rest)*) {
         Ok((input, unwrapped_res))
       } else if let ::std::option::Option::Some(need) = needed {
+        println!("needed: {:?}", need);
         Err(::nom::Err::convert(need))
-      } else if let ::std::option::Option::Some(e) = error {
+      } else if let ::std::option::Option::Some(e) = permutation_error {
         Err(::nom::Err::Error(e))
       } else {
-        Err(::nom::Err::Error(error_position!(::nom::ErrorKind::Permutation, $i)))
+        Err(::nom::Err::Error(error_position!($i, ::nom::ErrorKind::Permutation)))
       }
     }
   );
@@ -292,7 +293,7 @@ macro_rules! permutation_opt_iterator (
     permutation_opt_iterator!($it, $i, $all_done, $needed, $res, call!($e)+, $($rest)*);
   });
   ($it:tt,$i:expr, $all_done:expr, $needed:expr, $res:expr, $e:ident?, $($rest:tt)*) => ({
-    permutation_opt_iterator!($it, $i, $all_done, $needed, $res, call!($e), $($rest)*);
+    permutation_opt_iterator!($it, $i, $all_done, $needed, $res, call!($e)?, $($rest)*);
   });
   ($it:tt,$i:expr, $all_done:expr, $needed:expr, $res:expr, $e:ident, $($rest:tt)*) => ({
     permutation_opt_iterator!($it, $i, $all_done, $needed, $res, call!($e), $($rest)*);
@@ -340,10 +341,10 @@ macro_rules! permutation_opt_iterator (
   };
 
   ($it:tt,$i:expr, $all_done:expr, $needed:expr, $res:expr, $e:ident+) => ({
-    permutation_opt_iterator!($it, $i, $all_done, $needed, $res, call!($e));
+    permutation_opt_iterator!($it, $i, $all_done, $needed, $res, call!($e)+);
   });
   ($it:tt,$i:expr, $all_done:expr, $needed:expr, $res:expr, $e:ident?) => ({
-    permutation_opt_iterator!($it, $i, $all_done, $needed, $res, call!($e));
+    permutation_opt_iterator!($it, $i, $all_done, $needed, $res, call!($e)?);
   });
   ($it:tt,$i:expr, $all_done:expr, $needed:expr, $res:expr, $e:ident) => ({
     permutation_opt_iterator!($it, $i, $all_done, $needed, $res, call!($e));
@@ -391,7 +392,7 @@ macro_rules! permutation_opt_iterator (
 
 #[cfg(test)]
 mod tests {
-    use nom::{Err,Needed};
+    use nom::{Err,Needed,ErrorKind};
 
     // reproduce the tag and take macros, because of module import order
     macro_rules! tag (
@@ -421,7 +422,7 @@ mod tests {
         let b       = &$bytes[..m];
 
         let res: ::nom::IResult<_,_> = if reduced != b {
-          Err(Err::Error(error_position!(::nom::ErrorKind::Tag, $i)))
+          Err(Err::Error(error_position!($i, ::nom::ErrorKind::Tag)))
         } else if m < blen {
           Err(Err::Incomplete(::nom::Needed::Size(blen)))
         } else {
@@ -449,8 +450,7 @@ mod tests {
     #[test]
     fn permutation() {
         named!(perm<(&[u8], &[u8], &[u8])>,
-      permutation!(tag!("abcd"), tag!("efg"), tag!("hi"))
-    );
+          permutation!(dbg_dmp!(tag!("abcd")), tag!("efg"), tag!("hi")));
 
         let expected = (&b"abcd"[..], &b"efg"[..], &b"hi"[..]);
 
@@ -462,7 +462,7 @@ mod tests {
         assert_eq!(perm(c), Ok((&b"jk"[..], expected)));
 
         let d = &b"efgxyzabcdefghi"[..];
-        assert_eq!(perm(d), Err(Err::Error(error_position!(ErrorKind::Permutation, &b"xyzabcdefghi"[..]))));
+        assert_eq!(perm(d), Err(Err::Error(error_position!(&b"efgxyzabcdefghi"[..], ErrorKind::Permutation))));
 
         let e = &b"efgabc"[..];
         assert_eq!(perm(e), Err(Err::Incomplete(Needed::Size(4))));
@@ -496,7 +496,7 @@ mod tests {
         assert_eq!(perm(g), Ok((&b"m"[..], expected3)));
         /*
     let d = &b"efgxyzabcdefghi"[..];
-    assert_eq!(perm(d), Error(error_position!(ErrorKind::Permutation, &b"xyzabcdefghi"[..])));
+    assert_eq!(perm(d), Error(error_position!(&b"xyzabcdefghi"[..], ErrorKind::Permutation)));
 
     let e = &b"efgabc"[..];
     assert_eq!(perm(e), Incomplete(Needed::Size(7)));

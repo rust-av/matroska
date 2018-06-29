@@ -1,6 +1,6 @@
 #![allow(unused_assignments)]
 use ebml::{vid, vint};
-use nom::{be_u8, be_i16};
+use nom::{IResult, be_u8, be_i16};
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum SegmentElement<'a> {
@@ -57,11 +57,11 @@ named!(pub segment_element<SegmentElement>,
     | 0x1549A966 => sub_element!(info)
     | 0x1F43B675 => sub_element!(cluster)
     | 0x1043A770 => sub_element!(chapters)
-    | 0x1254C367 => sub_element!(value!(SegmentElement::Tags(Tags { })))
-    | 0x1941A469 => sub_element!(value!(SegmentElement::Attachments(Attachments { })))
+    | 0x1254C367 => sub_element!(call!(ret_tags))
+    | 0x1941A469 => sub_element!(call!(ret_attachments))
     | 0x1654AE6B => sub_element!(tracks)
-    | 0x1C53BB6B => sub_element!(value!(SegmentElement::Cues(Cues { })))
-    | 0xEC       => sub_element!(value!(SegmentElement::Void))
+    | 0x1C53BB6B => sub_element!(call!(ret_cues))
+    | 0xEC       => sub_element!(call!(ret_void))
     | unknown    => do_parse!(
         size: opt!(vint) >>
               cond!(size.is_some(), take!( (size.unwrap() as usize) )) >>
@@ -69,6 +69,26 @@ named!(pub segment_element<SegmentElement>,
       )
   )
 );
+
+// hack to fix type inference issues
+pub fn ret_tags(input: &[u8]) -> IResult<&[u8], SegmentElement, u32> {
+  Ok((input, SegmentElement::Tags(Tags{})))
+}
+
+// hack to fix type inference issues
+pub fn ret_attachments(input: &[u8]) -> IResult<&[u8], SegmentElement, u32> {
+  Ok((input, SegmentElement::Attachments(Attachments{})))
+}
+
+// hack to fix type inference issues
+pub fn ret_cues(input: &[u8]) -> IResult<&[u8], SegmentElement, u32> {
+  Ok((input, SegmentElement::Cues(Cues{})))
+}
+
+// hack to fix type inference issues
+pub fn ret_void(input: &[u8]) -> IResult<&[u8], SegmentElement, u32> {
+  Ok((input, SegmentElement::Void))
+}
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct SeekHead {
@@ -78,7 +98,7 @@ pub struct SeekHead {
 //https://datatracker.ietf.org/doc/html/draft-lhomme-cellar-matroska-03#section-7.3.4
 named!(pub seek_head<SegmentElement>,
   do_parse!(
-    positions: many1!(seek) >>
+    positions: many1!(complete!(seek)) >>
     (SegmentElement::SeekHead(SeekHead {
       positions: positions,
     }))
@@ -96,7 +116,7 @@ pub struct Seek {
 named!(pub seek<Seek>,
   ebml_master!(0x4DBB,
     do_parse!(
-      t: permutation!(
+      t: permutation_opt!(
         ebml_binary!(0x53AB), // SeekID
         ebml_uint!(0x53AC)    // SeekPosition
       ) >>
@@ -166,10 +186,16 @@ named!(pub info<SegmentElement>,
 #[derive(Debug, Clone, PartialEq)]
 pub struct ChapterTranslate {}
 
+// hack to fix type inference issues
+pub fn ret_chapter_translate(input: &[u8]) -> IResult<&[u8], ChapterTranslate, u32> {
+  Ok((input, ChapterTranslate{}))
+}
+
 //https://datatracker.ietf.org/doc/html/draft-lhomme-cellar-matroska-03#section-7.3.16
 //TODO
-named!(pub chapter_translate<ChapterTranslate>,
-  ebml_master!(0x6924, value!(ChapterTranslate{}))
+named!(pub chapter_translate<&[u8], ChapterTranslate, u32>,
+  //ebml_master!(0x6924, value!(ChapterTranslate{}))
+  ebml_master!(0x6924, call!(ret_chapter_translate))
 );
 
 //https://datatracker.ietf.org/doc/html/draft-lhomme-cellar-matroska-03#section-7.3.26
@@ -272,28 +298,40 @@ named!(pub block_group<BlockGroup>,
 #[derive(Debug, Clone, PartialEq)]
 pub struct BlockAdditions {}
 
+// hack to fix type inference issues
+pub fn ret_block_additions(input: &[u8]) -> IResult<&[u8], BlockAdditions, u32> {
+  Ok((input, BlockAdditions{}))
+}
 //https://datatracker.ietf.org/doc/html/draft-lhomme-cellar-matroska-03#section-7.3.16
 //TODO
 named!(pub block_additions<BlockAdditions>,
-  ebml_master!(0x75A1, value!(BlockAdditions {}))
+  ebml_master!(0x75A1, call!(ret_block_additions))
 );
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Slices {}
 
+// hack to fix type inference issues
+pub fn ret_slices(input: &[u8]) -> IResult<&[u8], Slices, u32> {
+  Ok((input, Slices{}))
+}
 //https://datatracker.ietf.org/doc/html/draft-lhomme-cellar-matroska-03#section-7.3.46
 //TODO
 named!(pub slices<Slices>,
-  ebml_master!(0x8E, value!(Slices {}))
+  ebml_master!(0x8E, call!(ret_slices))
 );
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct ReferenceFrame {}
 
+// hack to fix type inference issues
+pub fn ret_reference_frame(input: &[u8]) -> IResult<&[u8], ReferenceFrame, u32> {
+  Ok((input, ReferenceFrame{}))
+}
 //https://datatracker.ietf.org/doc/html/draft-lhomme-cellar-matroska-03#section-7.3.53
 //TODO
 named!(pub reference_frame<ReferenceFrame>,
-  ebml_master!(0xC8, value!(ReferenceFrame {}))
+  ebml_master!(0xC8, call!(ret_reference_frame))
 );
 
 #[derive(Debug, Clone, PartialEq)]
@@ -376,7 +414,7 @@ pub struct Tracks {
 
 //https://datatracker.ietf.org/doc/html/draft-lhomme-cellar-matroska-03#section-7.3.16
 named!(pub tracks<SegmentElement>,
-  map!(many1!(eat_void!(track_entry)), |v| SegmentElement::Tracks(Tracks { tracks: v }))
+  map!(many1!(complete!(eat_void!(track_entry))), |v| SegmentElement::Tracks(Tracks { tracks: v }))
 );
 
 #[derive(Debug, Clone, PartialEq,Default)]
@@ -557,7 +595,7 @@ pub struct TrackCombinePlanes {
 }
 
 named!(pub track_combine_planes<TrackCombinePlanes>,
-  ebml_master!(0xE3, map!(many1!(track_plane), |v| TrackCombinePlanes { track_planes: v }))
+  ebml_master!(0xE3, map!(many1!(complete!(track_plane)), |v| TrackCombinePlanes { track_planes: v }))
 );
 
 #[derive(Debug, Clone, PartialEq)]
@@ -586,7 +624,7 @@ pub struct TrackJoinBlocks {
 }
 
 named!(pub track_join_blocks<TrackJoinBlocks>,
-  ebml_master!(0xE9, map!(many1!(ebml_uint!(0xED)), |v| TrackJoinBlocks { uid: v }))
+  ebml_master!(0xE9, map!(many1!(complete!(ebml_uint!(0xED))), |v| TrackJoinBlocks { uid: v }))
 );
 
 #[derive(Debug, Clone, PartialEq)]
@@ -595,7 +633,7 @@ pub struct ContentEncodings {
 }
 
 named!(pub content_encodings<ContentEncodings>,
-  ebml_master!(0x6D80, map!(many1!(content_encoding), |v| ContentEncodings { content_encoding: v }))
+  ebml_master!(0x6D80, map!(many1!(complete!(content_encoding)), |v| ContentEncodings { content_encoding: v }))
 );
 
 #[derive(Debug, Clone, PartialEq)]
@@ -914,11 +952,15 @@ named!(pub projection<Projection>,
 #[derive(Debug, Clone, PartialEq)]
 pub struct Chapters {}
 
+// hack to fix type inference issues
+pub fn ret_chapters(input: &[u8]) -> IResult<&[u8], SegmentElement, u32> {
+  Ok((input, SegmentElement::Chapters(Chapters{})))
+}
 //https://datatracker.ietf.org/doc/html/draft-lhomme-cellar-matroska-03#section-7.3.199
 //TODO
 named!(pub chapters<SegmentElement>,
   //EditionEntry
-  ebml_master!(0x45B9, value!(SegmentElement::Chapters(Chapters{})))
+  ebml_master!(0x45B9, call!(ret_chapters))
 );
 
 #[derive(Debug, Clone, PartialEq)]
@@ -934,7 +976,7 @@ pub struct Tags {}
 #[cfg(test)]
 mod tests {
     use super::*;
-    use nom::{HexDisplay, IResult, Offset};
+    use nom::{HexDisplay, Offset};
     use std::cmp::min;
 
     const mkv: &'static [u8] = include_bytes!("../assets/single_stream.mkv");

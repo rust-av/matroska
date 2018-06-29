@@ -62,7 +62,7 @@ impl MkvDemuxer {
                 SegmentElement::SeekHead(s) => {
                     // println!("got seek head: {:#?}", s);
                     if self.seek_head.is_some() {
-                        return Err(Err::Error(error_position!(nom::ErrorKind::Custom(1), input)));
+                        return Err(Err::Error(error_position!(input, nom::ErrorKind::Custom(1))));
                     } else {
                         self.seek_head = Some(s);
                     }
@@ -70,7 +70,7 @@ impl MkvDemuxer {
                 SegmentElement::Info(i) => {
                     // println!("got info: {:#?}", i);
                     if self.info.is_some() {
-                        return Err(Err::Error(error_position!(nom::ErrorKind::Custom(1), input)));
+                        return Err(Err::Error(error_position!(input, nom::ErrorKind::Custom(1))));
                     } else {
                         self.info = Some(i);
                     }
@@ -78,7 +78,7 @@ impl MkvDemuxer {
                 SegmentElement::Tracks(t) => {
                     // println!("got tracks: {:#?}", t);
                     if self.tracks.is_some() {
-                        return Err(Err::Error(error_position!(nom::ErrorKind::Custom(1), input)));
+                        return Err(Err::Error(error_position!(input, nom::ErrorKind::Custom(1))));
                     } else {
                         self.tracks = Some(t);
                     }
@@ -109,7 +109,7 @@ impl Demuxer for MkvDemuxer {
             },
             Err(Err::Incomplete(needed)) => {
                 let sz = match needed {
-                    Needed::Size(size) => size,
+                    Needed::Size(size) => buf.data().len() + size,
                     _ => 1024,
                 };
                 Err(Error::MoreDataNeeded(sz))
