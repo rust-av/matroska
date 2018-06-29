@@ -600,6 +600,7 @@ mod tests {
     use super::*;
     use nom::*;
     use std::iter::repeat;
+    use elements::SegmentElement;
 
     fn test_seek_head_serializer(mut seeks: Vec<(u64, Vec<u8>)>) -> bool {
         println!("testing for {:?}", seeks);
