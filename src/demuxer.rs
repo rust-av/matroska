@@ -222,7 +222,7 @@ pub fn track_to_stream(info: &Info, t: &TrackEntry) -> Stream {
     };
 
     Stream {
-        id: t.track_uid as usize,
+        id: t.track_uid as isize,
         index: t.track_number as usize,
         start: None,
         duration: t.default_duration,
