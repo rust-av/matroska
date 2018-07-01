@@ -185,6 +185,7 @@ fn track_entry_video_kind(t: &TrackEntry) -> Option<MediaKind> {
 }
 
 fn track_entry_audio_kind(t: &TrackEntry) -> Option<MediaKind> {
+    use av_data::audiosample::*;
     // TODO: Validate that a track::video exists for track::type video before.
     if let Some(ref audio) = t.audio {
         let rate = if let Some(r) = audio.output_sampling_frequency {
@@ -193,9 +194,14 @@ fn track_entry_audio_kind(t: &TrackEntry) -> Option<MediaKind> {
             audio.sampling_frequency
         };
         // TODO: complete it
+        let map = if audio.channel_positions.is_none() {
+            Some(ChannelMap::default_map(audio.channels as usize))
+        } else {
+            unimplemented!("Convert matroska map to rust-av map")
+        };
         let a = AudioInfo {
             rate: rate as usize,
-            map: None,
+            map: map,
             format: None,
         };
         Some(MediaKind::Audio(a))
