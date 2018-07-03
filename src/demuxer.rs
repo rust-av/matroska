@@ -16,7 +16,7 @@ use elements::{segment, segment_element, Cluster, SeekHead, Info, Tracks, TrackE
                SegmentElement, simple_block};
 use nom::{self, Err, IResult, Offset};
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone)]
 pub struct MkvDemuxer {
     pub header: Option<EBMLHeader>,
     pub seek_head: Option<SeekHead>,
@@ -242,6 +242,7 @@ pub fn track_to_stream(info: &Info, t: &TrackEntry) -> Stream {
             codec_id: track_entry_codec_id(t),
             kind: track_entry_media_kind(t),
         },
+        user_private: None
     }
 }
 
