@@ -100,9 +100,10 @@ impl Demuxer for MkvDemuxer {
         match self.parse_until_tracks(buf.data()) {
             Ok((i, _)) => {
                 info.duration = self.info.as_ref().and_then(|info| info.duration).map(|d| d as u64);
-                if let Some(ref t) = self.tracks {
-                    for tr in t.tracks.iter() {
+                if let Some(ref mut t) = self.tracks {
+                    for tr in t.tracks.iter_mut() {
                         info.add_stream(track_to_stream(self.info.as_ref().unwrap(), tr));
+                        tr.stream_index = info.streams.last().unwrap().index;
                     }
                 }
                 Ok(SeekFrom::Current(buf.data().offset(i) as i64))
@@ -133,7 +134,7 @@ impl Demuxer for MkvDemuxer {
                         SegmentElement::Cluster(c) => {
                             //self.clusters.push(c);
                             // println!("got cluster element at timecode: {}", c.timecode);
-                            let mut packets = c.generate_packets();
+                            let mut packets = c.generate_packets(self.tracks.as_ref().unwrap());
                             self.queue.extend(packets.drain(..));
                             if let Some(event) = self.queue.pop_front() {
                                 return Ok((seek, event));
@@ -247,27 +248,29 @@ pub fn track_to_stream(info: &Info, t: &TrackEntry) -> Stream {
 }
 
 impl<'a> Cluster<'a> {
-    pub fn generate_packets(&self) -> Vec<Event> {
+    pub fn generate_packets(&self, tracks: &Tracks) -> Vec<Event> {
         let mut v = Vec::new();
 
         for block_data in self.simple_block.iter() {
             if let Ok((i, block)) = simple_block(block_data) {
                 //println!("parsing simple block: {:?}", block);
-                let packet = Packet {
-                    data: i.into(),
-                    t: TimeInfo {
-                        pts: Some(block.timecode as i64),
-                        dts: None,
-                        duration: None,
-                        timebase: None,
-                    },
-                    pos: None,
-                    stream_index: block.track_number as isize,
-                    is_key: block.keyframe,
-                    is_corrupted: false,
-                };
+                if let Some(index) = tracks.lookup(block.track_number) {
+                    let packet = Packet {
+                        data: i.into(),
+                        t: TimeInfo {
+                            pts: Some(block.timecode as i64),
+                            dts: None,
+                            duration: None,
+                            timebase: None,
+                        },
+                        pos: None,
+                        stream_index: index as isize,
+                        is_key: block.keyframe,
+                        is_corrupted: false,
+                    };
 
-                v.push(Event::NewPacket(packet));
+                    v.push(Event::NewPacket(packet));
+                }
             } else {
                 println!("error parsing simple block");
             }

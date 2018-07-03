@@ -412,6 +412,14 @@ pub struct Tracks {
     pub tracks: Vec<TrackEntry>,
 }
 
+impl Tracks {
+    pub fn lookup(&self, track_number: u64) -> Option<usize> {
+        self.tracks.iter()
+            .find(|t| t.track_number == track_number)
+            .map(|t| t.stream_index)
+    }
+}
+
 //https://datatracker.ietf.org/doc/html/draft-lhomme-cellar-matroska-03#section-7.3.16
 named!(pub tracks<SegmentElement>,
   map!(many1!(complete!(eat_void!(track_entry))), |v| SegmentElement::Tracks(Tracks { tracks: v }))
@@ -457,6 +465,8 @@ pub struct TrackEntry {
     pub track_translate: Vec<TrackTranslate>,
     pub track_operation: Option<TrackOperation>,
     pub content_encodings: Option<ContentEncodings>,
+    /// The demuxer Stream index matching the Track
+    pub stream_index: usize,
 }
 
 named!(pub track_entry<TrackEntry>,
@@ -539,7 +549,8 @@ named!(pub track_entry<TrackEntry>,
         trick_track_flag: t.34,
         trick_master_track_uid: t.35,
         trick_master_track_segment_uid: t.36,
-        content_encodings: t.37
+        content_encodings: t.37,
+        stream_index: 0,
       })
     )
   )
