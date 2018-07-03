@@ -101,9 +101,9 @@ impl Demuxer for MkvDemuxer {
             Ok((i, _)) => {
                 info.duration = self.info.as_ref().and_then(|info| info.duration).map(|d| d as u64);
                 if let Some(ref t) = self.tracks {
-                    info.streams = t.tracks.iter().map(|tr| {
-                        track_to_stream(self.info.as_ref().unwrap(), tr)
-                    }).collect();
+                    for tr in t.tracks.iter() {
+                        info.add_stream(track_to_stream(self.info.as_ref().unwrap(), tr));
+                    }
                 }
                 Ok(SeekFrom::Current(buf.data().offset(i) as i64))
             },
@@ -229,7 +229,7 @@ pub fn track_to_stream(info: &Info, t: &TrackEntry) -> Stream {
 
     Stream {
         id: t.track_uid as isize,
-        index: t.track_number as usize,
+        index: 0,
         start: None,
         duration: t.default_duration,
         timebase: Rational64::new(num, 1000 * 1000 * 1000),
