@@ -46,11 +46,14 @@ fn main() {
             //println!("writing packet");
             muxer.write_packet(Arc::new(packet)).unwrap();
           }
+          Event::Eof => {
+            muxer.write_trailer().unwrap();
+            break;
+          }
         }
       },
       Err(e) => {
         println!("error: {:?}", e);
-        muxer.write_trailer().unwrap();
         break;
       }
     }
