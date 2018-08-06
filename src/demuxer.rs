@@ -262,6 +262,7 @@ impl<'a> Cluster<'a> {
                             dts: None,
                             duration: None,
                             timebase: None,
+                            user_private: None,
                         },
                         pos: None,
                         stream_index: index as isize,
