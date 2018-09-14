@@ -1,5 +1,5 @@
 #![feature(trace_macros)]
-#![recursion_limit="256"]
+#![recursion_limit = "256"]
 #[macro_use]
 extern crate nom;
 #[macro_use]
@@ -8,8 +8,8 @@ extern crate cookie_factory;
 #[macro_use]
 extern crate log;
 
-extern crate av_format;
 extern crate av_data;
+extern crate av_format;
 
 #[cfg(test)]
 #[macro_use]

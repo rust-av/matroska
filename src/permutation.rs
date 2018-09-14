@@ -42,7 +42,6 @@ macro_rules! permutation_opt (
   );
 );
 
-
 #[doc(hidden)]
 #[macro_export]
 macro_rules! permutation_opt_init (
@@ -392,7 +391,7 @@ macro_rules! permutation_opt_iterator (
 
 #[cfg(test)]
 mod tests {
-    use nom::{Err,Needed,ErrorKind};
+    use nom::{Err, ErrorKind, Needed};
 
     // reproduce the tag and take macros, because of module import order
     macro_rules! tag (
@@ -435,8 +434,10 @@ mod tests {
 
     #[test]
     fn permutation() {
-        named!(perm<(&[u8], &[u8], &[u8])>,
-          permutation!(dbg_dmp!(tag!("abcd")), tag!("efg"), tag!("hi")));
+        named!(
+            perm<(&[u8], &[u8], &[u8])>,
+            permutation!(dbg_dmp!(tag!("abcd")), tag!("efg"), tag!("hi"))
+        );
 
         let expected = (&b"abcd"[..], &b"efg"[..], &b"hi"[..]);
 
@@ -448,7 +449,13 @@ mod tests {
         assert_eq!(perm(c), Ok((&b"jk"[..], expected)));
 
         let d = &b"efgxyzabcdefghi"[..];
-        assert_eq!(perm(d), Err(Err::Error(error_position!(&b"efgxyzabcdefghi"[..], ErrorKind::Permutation))));
+        assert_eq!(
+            perm(d),
+            Err(Err::Error(error_position!(
+                &b"efgxyzabcdefghi"[..],
+                ErrorKind::Permutation
+            )))
+        );
 
         let e = &b"efgabc"[..];
         assert_eq!(perm(e), Err(Err::Incomplete(Needed::Size(4))));
@@ -456,11 +463,22 @@ mod tests {
 
     #[test]
     fn optional_permutation() {
-        named!(perm<(&[u8], Option<&[u8]>, &[u8], Option<&[u8]>)>,
-      permutation_opt!(dbg_dmp!(tag!("abcd")), dbg_dmp!(tag!("efg"))?, dbg_dmp!(tag!("hi")), dbg_dmp!(tag!("jkl"))?)
-    );
+        named!(
+            perm<(&[u8], Option<&[u8]>, &[u8], Option<&[u8]>)>,
+            permutation_opt!(
+                dbg_dmp!(tag!("abcd")),
+                dbg_dmp!(tag!("efg"))?,
+                dbg_dmp!(tag!("hi")),
+                dbg_dmp!(tag!("jkl"))?
+            )
+        );
 
-        let expected1 = (&b"abcd"[..], Some(&b"efg"[..]), &b"hi"[..], Some(&b"jkl"[..]));
+        let expected1 = (
+            &b"abcd"[..],
+            Some(&b"efg"[..]),
+            &b"hi"[..],
+            Some(&b"jkl"[..]),
+        );
         let expected2 = (&b"abcd"[..], None, &b"hi"[..], Some(&b"jkl"[..]));
         let expected3 = (&b"abcd"[..], None, &b"hi"[..], None);
 

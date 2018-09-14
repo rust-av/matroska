@@ -1,5 +1,4 @@
-
-use nom::{IResult, Needed, Err, ErrorKind};
+use nom::{Err, ErrorKind, IResult, Needed};
 
 /*
 struct Document {
@@ -44,7 +43,7 @@ pub fn vint(input: &[u8]) -> IResult<&[u8], u64> {
     }
 
     if input.len() <= len as usize {
-        return  Err(Err::Incomplete(Needed::Size(1)));
+        return Err(Err::Incomplete(Needed::Size(1)));
     }
 
     let mut val = (v ^ (1 << (7 - len))) as u64;
@@ -62,18 +61,18 @@ pub fn vint(input: &[u8]) -> IResult<&[u8], u64> {
 // do not drop the marker bit.
 pub fn vid(input: &[u8]) -> IResult<&[u8], u64> {
     if input.len() == 0 {
-        return  Err(Err::Incomplete(Needed::Size(1)));
+        return Err(Err::Incomplete(Needed::Size(1)));
     }
 
     let v = input[0];
     let len = v.leading_zeros();
 
     if len == 8 {
-        return  Err(Err::Error(error_position!(input, ErrorKind::Custom(101))));
+        return Err(Err::Error(error_position!(input, ErrorKind::Custom(101))));
     }
 
     if input.len() <= len as usize {
-        return  Err(Err::Incomplete(Needed::Size(1)));
+        return Err(Err::Incomplete(Needed::Size(1)));
     }
 
     let mut val = v as u64;
@@ -146,17 +145,14 @@ fn parse_str(input: &[u8], size: u64) -> IResult<&[u8], ElementData> {
 }
 */
 pub fn parse_str_data(input: &[u8], size: u64) -> IResult<&[u8], String> {
-    do_parse!(input,
-        s: take_s!(size as usize) >>
-        ( String::from_utf8(s.to_owned()).unwrap() ) //FIXME: maybe do not unwrap here
+    do_parse!(
+        input,
+        s: take_s!(size as usize) >> (String::from_utf8(s.to_owned()).unwrap()) //FIXME: maybe do not unwrap here
     )
 }
 
 pub fn parse_binary_data(input: &[u8], size: u64) -> IResult<&[u8], Vec<u8>> {
-    do_parse!(input,
-        s: take_s!(size as usize) >>
-        ( s.to_owned() )
-    )
+    do_parse!(input, s: take_s!(size as usize) >> (s.to_owned()))
 }
 
 //FIXME: handle default values
@@ -170,7 +166,7 @@ pub fn parse_float_data(input: &[u8], size: u64) -> IResult<&[u8], f64> {
     } else if size == 8 {
         flat_map!(input, take!(8), be_f64)
     } else {
-         Err(Err::Error(error_position!(input, ErrorKind::Custom(104))))
+        Err(Err::Error(error_position!(input, ErrorKind::Custom(104))))
     }
 }
 /*
@@ -317,7 +313,6 @@ do_parse!(
   (data)
   ));
 
-
 #[derive(Debug, Clone, PartialEq)]
 pub struct EBMLHeader {
     pub version: u64,
@@ -403,7 +398,7 @@ mod tests {
         if let Ok((i, _)) = res {
             trace!("offset: {} bytes", webm.offset(i));
         } else {
-          panic!();
+            panic!();
         }
     }
 }

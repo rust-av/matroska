@@ -24,9 +24,10 @@ pub fn vid_size(i: u64) -> u8 {
     ((log2(i + 1) - 1) / 7) as u8
 }
 
-pub fn gen_vint<'a>(mut input: (&'a mut [u8], usize),
-                    mut num: u64)
-                    -> Result<(&'a mut [u8], usize), GenError> {
+pub fn gen_vint<'a>(
+    mut input: (&'a mut [u8], usize),
+    mut num: u64,
+) -> Result<(&'a mut [u8], usize), GenError> {
     let needed_bytes = vint_size(num);
 
     assert!(num < (1u64 << 56) - 1);
@@ -35,7 +36,6 @@ pub fn gen_vint<'a>(mut input: (&'a mut [u8], usize),
 
     let mut i = needed_bytes - 1;
     loop {
-
         match gen_be_u8!(input, (num >> i * 8) as u8) {
             Ok(next) => {
                 input = next;
@@ -52,15 +52,15 @@ pub fn gen_vint<'a>(mut input: (&'a mut [u8], usize),
     Ok(input)
 }
 
-pub fn gen_vid<'a>(mut input: (&'a mut [u8], usize),
-                   num: u64)
-                   -> Result<(&'a mut [u8], usize), GenError> {
+pub fn gen_vid<'a>(
+    mut input: (&'a mut [u8], usize),
+    num: u64,
+) -> Result<(&'a mut [u8], usize), GenError> {
     let needed_bytes = vid_size(num);
 
     let mut i = needed_bytes - 1;
 
     loop {
-
         match gen_be_u8!(input, (num >> i * 8) as u8) {
             Ok(next) => {
                 input = next;
@@ -77,14 +77,14 @@ pub fn gen_vid<'a>(mut input: (&'a mut [u8], usize),
     Ok(input)
 }
 
-pub fn gen_uint<'a>(mut input: (&'a mut [u8], usize),
-                    num: u64)
-                    -> Result<(&'a mut [u8], usize), GenError> {
+pub fn gen_uint<'a>(
+    mut input: (&'a mut [u8], usize),
+    num: u64,
+) -> Result<(&'a mut [u8], usize), GenError> {
     let needed_bytes = vint_size(num);
 
     let mut i = needed_bytes - 1;
     loop {
-
         match gen_be_u8!(input, (num.wrapping_shr((i * 8).into())) as u8) {
             Ok(next) => {
                 input = next;
@@ -102,14 +102,14 @@ pub fn gen_uint<'a>(mut input: (&'a mut [u8], usize),
 }
 
 //FIXME: is it the right implementation?
-pub fn gen_int<'a>(mut input: (&'a mut [u8], usize),
-                    num: i64)
-                    -> Result<(&'a mut [u8], usize), GenError> {
+pub fn gen_int<'a>(
+    mut input: (&'a mut [u8], usize),
+    num: i64,
+) -> Result<(&'a mut [u8], usize), GenError> {
     let needed_bytes = vint_size(num as u64);
 
     let mut i = needed_bytes - 1;
     loop {
-
         match gen_be_i8!(input, (num >> i * 8) as i8) {
             Ok(next) => {
                 input = next;
@@ -132,114 +132,114 @@ pub fn vid_size(id: u64) -> u8 {
 }
 */
 
-pub fn gen_u64<'a>(input: (&'a mut [u8], usize),
-                   id: u64,
-                   num: u64)
-                   -> Result<(&'a mut [u8], usize), GenError> {
-    do_gen!(input,
-    gen_call!(gen_vid, id) >>
-    gen_call!(gen_vint, 8)  >>
-    gen_be_u64!(num)
-  )
+pub fn gen_u64<'a>(
+    input: (&'a mut [u8], usize),
+    id: u64,
+    num: u64,
+) -> Result<(&'a mut [u8], usize), GenError> {
+    do_gen!(
+        input,
+        gen_call!(gen_vid, id) >> gen_call!(gen_vint, 8) >> gen_be_u64!(num)
+    )
 }
 
-pub fn gen_u32<'a>(input: (&'a mut [u8], usize),
-                   id: u64,
-                   num: u32)
-                   -> Result<(&'a mut [u8], usize), GenError> {
-    do_gen!(input,
-    gen_call!(gen_vid, id) >>
-    gen_call!(gen_vint, 4)  >>
-    gen_be_u32!(num)
-  )
+pub fn gen_u32<'a>(
+    input: (&'a mut [u8], usize),
+    id: u64,
+    num: u32,
+) -> Result<(&'a mut [u8], usize), GenError> {
+    do_gen!(
+        input,
+        gen_call!(gen_vid, id) >> gen_call!(gen_vint, 4) >> gen_be_u32!(num)
+    )
 }
 
-pub fn gen_u16<'a>(input: (&'a mut [u8], usize),
-                   id: u64,
-                   num: u16)
-                   -> Result<(&'a mut [u8], usize), GenError> {
-    do_gen!(input,
-    gen_call!(gen_vid, id) >>
-    gen_call!(gen_vint, 2)  >>
-    gen_be_u16!(num)
-  )
+pub fn gen_u16<'a>(
+    input: (&'a mut [u8], usize),
+    id: u64,
+    num: u16,
+) -> Result<(&'a mut [u8], usize), GenError> {
+    do_gen!(
+        input,
+        gen_call!(gen_vid, id) >> gen_call!(gen_vint, 2) >> gen_be_u16!(num)
+    )
 }
 
-pub fn gen_u8<'a>(input: (&'a mut [u8], usize),
-                  id: u64,
-                  num: u8)
-                  -> Result<(&'a mut [u8], usize), GenError> {
-    do_gen!(input,
-    gen_call!(gen_vid, id) >>
-    gen_call!(gen_vint, 1)  >>
-    gen_be_u8!(num)
-  )
+pub fn gen_u8<'a>(
+    input: (&'a mut [u8], usize),
+    id: u64,
+    num: u8,
+) -> Result<(&'a mut [u8], usize), GenError> {
+    do_gen!(
+        input,
+        gen_call!(gen_vid, id) >> gen_call!(gen_vint, 1) >> gen_be_u8!(num)
+    )
 }
 
-pub fn gen_i64<'a>(input: (&'a mut [u8], usize),
-                   id: u64,
-                   num: i64)
-                   -> Result<(&'a mut [u8], usize), GenError> {
-    do_gen!(input,
-    gen_call!(gen_vid, id) >>
-    gen_call!(gen_vint, 8)  >>
-    gen_be_i64!(num)
-  )
+pub fn gen_i64<'a>(
+    input: (&'a mut [u8], usize),
+    id: u64,
+    num: i64,
+) -> Result<(&'a mut [u8], usize), GenError> {
+    do_gen!(
+        input,
+        gen_call!(gen_vid, id) >> gen_call!(gen_vint, 8) >> gen_be_i64!(num)
+    )
 }
 
-pub fn gen_i32<'a>(input: (&'a mut [u8], usize),
-                   id: u64,
-                   num: i32)
-                   -> Result<(&'a mut [u8], usize), GenError> {
-    do_gen!(input,
-    gen_call!(gen_vid, id) >>
-    gen_call!(gen_vint, 4)  >>
-    gen_be_i32!(num)
-  )
+pub fn gen_i32<'a>(
+    input: (&'a mut [u8], usize),
+    id: u64,
+    num: i32,
+) -> Result<(&'a mut [u8], usize), GenError> {
+    do_gen!(
+        input,
+        gen_call!(gen_vid, id) >> gen_call!(gen_vint, 4) >> gen_be_i32!(num)
+    )
 }
 
-pub fn gen_i16<'a>(input: (&'a mut [u8], usize),
-                   id: u64,
-                   num: i16)
-                   -> Result<(&'a mut [u8], usize), GenError> {
-    do_gen!(input,
-    gen_call!(gen_vid, id) >>
-    gen_call!(gen_vint, 2)  >>
-    gen_be_i16!(num)
-  )
+pub fn gen_i16<'a>(
+    input: (&'a mut [u8], usize),
+    id: u64,
+    num: i16,
+) -> Result<(&'a mut [u8], usize), GenError> {
+    do_gen!(
+        input,
+        gen_call!(gen_vid, id) >> gen_call!(gen_vint, 2) >> gen_be_i16!(num)
+    )
 }
 
-pub fn gen_i8<'a>(input: (&'a mut [u8], usize),
-                  id: u64,
-                  num: i8)
-                  -> Result<(&'a mut [u8], usize), GenError> {
-    do_gen!(input,
-    gen_call!(gen_vid, id) >>
-    gen_call!(gen_vint, 1)  >>
-    gen_be_i8!(num)
-  )
+pub fn gen_i8<'a>(
+    input: (&'a mut [u8], usize),
+    id: u64,
+    num: i8,
+) -> Result<(&'a mut [u8], usize), GenError> {
+    do_gen!(
+        input,
+        gen_call!(gen_vid, id) >> gen_call!(gen_vint, 1) >> gen_be_i8!(num)
+    )
 }
 
-pub fn gen_f64<'a>(input: (&'a mut [u8], usize),
-                   id: u64,
-                   num: f64)
-                   -> Result<(&'a mut [u8], usize), GenError> {
-    do_gen!(input,
-    gen_call!(gen_vid, id) >>
-    gen_call!(gen_vint, 8)  >>
-    gen_be_f64!(num)
-  )
+pub fn gen_f64<'a>(
+    input: (&'a mut [u8], usize),
+    id: u64,
+    num: f64,
+) -> Result<(&'a mut [u8], usize), GenError> {
+    do_gen!(
+        input,
+        gen_call!(gen_vid, id) >> gen_call!(gen_vint, 8) >> gen_be_f64!(num)
+    )
 }
 
-pub fn gen_f64_ref<'a>(input: (&'a mut [u8], usize),
-                   id: u64,
-                   num: &f64)
-                   -> Result<(&'a mut [u8], usize), GenError> {
-    do_gen!(input,
-    gen_call!(gen_vid, id) >>
-    gen_call!(gen_vint, 8)  >>
-    gen_be_f64!(*num)
-  )
+pub fn gen_f64_ref<'a>(
+    input: (&'a mut [u8], usize),
+    id: u64,
+    num: &f64,
+) -> Result<(&'a mut [u8], usize), GenError> {
+    do_gen!(
+        input,
+        gen_call!(gen_vid, id) >> gen_call!(gen_vint, 8) >> gen_be_f64!(*num)
+    )
 }
 
 #[macro_export]
@@ -380,7 +380,6 @@ macro_rules! gen_opt_copy (
   })
 );
 
-
 #[macro_export]
 macro_rules! gen_dbg (
   (($i:expr, $idx:expr), $submac:ident!( $($args:tt)*)) => ({
@@ -417,122 +416,126 @@ macro_rules! gen_dbg (
 );
 
 impl EbmlSize for EBMLHeader {
-  fn capacity(&self) -> usize {
-    self.version.size(0x4286) + self.read_version.size(0x42F7) +
-      self.max_id_length.size(0x42F2) + self.max_size_length.size(0x42F3) +
-      self.doc_type.size(0x4282) + self.doc_type_version.size(0x4287) +
-      self.doc_type_read_version.size(0x4285)
-  }
+    fn capacity(&self) -> usize {
+        self.version.size(0x4286)
+            + self.read_version.size(0x42F7)
+            + self.max_id_length.size(0x42F2)
+            + self.max_size_length.size(0x42F3)
+            + self.doc_type.size(0x4282)
+            + self.doc_type_version.size(0x4287)
+            + self.doc_type_read_version.size(0x4285)
+    }
 }
 
 //trace_macros!(true);
-pub fn gen_ebml_header<'a>(input: (&'a mut [u8], usize),
-                           h: &EBMLHeader)
-                           -> Result<(&'a mut [u8], usize), GenError> {
+pub fn gen_ebml_header<'a>(
+    input: (&'a mut [u8], usize),
+    h: &EBMLHeader,
+) -> Result<(&'a mut [u8], usize), GenError> {
     let capacity = h.capacity() as u64;
 
-    gen_ebml_master!(input,
-    0x1A45DFA3, vint_size(capacity),
-       gen_ebml_uint!(0x4286, h.version, 1)
-    >> gen_ebml_uint!(0x42F7, h.read_version, 1)
-    >> gen_ebml_uint!(0x42F2, h.max_id_length, 1)
-    >> gen_ebml_uint!(0x42F3, h.max_size_length, 1)
-    >> gen_ebml_str!(0x4282, h.doc_type)
-    >> gen_ebml_uint!(0x4287, h.doc_type_version, 1)
-    >> gen_ebml_uint!(0x4285, h.doc_type_read_version, 1)
-
-  )
+    gen_ebml_master!(
+        input,
+        0x1A45DFA3,
+        vint_size(capacity),
+        gen_ebml_uint!(0x4286, h.version, 1)
+            >> gen_ebml_uint!(0x42F7, h.read_version, 1)
+            >> gen_ebml_uint!(0x42F2, h.max_id_length, 1)
+            >> gen_ebml_uint!(0x42F3, h.max_size_length, 1)
+            >> gen_ebml_str!(0x4282, h.doc_type)
+            >> gen_ebml_uint!(0x4287, h.doc_type_version, 1)
+            >> gen_ebml_uint!(0x4285, h.doc_type_read_version, 1)
+    )
 }
 
-pub fn gen_u64_a<'a>(input: (&'a mut [u8], usize),
-                     num: u64)
-                     -> Result<(&'a mut [u8], usize), GenError> {
+pub fn gen_u64_a<'a>(
+    input: (&'a mut [u8], usize),
+    num: u64,
+) -> Result<(&'a mut [u8], usize), GenError> {
     gen_dbg!((input.0, input.1), gen_be_u64!(num))
 }
 
 pub trait EbmlSize {
-  fn capacity(&self) -> usize;
+    fn capacity(&self) -> usize;
 
-  fn size(&self, id: u64) -> usize {
-    let id_size = vid_size(id);
-    let self_size = self.capacity();
-    let size_tag_size = vint_size(self_size as u64);
-
-    id_size as usize + size_tag_size as usize + self_size as usize
-  }
-}
-
-impl EbmlSize for u64 {
-  fn capacity(&self) -> usize {
-    vint_size(*self) as usize
-  }
-}
-
-impl EbmlSize for i64 {
-  fn capacity(&self) -> usize {
-    vint_size(*self as u64) as usize
-  }
-}
-
-impl EbmlSize for f64 {
-  fn capacity(&self) -> usize {
-    //FIXME: calculate size
-    8
-  }
-}
-
-impl<T: EbmlSize> EbmlSize for Option<T> {
-  fn capacity(&self) -> usize {
-    match self {
-      &Some(ref value) => {
-        value.capacity()
-      },
-      &None => 0
-    }
-  }
-
-  fn size(&self, id: u64) -> usize {
-    match self {
-      &Some(_) => {
+    fn size(&self, id: u64) -> usize {
         let id_size = vid_size(id);
         let self_size = self.capacity();
         let size_tag_size = vint_size(self_size as u64);
 
         id_size as usize + size_tag_size as usize + self_size as usize
-      },
-      &None => 0
     }
-  }
+}
+
+impl EbmlSize for u64 {
+    fn capacity(&self) -> usize {
+        vint_size(*self) as usize
+    }
+}
+
+impl EbmlSize for i64 {
+    fn capacity(&self) -> usize {
+        vint_size(*self as u64) as usize
+    }
+}
+
+impl EbmlSize for f64 {
+    fn capacity(&self) -> usize {
+        //FIXME: calculate size
+        8
+    }
+}
+
+impl<T: EbmlSize> EbmlSize for Option<T> {
+    fn capacity(&self) -> usize {
+        match self {
+            &Some(ref value) => value.capacity(),
+            &None => 0,
+        }
+    }
+
+    fn size(&self, id: u64) -> usize {
+        match self {
+            &Some(_) => {
+                let id_size = vid_size(id);
+                let self_size = self.capacity();
+                let size_tag_size = vint_size(self_size as u64);
+
+                id_size as usize + size_tag_size as usize + self_size as usize
+            }
+            &None => 0,
+        }
+    }
 }
 
 impl EbmlSize for String {
-  fn capacity(&self) -> usize {
-    self.as_bytes().len()
-  }
+    fn capacity(&self) -> usize {
+        self.as_bytes().len()
+    }
 }
 
 impl EbmlSize for Vec<u8> {
-  fn capacity(&self) -> usize {
-    (*self).as_bytes().len()
-  }
+    fn capacity(&self) -> usize {
+        (*self).as_bytes().len()
+    }
 }
 
 impl<'a> EbmlSize for &'a [u8] {
-  fn capacity(&self) -> usize {
-    self.len()
-  }
+    fn capacity(&self) -> usize {
+        self.len()
+    }
 }
 
 impl<'a> EbmlSize for Vec<&'a [u8]> {
-  fn capacity(&self) -> usize {
-    self.iter().fold(0, |acc, sl| acc + sl.len())
-  }
+    fn capacity(&self) -> usize {
+        self.iter().fold(0, |acc, sl| acc + sl.len())
+    }
 }
 
 impl EbmlSize for Vec<u64> {
-  fn capacity(&self) -> usize {
-    self.len() * 8
-  }
+    fn capacity(&self) -> usize {
+        self.len() * 8
+    }
 }
 
 #[cfg(test)]
@@ -562,10 +565,10 @@ mod tests {
     }
 
     quickcheck! {
-    fn test_vint(i: u64) -> bool {
-      test_vint_serializer(i)
+      fn test_vint(i: u64) -> bool {
+        test_vint_serializer(i)
+      }
     }
-  }
 
     #[test]
     fn vint() {
@@ -616,7 +619,7 @@ mod tests {
         }
         info!("{}", (&data[..]).to_hex(16));
 
-        let parse_res:IResult<&[u8], u64> = ebml_uint!(&data[..], id);
+        let parse_res: IResult<&[u8], u64> = ebml_uint!(&data[..], id);
         info!("parse_res: {:?}", parse_res);
         match parse_res {
             Ok((_rest, o)) => {
@@ -628,10 +631,10 @@ mod tests {
     }
 
     quickcheck! {
-    fn test_ebml_u64(i: u64) -> bool {
-      test_ebml_u64_serializer(i)
+      fn test_ebml_u64(i: u64) -> bool {
+        test_ebml_u64_serializer(i)
+      }
     }
-  }
 
     #[test]
     fn ebml_u64() {
@@ -643,65 +646,65 @@ mod tests {
     }
 
     quickcheck! {
-  fn test_ebml_u8(num: u8) -> bool {
-    let id = 0x9F;
-    info!("testing for id={}, num={}", id, num);
+      fn test_ebml_u8(num: u8) -> bool {
+        let id = 0x9F;
+        info!("testing for id={}, num={}", id, num);
 
-    let mut data = [0u8; 100];
-    {
-      let gen_res = gen_u8((&mut data[..], 0), id, num);
-      info!("gen_res: {:?}", gen_res);
-    }
-    info!("{}", (&data[..]).to_hex(16));
+        let mut data = [0u8; 100];
+        {
+          let gen_res = gen_u8((&mut data[..], 0), id, num);
+          info!("gen_res: {:?}", gen_res);
+        }
+        info!("{}", (&data[..]).to_hex(16));
 
-    let parse_res: IResult<&[u8], u64> = ebml_uint!(&data[..], id);
-    info!("parse_res: {:?}", parse_res);
-    match parse_res {
-      Ok((_rest, o)) => {
-        assert_eq!(num as u64, o);
-        return true;
-      },
-      e => panic!(format!("parse error: {:?}", e)),
-    }
-  }
-}
-
-    quickcheck! {
-    fn test_ebml_header(version: u8, read_version: u8, max_id_length: u8, max_size_length: u8, doc_type: String,
-      doc_type_version: u8, doc_type_read_version: u8) -> bool {
-      let header = EBMLHeader {
-        version: version as u64,
-        read_version: read_version as u64,
-        max_id_length: max_id_length as u64,
-        max_size_length: max_size_length as u64,
-        doc_type: doc_type,
-        doc_type_version: doc_type_version as u64,
-        doc_type_read_version: doc_type_read_version as u64
-      };
-
-      info!("will serialize: {:#?}", header);
-      let mut data = [0u8; 100];
-      {
-        let gen_res = gen_ebml_header((&mut data[..], 0), &header);
-        info!("gen_res: {:?}", gen_res);
-        // do not fail if quickcheck generated data that is too large
-        match gen_res {
-          Err(GenError::BufferTooSmall(_)) => return true,
-          Err(_) => return false,
-          Ok(_)  => (),
+        let parse_res: IResult<&[u8], u64> = ebml_uint!(&data[..], id);
+        info!("parse_res: {:?}", parse_res);
+        match parse_res {
+          Ok((_rest, o)) => {
+            assert_eq!(num as u64, o);
+            return true;
+          },
+          e => panic!(format!("parse error: {:?}", e)),
         }
       }
+    }
 
-      info!("{}", (&data[..]).to_hex(16));
-      let parse_res = ::ebml::ebml_header(&data[..]);
-      info!("parse_res: {:?}", parse_res);
-      match parse_res {
-        Ok((_rest, h)) => {
-          assert_eq!(header, h);
-          return true;
-        },
-        e => panic!(format!("parse error: {:?}", e)),
+    quickcheck! {
+      fn test_ebml_header(version: u8, read_version: u8, max_id_length: u8, max_size_length: u8, doc_type: String,
+        doc_type_version: u8, doc_type_read_version: u8) -> bool {
+        let header = EBMLHeader {
+          version: version as u64,
+          read_version: read_version as u64,
+          max_id_length: max_id_length as u64,
+          max_size_length: max_size_length as u64,
+          doc_type: doc_type,
+          doc_type_version: doc_type_version as u64,
+          doc_type_read_version: doc_type_read_version as u64
+        };
+
+        info!("will serialize: {:#?}", header);
+        let mut data = [0u8; 100];
+        {
+          let gen_res = gen_ebml_header((&mut data[..], 0), &header);
+          info!("gen_res: {:?}", gen_res);
+          // do not fail if quickcheck generated data that is too large
+          match gen_res {
+            Err(GenError::BufferTooSmall(_)) => return true,
+            Err(_) => return false,
+            Ok(_)  => (),
+          }
+        }
+
+        info!("{}", (&data[..]).to_hex(16));
+        let parse_res = ::ebml::ebml_header(&data[..]);
+        info!("parse_res: {:?}", parse_res);
+        match parse_res {
+          Ok((_rest, h)) => {
+            assert_eq!(header, h);
+            return true;
+          },
+          e => panic!(format!("parse error: {:?}", e)),
+        }
       }
     }
-  }
 }

@@ -1,18 +1,17 @@
-extern crate matroska;
-extern crate av_format;
 extern crate av_data;
+extern crate av_format;
 extern crate circular;
+extern crate matroska;
 extern crate nom;
 
-use nom::{Err, Offset};
 use circular::Buffer;
+use nom::{Err, Offset};
 use std::env;
-use std::io::Read;
 use std::fs::File;
+use std::io::Read;
 
 use matroska::ebml::ebml_header;
 use matroska::elements::{segment, segment_element, SegmentElement};
-
 
 fn main() {
     let mut args = env::args();
@@ -80,11 +79,11 @@ fn run(filename: &str) -> std::io::Result<()> {
         }
 
         if b.available_space() == 0 {
-          b.shift();
-          if b.available_space() == 0 {
-            println!("buffer is already full,  cannot refill");
-            break;
-          }
+            b.shift();
+            if b.available_space() == 0 {
+                println!("buffer is already full,  cannot refill");
+                break;
+            }
         }
 
         // refill the buffer
@@ -100,11 +99,8 @@ fn run(filename: &str) -> std::io::Result<()> {
         let offset = {
             let (i, element) = match segment_element(b.data()) {
                 Ok((i, o)) => (i, o),
-                Err(Err::Error(e)) |
-                Err(Err::Failure(e)) => panic!("failed parsing: {:?}", e),
-                Err(Err::Incomplete(_i)) => {
-                  continue
-                },
+                Err(Err::Error(e)) | Err(Err::Failure(e)) => panic!("failed parsing: {:?}", e),
+                Err(Err::Incomplete(_i)) => continue,
             };
 
             match element {
@@ -115,80 +111,89 @@ fn run(filename: &str) -> std::io::Result<()> {
                     } else {
                         seek_head = Some(s);
                     }
-                },
+                }
                 SegmentElement::Info(i) => {
                     println!("|+ Segment Information");
                     println!("| + timestamp scale: {}", i.timecode_scale);
                     println!("| + multiplexing application: {}", i.muxing_app);
                     println!("| + writing application: {}", i.writing_app);
-                    println!("| + segment UID: {:?}", i.segment_uid.as_ref().unwrap_or(&Vec::new()));
+                    println!(
+                        "| + segment UID: {:?}",
+                        i.segment_uid.as_ref().unwrap_or(&Vec::new())
+                    );
                     println!("| + duration: {}s", i.duration.unwrap_or(0f64) / 1000f64);
                     if info.is_some() {
                         panic!("already got an Info element");
                     } else {
                         info = Some(i);
                     }
-                },
+                }
                 SegmentElement::Tracks(t) => {
                     //eprintln!("got tracks: {:#?}", t);
                     println!("|+ Segment tracks");
                     for tr in t.tracks.iter() {
-                      println!("| + A track");
-                      println!("|  + Track number: {}", tr.track_number);
-                      println!("|  + Track UID: {}", tr.track_uid);
-                      println!("|  + Track type: {}", tr.track_type);
-                      println!("|  + Lacing flag: {}", tr.flag_lacing.unwrap_or(0));
-                      println!("|  + Default flag: {}", tr.flag_default.unwrap_or(0));
-                      println!("|  + Language: {}", tr.language.as_ref().unwrap_or(&"".to_string()));
-                      println!("|  + Codec ID: {}", tr.codec_id);
-                      println!("|  + Codec private: length {}", tr.codec_private.as_ref().map(|v| v.len()).unwrap_or(0));
+                        println!("| + A track");
+                        println!("|  + Track number: {}", tr.track_number);
+                        println!("|  + Track UID: {}", tr.track_uid);
+                        println!("|  + Track type: {}", tr.track_type);
+                        println!("|  + Lacing flag: {}", tr.flag_lacing.unwrap_or(0));
+                        println!("|  + Default flag: {}", tr.flag_default.unwrap_or(0));
+                        println!(
+                            "|  + Language: {}",
+                            tr.language.as_ref().unwrap_or(&"".to_string())
+                        );
+                        println!("|  + Codec ID: {}", tr.codec_id);
+                        println!(
+                            "|  + Codec private: length {}",
+                            tr.codec_private.as_ref().map(|v| v.len()).unwrap_or(0)
+                        );
 
-                      if let Some(ref v) = tr.video {
-                        println!("|  + Video track");
-                        println!("|    + Pixel width: {}", v.pixel_width);
-                        println!("|    + Pixel height: {}", v.pixel_height);
-                        if let Some(inter) = v.flag_interlaced {
-                          println!("|    + Interlaced: {}", inter);
+                        if let Some(ref v) = tr.video {
+                            println!("|  + Video track");
+                            println!("|    + Pixel width: {}", v.pixel_width);
+                            println!("|    + Pixel height: {}", v.pixel_height);
+                            if let Some(inter) = v.flag_interlaced {
+                                println!("|    + Interlaced: {}", inter);
+                            }
+                            if let Some(width) = v.display_width {
+                                println!("|    + Display width: {}", width);
+                            }
+                            if let Some(height) = v.display_height {
+                                println!("|    + Display height: {}", height);
+                            }
+                            if let Some(unit) = v.display_unit {
+                                println!("|    + Display unit: {}", unit);
+                            }
                         }
-                        if let Some(width) = v.display_width {
-                          println!("|    + Display width: {}", width);
-                        }
-                        if let Some(height) = v.display_height {
-                          println!("|    + Display height: {}", height);
-                        }
-                        if let Some(unit) = v.display_unit {
-                          println!("|    + Display unit: {}", unit);
-                        }
-                      }
 
-                      if let Some(ref a) = tr.audio {
-                        println!("|  + Audio track");
-                        println!("|    + Sampling frequency: {}", a.sampling_frequency);
-                        if let Some(frequency) = a.output_sampling_frequency {
-                          println!("|    + Output sampling freqeuncy: {}", frequency);
+                        if let Some(ref a) = tr.audio {
+                            println!("|  + Audio track");
+                            println!("|    + Sampling frequency: {}", a.sampling_frequency);
+                            if let Some(frequency) = a.output_sampling_frequency {
+                                println!("|    + Output sampling freqeuncy: {}", frequency);
+                            }
+                            println!("|    + Channels: {}", a.channels);
+                            if let Some(ref channel_positions) = a.channel_positions {
+                                println!("|    + Channel position: {:?}", channel_positions);
+                            }
+                            if let Some(bit_depth) = a.bit_depth {
+                                println!("|    + Bit depth: {}", bit_depth);
+                            }
                         }
-                        println!("|    + Channels: {}", a.channels);
-                        if let Some(ref channel_positions) = a.channel_positions {
-                          println!("|    + Channel position: {:?}", channel_positions);
-                        }
-                        if let Some(bit_depth) = a.bit_depth {
-                          println!("|    + Bit depth: {}", bit_depth);
-                        }
-                      }
                     }
                     if tracks.is_some() {
                         panic!("already got a Tracks element");
                     } else {
                         tracks = Some(t);
                     }
-                },
+                }
                 /*SegmentElement::Cluster(c) => {
                     println!("|+ Cluster");
                     eprintln!("got a cluster: {:#?}", c);
                 },*/
                 SegmentElement::Void => {
                     println!("|+ EbmlVoid");
-                },
+                }
                 el => {
                     panic!("got unexpected element: {:#?}", el);
                 }
@@ -201,14 +206,13 @@ fn run(filename: &str) -> std::io::Result<()> {
         b.consume(offset);
     }
 
-
     loop {
         if b.available_space() == 0 {
-          b.shift();
-          if b.available_space() == 0 {
-            println!("buffer is already full,  cannot refill");
-            break;
-          }
+            b.shift();
+            if b.available_space() == 0 {
+                println!("buffer is already full,  cannot refill");
+                break;
+            }
         }
 
         // refill the buffer
@@ -234,38 +238,48 @@ fn run(filename: &str) -> std::io::Result<()> {
         let offset = {
             let (i, element) = match segment_element(b.data()) {
                 Ok((i, o)) => (i, o),
-                Err(Err::Error(e)) |
-                Err(Err::Failure(e)) => panic!("failed parsing: {:?}", e),
+                Err(Err::Error(e)) | Err(Err::Failure(e)) => panic!("failed parsing: {:?}", e),
                 Err(Err::Incomplete(_)) => continue,
             };
 
             match element {
-                SegmentElement::SeekHead(_) | SegmentElement::Info(_) | SegmentElement::Tracks(_) => {
-                  panic!("unexpected seek head, info or tracks element: {:?}", element);
-                },
+                SegmentElement::SeekHead(_)
+                | SegmentElement::Info(_)
+                | SegmentElement::Tracks(_) => {
+                    panic!(
+                        "unexpected seek head, info or tracks element: {:?}",
+                        element
+                    );
+                }
                 SegmentElement::Cluster(c) => {
-                  println!("|+ Cluster");
-                  println!("|+   timecode: {}", c.timecode);
-                  println!("|+   silent_tracks: {:?}", c.silent_tracks);
-                  println!("|+   position: {:?}", c.position);
-                  println!("|+   prev_size: {:?}", c.prev_size);
-                  println!("|+   simple_block: {} elements", c.simple_block.len());
-                  println!("|+   block_group: {} elements", c.block_group.len());
-                  println!("|+   encrypted_block: {:?} bytes", c.encrypted_block.as_ref().map(|s| s.len()));
-                  //eprintln!("got a cluster: {:#?}", c);
-                },
+                    println!("|+ Cluster");
+                    println!("|+   timecode: {}", c.timecode);
+                    println!("|+   silent_tracks: {:?}", c.silent_tracks);
+                    println!("|+   position: {:?}", c.position);
+                    println!("|+   prev_size: {:?}", c.prev_size);
+                    println!("|+   simple_block: {} elements", c.simple_block.len());
+                    println!("|+   block_group: {} elements", c.block_group.len());
+                    println!(
+                        "|+   encrypted_block: {:?} bytes",
+                        c.encrypted_block.as_ref().map(|s| s.len())
+                    );
+                    //eprintln!("got a cluster: {:#?}", c);
+                }
                 SegmentElement::Void => {
-                  println!("|+ EbmlVoid");
-                },
+                    println!("|+ EbmlVoid");
+                }
                 SegmentElement::Tags(_) => {
-                  println!("|+ Tags");
+                    println!("|+ Tags");
                 }
                 SegmentElement::Cues(_) => {
-                  println!("|+ Cues");
+                    println!("|+ Cues");
                 }
                 SegmentElement::Unknown(id, data) => {
-                    panic!("offset {:X?}: got unknown element: {:X?} {:#?}", _consumed, id, data);
-                },
+                    panic!(
+                        "offset {:X?}: got unknown element: {:X?} {:#?}",
+                        _consumed, id, data
+                    );
+                }
                 el => {
                     panic!("got unexpected element: {:#?}", el);
                 }

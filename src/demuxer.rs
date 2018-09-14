@@ -1,19 +1,21 @@
-use av_format::error::*;
-use std::io::SeekFrom;
 use av_data::packet::Packet;
-use av_data::timeinfo::TimeInfo;
 use av_data::params::*;
-use av_format::stream::Stream;
+use av_data::timeinfo::TimeInfo;
 use av_format::buffer::Buffered;
+use av_format::common::GlobalInfo;
 use av_format::demuxer::{Demuxer, Event};
 use av_format::demuxer::{Descr, Descriptor};
-use av_format::common::GlobalInfo;
-use std::collections::VecDeque;
+use av_format::error::*;
+use av_format::stream::Stream;
 use rational::Rational64;
+use std::collections::VecDeque;
+use std::io::SeekFrom;
 
 use ebml::{ebml_header, EBMLHeader};
-use elements::{segment, segment_element, Cluster, SeekHead, Info, Tracks, TrackEntry,
-               SegmentElement, simple_block};
+use elements::{
+    segment, segment_element, simple_block, Cluster, Info, SeekHead, SegmentElement, TrackEntry,
+    Tracks,
+};
 use nom::{self, Err, IResult, Offset};
 
 #[derive(Debug, Clone)]
@@ -62,7 +64,10 @@ impl MkvDemuxer {
                 SegmentElement::SeekHead(s) => {
                     trace!("got seek head: {:#?}", s);
                     if self.seek_head.is_some() {
-                        return Err(Err::Error(error_position!(input, nom::ErrorKind::Custom(1))));
+                        return Err(Err::Error(error_position!(
+                            input,
+                            nom::ErrorKind::Custom(1)
+                        )));
                     } else {
                         self.seek_head = Some(s);
                     }
@@ -70,7 +75,10 @@ impl MkvDemuxer {
                 SegmentElement::Info(i) => {
                     trace!("got info: {:#?}", i);
                     if self.info.is_some() {
-                        return Err(Err::Error(error_position!(input, nom::ErrorKind::Custom(1))));
+                        return Err(Err::Error(error_position!(
+                            input,
+                            nom::ErrorKind::Custom(1)
+                        )));
                     } else {
                         self.info = Some(i);
                     }
@@ -78,7 +86,10 @@ impl MkvDemuxer {
                 SegmentElement::Tracks(t) => {
                     trace!("got tracks: {:#?}", t);
                     if self.tracks.is_some() {
-                        return Err(Err::Error(error_position!(input, nom::ErrorKind::Custom(1))));
+                        return Err(Err::Error(error_position!(
+                            input,
+                            nom::ErrorKind::Custom(1)
+                        )));
                     } else {
                         self.tracks = Some(t);
                     }
@@ -99,7 +110,11 @@ impl Demuxer for MkvDemuxer {
     fn read_headers(&mut self, buf: &Box<Buffered>, info: &mut GlobalInfo) -> Result<SeekFrom> {
         match self.parse_until_tracks(buf.data()) {
             Ok((i, _)) => {
-                info.duration = self.info.as_ref().and_then(|info| info.duration).map(|d| d as u64);
+                info.duration = self
+                    .info
+                    .as_ref()
+                    .and_then(|info| info.duration)
+                    .map(|d| d as u64);
                 if let Some(ref mut t) = self.tracks {
                     for tr in t.tracks.iter_mut() {
                         info.add_stream(track_to_stream(self.info.as_ref().unwrap(), tr));
@@ -107,14 +122,14 @@ impl Demuxer for MkvDemuxer {
                     }
                 }
                 Ok(SeekFrom::Current(buf.data().offset(i) as i64))
-            },
+            }
             Err(Err::Incomplete(needed)) => {
                 let sz = match needed {
                     Needed::Size(size) => buf.data().len() + size,
                     _ => 1024,
                 };
                 Err(Error::MoreDataNeeded(sz))
-            },
+            }
             e => {
                 error!("{:?}", e);
                 Err(Error::InvalidData)
@@ -145,10 +160,8 @@ impl Demuxer for MkvDemuxer {
                         }
                     }
                     Ok((seek, Event::MoreDataNeeded(0)))
-                },
-                Err(Err::Incomplete(Needed::Size(size))) => {
-                    Err(Error::MoreDataNeeded(size))
-                },
+                }
+                Err(Err::Incomplete(Needed::Size(size))) => Err(Error::MoreDataNeeded(size)),
                 e => {
                     error!("{:?}", e);
                     Err(Error::InvalidData)
@@ -161,11 +174,11 @@ impl Demuxer for MkvDemuxer {
 fn track_entry_codec_id(t: &TrackEntry) -> Option<String> {
     // TODO: Support V_QUICKTIME and V_MS/VFW/FOURCC
     match t.codec_id.as_ref() {
-        "A_OPUS"   => Some("opus".to_owned()),
+        "A_OPUS" => Some("opus".to_owned()),
         "A_VORBIS" => Some("vorbis".to_owned()),
-        "V_AV1"    => Some("av1".to_owned()),
-        "V_VP8"    => Some("vp8".to_owned()),
-        "V_VP9"    => Some("vp9".to_owned()),
+        "V_AV1" => Some("av1".to_owned()),
+        "V_VP8" => Some("vp8".to_owned()),
+        "V_VP9" => Some("vp9".to_owned()),
         _ => None,
     }
 }
@@ -222,7 +235,7 @@ fn track_entry_media_kind(t: &TrackEntry) -> Option<MediaKind> {
 
 // TODO: make sure the timecode_scale isn't 0
 pub fn track_to_stream(info: &Info, t: &TrackEntry) -> Stream {
-    let num = if let Some(ts) = t.track_timecode_scale  {
+    let num = if let Some(ts) = t.track_timecode_scale {
         (ts * info.timecode_scale as f64) as i64
     } else {
         info.timecode_scale as i64
@@ -243,7 +256,7 @@ pub fn track_to_stream(info: &Info, t: &TrackEntry) -> Stream {
             codec_id: track_entry_codec_id(t),
             kind: track_entry_media_kind(t),
         },
-        user_private: None
+        user_private: None,
     }
 }
 
@@ -307,17 +320,17 @@ pub const MKV_DESC: &Descriptor = &Des {
         description: "Nom-based Matroska demuxer",
         extensions: &["mkv", "webm", "mka"],
         mime: &["video/x-matroska", "audio/x-matroska"],
-    }
+    },
 };
 
 #[cfg(test)]
 #[allow(non_upper_case_globals)]
 mod tests {
     use super::*;
-    use std::io::Cursor;
-    use nom::Offset;
-    use av_format::demuxer::Context;
     use av_format::buffer::*;
+    use av_format::demuxer::Context;
+    use nom::Offset;
+    use std::io::Cursor;
 
     const webm: &'static [u8] = include_bytes!("../assets/bbb-vp9-opus.webm");
 
@@ -357,8 +370,10 @@ mod tests {
 
     #[test]
     fn context() {
-        let mut context = Context::new(Box::new(MkvDemuxer::new()),
-                                       Box::new(AccReader::new(Cursor::new(webm))));
+        let mut context = Context::new(
+            Box::new(MkvDemuxer::new()),
+            Box::new(AccReader::new(Cursor::new(webm))),
+        );
         info!("read headers: {:?}", context.read_headers().unwrap());
         info!("streams: {:?}", context.info.streams);
         info!("event: {:?}", context.read_event().unwrap());

@@ -1,6 +1,6 @@
 #![allow(unused_assignments)]
 use ebml::{vid, vint};
-use nom::{IResult, be_u8, be_i16};
+use nom::{be_i16, be_u8, IResult};
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum SegmentElement<'a> {
@@ -72,22 +72,22 @@ named!(pub segment_element<SegmentElement>,
 
 // hack to fix type inference issues
 pub fn ret_tags(input: &[u8]) -> IResult<&[u8], SegmentElement, u32> {
-  Ok((input, SegmentElement::Tags(Tags{})))
+    Ok((input, SegmentElement::Tags(Tags {})))
 }
 
 // hack to fix type inference issues
 pub fn ret_attachments(input: &[u8]) -> IResult<&[u8], SegmentElement, u32> {
-  Ok((input, SegmentElement::Attachments(Attachments{})))
+    Ok((input, SegmentElement::Attachments(Attachments {})))
 }
 
 // hack to fix type inference issues
 pub fn ret_cues(input: &[u8]) -> IResult<&[u8], SegmentElement, u32> {
-  Ok((input, SegmentElement::Cues(Cues{})))
+    Ok((input, SegmentElement::Cues(Cues {})))
 }
 
 // hack to fix type inference issues
 pub fn ret_void(input: &[u8]) -> IResult<&[u8], SegmentElement, u32> {
-  Ok((input, SegmentElement::Void))
+    Ok((input, SegmentElement::Void))
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -104,7 +104,6 @@ named!(pub seek_head<SegmentElement>,
     }))
   )
 );
-
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Seek {
@@ -128,7 +127,7 @@ named!(pub seek<Seek>,
   )
 );
 
-#[derive(Debug, Clone, PartialEq,Default)]
+#[derive(Debug, Clone, PartialEq, Default)]
 pub struct Info {
     pub segment_uid: Option<Vec<u8>>,
     pub segment_filename: Option<String>,
@@ -139,7 +138,7 @@ pub struct Info {
     pub segment_family: Option<Vec<u8>>,
     pub chapter_translate: Option<ChapterTranslate>,
     pub timecode_scale: u64,
-    pub duration: Option<f64>, // FIXME should be float
+    pub duration: Option<f64>,     // FIXME should be float
     pub date_utc: Option<Vec<u8>>, //FIXME: should be date
     pub title: Option<String>,
     pub muxing_app: String,
@@ -188,7 +187,7 @@ pub struct ChapterTranslate {}
 
 // hack to fix type inference issues
 pub fn ret_chapter_translate(input: &[u8]) -> IResult<&[u8], ChapterTranslate, u32> {
-  Ok((input, ChapterTranslate{}))
+    Ok((input, ChapterTranslate {}))
 }
 
 //https://datatracker.ietf.org/doc/html/draft-lhomme-cellar-matroska-03#section-7.3.16
@@ -300,7 +299,7 @@ pub struct BlockAdditions {}
 
 // hack to fix type inference issues
 pub fn ret_block_additions(input: &[u8]) -> IResult<&[u8], BlockAdditions, u32> {
-  Ok((input, BlockAdditions{}))
+    Ok((input, BlockAdditions {}))
 }
 //https://datatracker.ietf.org/doc/html/draft-lhomme-cellar-matroska-03#section-7.3.16
 //TODO
@@ -313,7 +312,7 @@ pub struct Slices {}
 
 // hack to fix type inference issues
 pub fn ret_slices(input: &[u8]) -> IResult<&[u8], Slices, u32> {
-  Ok((input, Slices{}))
+    Ok((input, Slices {}))
 }
 //https://datatracker.ietf.org/doc/html/draft-lhomme-cellar-matroska-03#section-7.3.46
 //TODO
@@ -326,7 +325,7 @@ pub struct ReferenceFrame {}
 
 // hack to fix type inference issues
 pub fn ret_reference_frame(input: &[u8]) -> IResult<&[u8], ReferenceFrame, u32> {
-  Ok((input, ReferenceFrame{}))
+    Ok((input, ReferenceFrame {}))
 }
 //https://datatracker.ietf.org/doc/html/draft-lhomme-cellar-matroska-03#section-7.3.53
 //TODO
@@ -414,7 +413,8 @@ pub struct Tracks {
 
 impl Tracks {
     pub fn lookup(&self, track_number: u64) -> Option<usize> {
-        self.tracks.iter()
+        self.tracks
+            .iter()
             .find(|t| t.track_number == track_number)
             .map(|t| t.stream_index)
     }
@@ -425,7 +425,7 @@ named!(pub tracks<SegmentElement>,
   map!(many1!(complete!(eat_void!(track_entry))), |v| SegmentElement::Tracks(Tracks { tracks: v }))
 );
 
-#[derive(Debug, Clone, PartialEq,Default)]
+#[derive(Debug, Clone, PartialEq, Default)]
 pub struct TrackEntry {
     pub track_number: u64,
     pub track_uid: u64,
@@ -434,7 +434,7 @@ pub struct TrackEntry {
     pub flag_default: Option<u64>, //FIXME: this flag is mandatory but does not appear in some files?
     pub flag_forced: Option<u64>, //FIXME: this flag is mandatory but does not appear in some files?
     pub flag_lacing: Option<u64>, //FIXME: this flag is mandatory but does not appear in some files?
-    pub min_cache: Option<u64>, //FIXME: this flag is mandatory but does not appear in some files?
+    pub min_cache: Option<u64>,   //FIXME: this flag is mandatory but does not appear in some files?
     pub max_cache: Option<u64>,
     pub default_duration: Option<u64>,
     pub default_decoded_field_duration: Option<u64>,
@@ -558,10 +558,9 @@ named!(pub track_entry<TrackEntry>,
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct TrackTranslate {
-  pub edition_uid: Vec<u64>,
-  pub codec: u64,
-  pub track_id: u64,
-
+    pub edition_uid: Vec<u64>,
+    pub codec: u64,
+    pub track_id: u64,
 }
 
 named!(pub track_translate<TrackTranslate>,
@@ -582,8 +581,8 @@ named!(pub track_translate<TrackTranslate>,
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct TrackOperation {
-  pub combine_planes: Option<TrackCombinePlanes>,
-  pub join_blocks:    Option<TrackJoinBlocks>,
+    pub combine_planes: Option<TrackCombinePlanes>,
+    pub join_blocks: Option<TrackJoinBlocks>,
 }
 
 named!(pub track_operation<TrackOperation>,
@@ -602,7 +601,7 @@ named!(pub track_operation<TrackOperation>,
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct TrackCombinePlanes {
-  pub track_planes: Vec<TrackPlane>,
+    pub track_planes: Vec<TrackPlane>,
 }
 
 named!(pub track_combine_planes<TrackCombinePlanes>,
@@ -611,8 +610,8 @@ named!(pub track_combine_planes<TrackCombinePlanes>,
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct TrackPlane {
-  pub uid: u64,
-  pub plane_type: u64,
+    pub uid: u64,
+    pub plane_type: u64,
 }
 
 named!(pub track_plane<TrackPlane>,
@@ -631,7 +630,7 @@ named!(pub track_plane<TrackPlane>,
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct TrackJoinBlocks {
-  pub uid: Vec<u64>,
+    pub uid: Vec<u64>,
 }
 
 named!(pub track_join_blocks<TrackJoinBlocks>,
@@ -640,7 +639,7 @@ named!(pub track_join_blocks<TrackJoinBlocks>,
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct ContentEncodings {
-  pub content_encoding: Vec<ContentEncoding>,
+    pub content_encoding: Vec<ContentEncoding>,
 }
 
 named!(pub content_encodings<ContentEncodings>,
@@ -649,11 +648,11 @@ named!(pub content_encodings<ContentEncodings>,
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct ContentEncoding {
-  order: u64,
-  scope: u64,
-  encoding_type: u64,
-  compression: Option<ContentCompression>,
-  encryption: Option<ContentEncryption>,
+    order: u64,
+    scope: u64,
+    encoding_type: u64,
+    compression: Option<ContentCompression>,
+    encryption: Option<ContentEncryption>,
 }
 
 named!(pub content_encoding<ContentEncoding>,
@@ -678,8 +677,8 @@ named!(pub content_encoding<ContentEncoding>,
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct ContentCompression {
-  algo: u64,
-  settings: Option<u64>,
+    algo: u64,
+    settings: Option<u64>,
 }
 
 named!(pub content_compression<ContentCompression>,
@@ -698,12 +697,12 @@ named!(pub content_compression<ContentCompression>,
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct ContentEncryption {
-  enc_algo: Option<u64>,
-  enc_key_id: Option<Vec<u8>>,
-  signature: Option<Vec<u8>>,
-  sig_key_id: Option<Vec<u8>>,
-  sig_algo: Option<u64>,
-  sig_hash_algo: Option<u64>,
+    enc_algo: Option<u64>,
+    enc_key_id: Option<Vec<u8>>,
+    signature: Option<Vec<u8>>,
+    sig_key_id: Option<Vec<u8>>,
+    sig_algo: Option<u64>,
+    sig_hash_algo: Option<u64>,
 }
 
 named!(pub content_encryption<ContentEncryption>,
@@ -728,7 +727,7 @@ named!(pub content_encryption<ContentEncryption>,
   )
 );
 
-#[derive(Debug, Clone, PartialEq,Default)]
+#[derive(Debug, Clone, PartialEq, Default)]
 pub struct Audio {
     pub sampling_frequency: f64,
     pub output_sampling_frequency: Option<f64>,
@@ -757,7 +756,7 @@ named!(pub audio<Audio>,
   )
 );
 
-#[derive(Debug, Clone, PartialEq,Default)]
+#[derive(Debug, Clone, PartialEq, Default)]
 pub struct Video {
     pub flag_interlaced: Option<u64>,
     pub field_order: Option<u64>,
@@ -965,7 +964,7 @@ pub struct Chapters {}
 
 // hack to fix type inference issues
 pub fn ret_chapters(input: &[u8]) -> IResult<&[u8], SegmentElement, u32> {
-  Ok((input, SegmentElement::Chapters(Chapters{})))
+    Ok((input, SegmentElement::Chapters(Chapters {})))
 }
 //https://datatracker.ietf.org/doc/html/draft-lhomme-cellar-matroska-03#section-7.3.199
 //TODO
@@ -983,7 +982,6 @@ pub struct Attachments {}
 #[derive(Debug, Clone, PartialEq)]
 pub struct Tags {}
 
-
 #[cfg(test)]
 #[allow(non_upper_case_globals)]
 mod tests {
@@ -993,7 +991,6 @@ mod tests {
 
     const mkv: &'static [u8] = include_bytes!("../assets/single_stream.mkv");
     const webm: &'static [u8] = include_bytes!("../assets/big-buck-bunny_trailer.webm");
-
 
     #[test]
     fn mkv_segment_root() {
@@ -1021,10 +1018,7 @@ mod tests {
                         SegmentElement::Unknown(id, size) => {
                             debug!(
                                 "[{} -> {}] Unknown {{ id: 0x{:x}, size: {:?} }}",
-                                index,
-                                new_index,
-                                id,
-                                size
+                                index, new_index, id, size
                             );
                         }
                         o => {
@@ -1076,10 +1070,7 @@ mod tests {
                         SegmentElement::Unknown(id, size) => {
                             debug!(
                                 "[{} -> {}] Unknown {{ id: 0x{:x}, size: {:?} }}",
-                                index,
-                                new_index,
-                                id,
-                                size
+                                index, new_index, id, size
                             );
                         }
                         o => {
@@ -1101,6 +1092,5 @@ mod tests {
                 }
             }
         }
-
     }
 }
