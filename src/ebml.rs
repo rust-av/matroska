@@ -49,7 +49,7 @@ pub fn vint(input: &[u8]) -> IResult<&[u8], u64> {
 
     let mut val = (v ^ (1 << (7 - len))) as u64;
 
-    // println!("vint {:08b} {:08b} {:08b} {}", val, v, (1 << (8 - len)), len);
+    // trace!("vint {:08b} {:08b} {:08b} {}", val, v, (1 << (8 - len)), len);
 
     for i in 0..len as usize {
         val = (val << 8) | input[i + 1] as u64;
@@ -78,7 +78,7 @@ pub fn vid(input: &[u8]) -> IResult<&[u8], u64> {
 
     let mut val = v as u64;
 
-    // println!("vint {:08b} {:08b} {:08b} {}", val, v, (1 << (8 - len)), len);
+    // trace!("vint {:08b} {:08b} {:08b} {}", val, v, (1 << (8 - len)), len);
 
     for i in 0..len as usize {
         val = (val << 8) | input[i + 1] as u64;
@@ -175,7 +175,7 @@ pub fn parse_float_data(input: &[u8], size: u64) -> IResult<&[u8], f64> {
 }
 /*
 fn parse_element_id(input: &[u8], id: u64, size: u64) -> IResult<&[u8], ElementData> {
-    // println!("id: 0x{:X} size: {}", id, size);
+    // trace!("id: 0x{:X} size: {}", id, size);
     if input.len() < size as usize {
         return IResult::Incomplete(Needed::Size(size as usize));
     }
@@ -381,27 +381,27 @@ mod tests {
     /*
     #[test]
     fn header() {
-        println!("{}", single_stream[..8].to_hex(8));
-        println!("{:b} {:b}", single_stream[0], single_stream[1]);
-        println!("{:#?}", parse_element(single_stream));
+        trace!("{}", single_stream[..8].to_hex(8));
+        trace!("{:b} {:b}", single_stream[0], single_stream[1]);
+        trace!("{:#?}", parse_element(single_stream));
         panic!();
     }*/
 
     #[test]
     fn mkv_header() {
-        println!("{}", single_stream[..8].to_hex(8));
-        println!("{:b} {:b}", single_stream[0], single_stream[1]);
-        println!("{:?}", ebml_header(&single_stream[..100]).unwrap());
+        trace!("{}", single_stream[..8].to_hex(8));
+        trace!("{:b} {:b}", single_stream[0], single_stream[1]);
+        trace!("{:?}", ebml_header(&single_stream[..100]).unwrap());
     }
 
     #[test]
     fn webm_header() {
-        println!("{}", webm[..8].to_hex(8));
+        trace!("{}", webm[..8].to_hex(8));
         let res = ebml_header(&webm[..100]);
-        println!("{:?}", res);
+        trace!("{:?}", res);
 
         if let Ok((i, _)) = res {
-            println!("offset: {} bytes", webm.offset(i));
+            trace!("offset: {} bytes", webm.offset(i));
         } else {
           panic!();
         }

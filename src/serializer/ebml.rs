@@ -128,7 +128,7 @@ pub fn gen_int<'a>(mut input: (&'a mut [u8], usize),
 
 /*
 pub fn vid_size(id: u64) -> u8 {
-  
+
 }
 */
 
@@ -246,7 +246,7 @@ pub fn gen_f64_ref<'a>(input: (&'a mut [u8], usize),
 macro_rules! gen_ebml_size (
   (($i:expr, $idx:expr), $expected_size:expr, $size:expr) => ({
     let v = vint_size($size);
-    //println!("size: {}, vint_size: {}, expected_size: {}", $size, v, $expected_size);
+    //trace!("size: {}, vint_size: {}, expected_size: {}", $size, v, $expected_size);
 
     if v > $expected_size {
       Err(GenError::CustomError(0))
@@ -408,7 +408,7 @@ macro_rules! gen_dbg (
         let sl = unsafe {
           from_raw_parts_mut(p as *mut u8, len)
         };
-        println!("gen_dbg {}->{}: {}:\n{}", idx, index, stringify!($submac!($($args)*)), (&sl[idx..index]).to_hex(16));
+        trace!("gen_dbg {}->{}: {}:\n{}", idx, index, stringify!($submac!($($args)*)), (&sl[idx..index]).to_hex(16));
         Ok((sl, index))
       },
       Err(e) => Err(e),
@@ -541,17 +541,17 @@ mod tests {
     use nom::*;
 
     fn test_vint_serializer(i: u64) -> bool {
-        println!("testing for {}", i);
+        info!("testing for {}", i);
 
         let mut data = [0u8; 10];
         {
             let gen_res = gen_vint((&mut data[..], 0), i);
-            println!("gen_res: {:?}", gen_res);
+            info!("gen_res: {:?}", gen_res);
         }
-        println!("{}", (&data[..]).to_hex(16));
+        info!("{}", (&data[..]).to_hex(16));
 
         let parse_res = ::ebml::vint(&data[..]);
-        println!("parse_res: {:?}", parse_res);
+        info!("parse_res: {:?}", parse_res);
         match parse_res {
             Ok((_rest, o)) => {
                 assert_eq!(i, o);
@@ -577,20 +577,20 @@ mod tests {
     }
 
     fn test_vid_serializer(id: u64) -> bool {
-        println!("\ntesting for id={}", id);
+        info!("\ntesting for id={}", id);
 
         let mut data = [0u8; 10];
         {
             let gen_res = gen_vid((&mut data[..], 0), id);
-            println!("gen_res: {:?}", gen_res);
+            info!("gen_res: {:?}", gen_res);
         }
-        println!("{}", (&data[..]).to_hex(16));
+        info!("{}", (&data[..]).to_hex(16));
 
         let parse_res = ::ebml::vid(&data[..]);
-        println!("parse_res: {:?}", parse_res);
+        info!("parse_res: {:?}", parse_res);
         match parse_res {
             Ok((_rest, o)) => {
-                println!("id={:08b}, parsed={:08b}", id, o);
+                info!("id={:08b}, parsed={:08b}", id, o);
                 assert_eq!(id, o);
                 return true;
             }
@@ -607,17 +607,17 @@ mod tests {
 
     fn test_ebml_u64_serializer(num: u64) -> bool {
         let id = 0x9F;
-        println!("\ntesting for id={}, num={}", id, num);
+        info!("\ntesting for id={}, num={}", id, num);
 
         let mut data = [0u8; 100];
         {
             let gen_res = gen_u64((&mut data[..], 0), id, num);
-            println!("gen_res: {:?}", gen_res);
+            info!("gen_res: {:?}", gen_res);
         }
-        println!("{}", (&data[..]).to_hex(16));
+        info!("{}", (&data[..]).to_hex(16));
 
         let parse_res:IResult<&[u8], u64> = ebml_uint!(&data[..], id);
-        println!("parse_res: {:?}", parse_res);
+        info!("parse_res: {:?}", parse_res);
         match parse_res {
             Ok((_rest, o)) => {
                 assert_eq!(num, o);
@@ -645,17 +645,17 @@ mod tests {
     quickcheck! {
   fn test_ebml_u8(num: u8) -> bool {
     let id = 0x9F;
-    println!("testing for id={}, num={}", id, num);
+    info!("testing for id={}, num={}", id, num);
 
     let mut data = [0u8; 100];
     {
       let gen_res = gen_u8((&mut data[..], 0), id, num);
-      println!("gen_res: {:?}", gen_res);
+      info!("gen_res: {:?}", gen_res);
     }
-    println!("{}", (&data[..]).to_hex(16));
+    info!("{}", (&data[..]).to_hex(16));
 
     let parse_res: IResult<&[u8], u64> = ebml_uint!(&data[..], id);
-    println!("parse_res: {:?}", parse_res);
+    info!("parse_res: {:?}", parse_res);
     match parse_res {
       Ok((_rest, o)) => {
         assert_eq!(num as u64, o);
@@ -679,11 +679,11 @@ mod tests {
         doc_type_read_version: doc_type_read_version as u64
       };
 
-      println!("will serialize: {:#?}", header);
+      info!("will serialize: {:#?}", header);
       let mut data = [0u8; 100];
       {
         let gen_res = gen_ebml_header((&mut data[..], 0), &header);
-        println!("gen_res: {:?}", gen_res);
+        info!("gen_res: {:?}", gen_res);
         // do not fail if quickcheck generated data that is too large
         match gen_res {
           Err(GenError::BufferTooSmall(_)) => return true,
@@ -692,9 +692,9 @@ mod tests {
         }
       }
 
-      println!("{}", (&data[..]).to_hex(16));
+      info!("{}", (&data[..]).to_hex(16));
       let parse_res = ::ebml::ebml_header(&data[..]);
-      println!("parse_res: {:?}", parse_res);
+      info!("parse_res: {:?}", parse_res);
       match parse_res {
         Ok((_rest, h)) => {
           assert_eq!(header, h);

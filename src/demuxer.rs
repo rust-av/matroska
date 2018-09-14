@@ -60,7 +60,7 @@ impl MkvDemuxer {
 
             match element {
                 SegmentElement::SeekHead(s) => {
-                    // println!("got seek head: {:#?}", s);
+                    trace!("got seek head: {:#?}", s);
                     if self.seek_head.is_some() {
                         return Err(Err::Error(error_position!(input, nom::ErrorKind::Custom(1))));
                     } else {
@@ -68,7 +68,7 @@ impl MkvDemuxer {
                     }
                 }
                 SegmentElement::Info(i) => {
-                    // println!("got info: {:#?}", i);
+                    trace!("got info: {:#?}", i);
                     if self.info.is_some() {
                         return Err(Err::Error(error_position!(input, nom::ErrorKind::Custom(1))));
                     } else {
@@ -76,7 +76,7 @@ impl MkvDemuxer {
                     }
                 }
                 SegmentElement::Tracks(t) => {
-                    // println!("got tracks: {:#?}", t);
+                    trace!("got tracks: {:#?}", t);
                     if self.tracks.is_some() {
                         return Err(Err::Error(error_position!(input, nom::ErrorKind::Custom(1))));
                     } else {
@@ -84,7 +84,7 @@ impl MkvDemuxer {
                     }
                 }
                 el => {
-                    println!("got element: {:#?}", el);
+                    debug!("got element: {:#?}", el);
                 }
             }
 
@@ -116,7 +116,7 @@ impl Demuxer for MkvDemuxer {
                 Err(Error::MoreDataNeeded(sz))
             },
             e => {
-                println!("error reading headers: {:?}", e);
+                error!("{:?}", e);
                 Err(Error::InvalidData)
             }
         }
@@ -133,7 +133,7 @@ impl Demuxer for MkvDemuxer {
                     match element {
                         SegmentElement::Cluster(c) => {
                             //self.clusters.push(c);
-                            // println!("got cluster element at timecode: {}", c.timecode);
+                            debug!("got cluster element at timecode: {}", c.timecode);
                             let mut packets = c.generate_packets(self.tracks.as_ref().unwrap());
                             self.queue.extend(packets.drain(..));
                             if let Some(event) = self.queue.pop_front() {
@@ -150,7 +150,7 @@ impl Demuxer for MkvDemuxer {
                     Err(Error::MoreDataNeeded(size))
                 },
                 e => {
-                    println!("parsing issue: {:?}", e);
+                    error!("{:?}", e);
                     Err(Error::InvalidData)
                 }
             }
@@ -253,7 +253,7 @@ impl<'a> Cluster<'a> {
 
         for block_data in self.simple_block.iter() {
             if let Ok((i, block)) = simple_block(block_data) {
-                //println!("parsing simple block: {:?}", block);
+                debug!("parsing simple block: {:?}", block);
                 if let Some(index) = tracks.lookup(block.track_number) {
                     let packet = Packet {
                         data: i.into(),
@@ -273,7 +273,7 @@ impl<'a> Cluster<'a> {
                     v.push(Event::NewPacket(packet));
                 }
             } else {
-                println!("error parsing simple block");
+                error!("error parsing simple block");
             }
         }
 
@@ -326,17 +326,17 @@ mod tests {
         let mut demuxer = MkvDemuxer::new();
 
         let res = demuxer.parse_until_tracks(webm);
-        println!("got parsing res: {:?}", res);
+        info!("got parsing res: {:?}", res);
         match res {
             Ok((i, _)) => {
-                println!("offset: {} bytes", webm.offset(i));
+                info!("offset: {} bytes", webm.offset(i));
             }
             e => {
-                println!("could not parse: {:?}", e);
+                info!("could not parse: {:?}", e);
             }
         }
 
-        println!("demuxer: {:#?}", demuxer);
+        info!("demuxer: {:#?}", demuxer);
     }
 
     #[test]
@@ -346,8 +346,8 @@ mod tests {
         for n in 100..2000 {
             let res = demuxer.parse_until_tracks(&webm[0..n]);
             match res {
-                Ok(_) => println!("Size {} ok", n),
-                Err(Err::Incomplete(needed)) => println!("Incomplete {} needs {:?}", n, needed),
+                Ok(_) => info!("Size {} ok", n),
+                Err(Err::Incomplete(needed)) => info!("Incomplete {} needs {:?}", n, needed),
                 Err(e) => {
                     panic!("Error at size {}: {:?}", n, e);
                 }
@@ -359,15 +359,15 @@ mod tests {
     fn context() {
         let mut context = Context::new(Box::new(MkvDemuxer::new()),
                                        Box::new(AccReader::new(Cursor::new(webm))));
-        println!("DEMUXER CONTEXT read headers: {:?}", context.read_headers().unwrap());
-        println!("DEMUXER CONTEXT streams: {:?}", context.info.streams);
-        println!("DEMUXER CONTEXT event: {:?}", context.read_event().unwrap());
-        println!("DEMUXER CONTEXT event: {:?}", context.read_event().unwrap());
-        println!("DEMUXER CONTEXT event: {:?}", context.read_event().unwrap());
-        println!("DEMUXER CONTEXT event: {:?}", context.read_event().unwrap());
-        println!("DEMUXER CONTEXT event: {:?}", context.read_event().unwrap());
-        println!("DEMUXER CONTEXT event: {:?}", context.read_event().unwrap());
-        println!("DEMUXER CONTEXT event: {:?}", context.read_event().unwrap());
-        println!("DEMUXER CONTEXT event: {:?}", context.read_event().unwrap());
+        info!("read headers: {:?}", context.read_headers().unwrap());
+        info!("streams: {:?}", context.info.streams);
+        info!("event: {:?}", context.read_event().unwrap());
+        info!("event: {:?}", context.read_event().unwrap());
+        info!("event: {:?}", context.read_event().unwrap());
+        info!("event: {:?}", context.read_event().unwrap());
+        info!("event: {:?}", context.read_event().unwrap());
+        info!("event: {:?}", context.read_event().unwrap());
+        info!("event: {:?}", context.read_event().unwrap());
+        info!("event: {:?}", context.read_event().unwrap());
     }
 }

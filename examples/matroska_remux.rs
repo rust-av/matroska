@@ -3,6 +3,10 @@ extern crate av_format;
 extern crate av_data;
 extern crate nom;
 
+extern crate pretty_env_logger;
+#[macro_use]
+extern crate log;
+
 use av_format::buffer::AccReader;
 use av_format::demuxer::{self, Event};
 use av_format::muxer::{self};
@@ -14,6 +18,7 @@ use matroska::demuxer::MKV_DESC;
 use matroska::muxer::MkvMuxer;
 
 fn main() {
+  pretty_env_logger::init();
   //const webm: &'static [u8] = include_bytes!("../assets/big-buck-bunny_trailer.webm");
   const WEBM: &'static [u8] = include_bytes!("../assets/bbb-vp9-opus.webm");
   //const webm: &'static [u8] = include_bytes!("../assets/single_stream.mkv");

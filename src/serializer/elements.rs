@@ -603,7 +603,7 @@ mod tests {
     use elements::SegmentElement;
 
     fn test_seek_head_serializer(seeks: Vec<(u64, Vec<u8>)>) -> bool {
-        println!("testing for {:?}", seeks);
+        trace!("testing for {:?}", seeks);
 
         let mut should_fail = false;
         if seeks.len() == 0 {
@@ -611,20 +611,20 @@ mod tests {
         }
 
         for &(_, ref id) in seeks.iter() {
-            println!("id: {}", id.to_hex(16));
+            trace!("id: {}", id.to_hex(16));
             if id.len() == 0 {
-                println!("id is empty, returning");
+                trace!("id is empty, returning");
                 return true;
                 //should_fail = true;
             }
         }
 
         if should_fail {
-            println!("the parser should fail");
+            trace!("the parser should fail");
         }
 
         let capacity = seeks.iter().fold(0, |acc, &(_, ref v)| acc + 8 + v.len() + 100);
-        println!("defining capacity as {}", capacity);
+        trace!("defining capacity as {}", capacity);
 
         let mut data = Vec::with_capacity(capacity);
         data.extend(repeat(0).take(capacity));
@@ -643,27 +643,27 @@ mod tests {
 
         let ser_res = {
             let gen_res = gen_seek_head((&mut data[..], 0), &seek_head);
-            println!("gen_res: {:?}", gen_res);
+            trace!("gen_res: {:?}", gen_res);
             if let Err(e) = gen_res {
-                println!("gen_res is error: {:?}", e);
-                println!("should fail: {:?}", should_fail);
+                trace!("gen_res is error: {:?}", e);
+                trace!("should fail: {:?}", should_fail);
                 return should_fail;
                 /*if should_fail {
-          println!("should fail");
+          trace!("should fail");
           return true;
         }*/
             }
         };
 
-        println!("ser_res: {:?}", ser_res);
+        trace!("ser_res: {:?}", ser_res);
 
         let parse_res = ::elements::segment_element(&data[..]);
-        println!("parse_res: {:?}", parse_res);
+        trace!("parse_res: {:?}", parse_res);
         match parse_res {
             Ok((_rest, SegmentElement::SeekHead(o))) => {
                 if should_fail {
-                    println!("parser should have failed on input for {:?}", seek_head);
-                    println!("{}", (&data[..]).to_hex(16));
+                    trace!("parser should have failed on input for {:?}", seek_head);
+                    trace!("{}", (&data[..]).to_hex(16));
                     return false;
                 }
 

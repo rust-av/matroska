@@ -89,7 +89,7 @@ impl MkvMuxer {
             needed = sz;
           },
           Err(e) => {
-            println!("muxing error: {:?}", e);
+            error!("{:?}", e);
             return Err(Error::InvalidData);
           },
           Ok((sl, sz)) => {
@@ -121,7 +121,7 @@ impl MkvMuxer {
             needed = sz;
           },
           Err(e) => {
-            println!("muxing error: {:?}", e);
+            error!("{:?}", e);
             return Err(Error::InvalidData);
           },
           Ok((sl, sz)) => {
@@ -152,7 +152,7 @@ impl MkvMuxer {
             needed = sz;
           },
           Err(e) => {
-            println!("muxing error: {:?}", e);
+            error!("{:?}", e);
             return Err(Error::InvalidData);
           },
           Ok((sl, sz)) => {
@@ -184,7 +184,7 @@ impl MkvMuxer {
             needed = sz;
           },
           Err(e) => {
-            println!("muxing error: {:?}", e);
+            error!("{:?}", e);
             return Err(Error::InvalidData);
           },
           Ok((sl, sz)) => {
@@ -216,7 +216,7 @@ impl MkvMuxer {
             needed = sz;
           },
           Err(e) => {
-            println!("tracks muxing error: {:?}", e);
+            error!("{:?}", e);
             return Err(Error::InvalidData);
           },
           Ok((sl, sz)) => {
@@ -310,7 +310,7 @@ impl Muxer for MkvMuxer {
             needed = sz;
           },
           Err(e) => {
-            println!("tracks muxing error: {:?}", e);
+            error!("{:?}", e);
             return Err(Error::InvalidData);
           },
           Ok((sl, sz)) => {
@@ -361,7 +361,7 @@ impl Muxer for MkvMuxer {
                 needed = sz;
               },
               Err(e) => {
-                println!("cluster muxing error: {:?}", e);
+                error!("{:?}", e);
                 return Err(Error::InvalidData);
               },
               Ok((sl, sz)) => {
@@ -413,7 +413,7 @@ impl Muxer for MkvMuxer {
               needed = sz;
             },
             Err(e) => {
-              println!("cluster muxing error: {:?}", e);
+              error!("{:?}", e);
               return Err(Error::InvalidData);
             },
             Ok((sl, sz)) => {

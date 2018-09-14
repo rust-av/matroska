@@ -998,10 +998,10 @@ mod tests {
     #[test]
     fn mkv_segment_root() {
         let res = segment(&mkv[47..100]);
-        println!("{:?}", res);
+        debug!("{:?}", res);
 
         if let Ok((i, _)) = res {
-            println!("consumed {} bytes after header", (&mkv[47..]).offset(i));
+            debug!("consumed {} bytes after header", (&mkv[47..]).offset(i));
         } else {
             panic!("res: {:?}", res);
         }
@@ -1019,7 +1019,7 @@ mod tests {
                     let new_index = mkv.offset(i);
                     match o {
                         SegmentElement::Unknown(id, size) => {
-                            println!(
+                            debug!(
                                 "[{} -> {}] Unknown {{ id: 0x{:x}, size: {:?} }}",
                                 index,
                                 new_index,
@@ -1028,7 +1028,7 @@ mod tests {
                             );
                         }
                         o => {
-                            println!("[{} -> {}] {:#?}", index, new_index, o);
+                            debug!("[{} -> {}] {:#?}", index, new_index, o);
                         }
                     };
 
@@ -1036,7 +1036,7 @@ mod tests {
                 }
                 e => {
                     let max_index = min(mkv.len(), index + 200);
-                    println!(
+                    debug!(
                         "[{}] {:#?}:\n{}",
                         index,
                         e,
@@ -1053,10 +1053,10 @@ mod tests {
     #[test]
     fn webm_segment_root() {
         let res = segment(&webm[40..100]);
-        println!("{:?}", res);
+        debug!("{:?}", res);
 
         if let Ok((i, _)) = res {
-            println!("consumed {} bytes after header", (&webm[40..]).offset(i));
+            debug!("consumed {} bytes after header", (&webm[40..]).offset(i));
         } else {
             panic!("res: {:?}", res);
         }
@@ -1074,7 +1074,7 @@ mod tests {
                     let new_index = webm.offset(i);
                     match o {
                         SegmentElement::Unknown(id, size) => {
-                            println!(
+                            debug!(
                                 "[{} -> {}] Unknown {{ id: 0x{:x}, size: {:?} }}",
                                 index,
                                 new_index,
@@ -1083,7 +1083,7 @@ mod tests {
                             );
                         }
                         o => {
-                            println!("[{} -> {}] {:#?}", index, new_index, o);
+                            debug!("[{} -> {}] {:#?}", index, new_index, o);
                         }
                     };
 
@@ -1091,7 +1091,7 @@ mod tests {
                 }
                 e => {
                     let max_index = min(webm.len(), index + 200);
-                    println!(
+                    debug!(
                         "[{}] {:#?}:\n{}",
                         index,
                         e,
