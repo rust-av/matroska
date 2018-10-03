@@ -48,11 +48,13 @@ pub fn vint(input: &[u8]) -> IResult<&[u8], u64> {
 
     let mut val = (v ^ (1 << (7 - len))) as u64;
 
-    // trace!("vint {:08b} {:08b} {:08b} {}", val, v, (1 << (8 - len)), len);
+    trace!("vint {:08b} {:08b} {:08b} {}", val, v, (1 << (8 - len)), len);
 
     for i in 0..len as usize {
         val = (val << 8) | input[i + 1] as u64;
     }
+
+    trace!("     result {:08x}", val);
 
     Ok((&input[len as usize + 1..], val))
 }
@@ -77,11 +79,13 @@ pub fn vid(input: &[u8]) -> IResult<&[u8], u64> {
 
     let mut val = v as u64;
 
-    // trace!("vint {:08b} {:08b} {:08b} {}", val, v, (1 << (8 - len)), len);
+    trace!("vid {:08b} {:08b} {:08b} {}", val, v, (1 << (8 - len)), len);
 
     for i in 0..len as usize {
         val = (val << 8) | input[i + 1] as u64;
     }
+
+    trace!("     result {:08x}", val);
 
     Ok((&input[len as usize + 1..], val))
 }
