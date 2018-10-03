@@ -3,6 +3,7 @@ extern crate av_format;
 extern crate circular;
 extern crate matroska;
 extern crate nom;
+extern crate pretty_env_logger;
 
 use circular::Buffer;
 use nom::{Err, Offset};
@@ -14,6 +15,7 @@ use matroska::ebml::ebml_header;
 use matroska::elements::{segment, segment_element, SegmentElement};
 
 fn main() {
+    pretty_env_logger::init();
     let mut args = env::args();
     let _ = args.next().expect("first arg is program path");
     let filename = args.next().expect("expected file path");
