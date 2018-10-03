@@ -37,14 +37,16 @@ macro_rules! sub_element(
   ($i:expr, $parser:ident) => ({
     do_parse!($i,
          size: vint
-      >> element: flat_map!(take!(size as usize), $parser)
+      >> crc: opt!(ebml_binary!(0xBF))
+      >> element: flat_map!(take!((size - if crc.is_some() { 6 } else { 0 }) as usize), $parser)
       >> (element)
     )
   });
   ($i:expr, $submac:ident!( $($args:tt)* )) => ({
     do_parse!($i,
          size: vint
-      >> element: flat_map!(take!(size as usize), $submac!($($args)*))
+      >> crc: opt!(ebml_binary!(0xBF))
+      >> element: flat_map!(take!((size - if crc.is_some() { 6 } else { 0 }) as usize), $submac!($($args)*))
       >> (element)
     )
   });
