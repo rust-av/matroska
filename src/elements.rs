@@ -12,7 +12,7 @@ pub enum SegmentElement<'a> {
     Cues(Cues),
     Attachments(Attachments),
     Tags(Tags),
-    Void,
+    Void(u64),
     Unknown(u64, Option<u64>),
 }
 
@@ -63,7 +63,7 @@ named!(pub segment_element<SegmentElement>,
     | 0x1941A469 => sub_element!(call!(ret_attachments))
     | 0x1654AE6B => sub_element!(tracks)
     | 0x1C53BB6B => sub_element!(call!(ret_cues))
-    | 0xEC       => sub_element!(call!(ret_void))
+    | 0xEC       => do_parse!(size: vint >> take!(size as usize) >> (SegmentElement::Void(size)))
     | unknown    => do_parse!(
         size: opt!(vint) >>
               cond!(size.is_some(), take!( (size.unwrap() as usize) )) >>
@@ -85,11 +85,6 @@ pub fn ret_attachments(input: &[u8]) -> IResult<&[u8], SegmentElement, u32> {
 // hack to fix type inference issues
 pub fn ret_cues(input: &[u8]) -> IResult<&[u8], SegmentElement, u32> {
     Ok((input, SegmentElement::Cues(Cues {})))
-}
-
-// hack to fix type inference issues
-pub fn ret_void(input: &[u8]) -> IResult<&[u8], SegmentElement, u32> {
-    Ok((input, SegmentElement::Void))
 }
 
 #[derive(Debug, Clone, PartialEq)]

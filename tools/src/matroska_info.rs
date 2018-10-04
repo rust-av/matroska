@@ -107,7 +107,7 @@ fn run(filename: &str) -> std::io::Result<()> {
 
             match element {
                 SegmentElement::SeekHead(s) => {
-                    println!("|+ Seek head");
+                    println!("|+ Seek head (size {}) {} elements", b.data().offset(i), s.positions.len());
                     if seek_head.is_some() {
                         panic!("already got a SeekHead element");
                     } else {
@@ -193,8 +193,8 @@ fn run(filename: &str) -> std::io::Result<()> {
                     println!("|+ Cluster");
                     eprintln!("got a cluster: {:#?}", c);
                 },*/
-                SegmentElement::Void => {
-                    println!("|+ EbmlVoid");
+                SegmentElement::Void(s) => {
+                    println!("|+ EbmlVoid (size: {})", s);
                 }
                 el => {
                     panic!("got unexpected element: {:#?}", el);
@@ -267,8 +267,8 @@ fn run(filename: &str) -> std::io::Result<()> {
                     );
                     //eprintln!("got a cluster: {:#?}", c);
                 }
-                SegmentElement::Void => {
-                    println!("|+ EbmlVoid");
+                SegmentElement::Void(s) => {
+                    println!("|+ EbmlVoid (size: {})", s);
                 }
                 SegmentElement::Tags(_) => {
                     println!("|+ Tags");

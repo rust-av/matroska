@@ -15,6 +15,7 @@ macro_rules! permutation_opt (
 
         let void_res = $crate::ebml::skip_void(input);
         if let Ok((i,_)) = void_res {
+          trace!("skipping void element");
           input = i;
           continue;
         }
