@@ -13,6 +13,7 @@ use std::io::Read;
 
 use matroska::ebml::ebml_header;
 use matroska::elements::{segment, segment_element, SegmentElement};
+use matroska::serializer::ebml::EbmlSize;
 
 fn main() {
     pretty_env_logger::init();
@@ -107,7 +108,38 @@ fn run(filename: &str) -> std::io::Result<()> {
 
             match element {
                 SegmentElement::SeekHead(s) => {
-                    println!("|+ Seek head (size {}) {} elements", b.data().offset(i), s.positions.len());
+                    println!("|+ Seek head at {:#0x} size {}", 0x0, b.data().offset(i));
+                    for seek in s.positions.iter() {
+                        let id: u64 = ((seek.id[0] as u64) << 24) |
+                            ((seek.id[1] as u64) << 16) |
+                            ((seek.id[2] as u64) << 8) |
+                            seek.id[3] as u64;
+
+                        let element_size = seek.size(0x4DBB);
+                        let id_size = seek.id.size(0x53AB);
+                        let position_size = seek.position.size(0x53AC);
+
+                        println!("| + Seek entry size {}", element_size);
+
+                        print!("|  + Seek ID:");
+                        for id in seek.id.iter() {
+                            print!(" {:#0x}", id);
+                        }
+
+                        let name = match &seek.id[..] {
+                            [0x11, 0x4D, 0x9B, 0x74] => " (KaxSeekHead)",
+                            [0x12, 0x54, 0xC3, 0x67] => " (KaxTags)",
+                            [0x15, 0x49, 0xA9, 0x66] => " (KaxInfo)",
+                            [0x16, 0x54, 0xAE, 0x6B] => " (KaxTracks)",
+                            [0x1C, 0x53, 0xBB, 0x6B] => " (KaxCues)",
+                            [0x1F, 0x43, 0xB6, 0x75] => " (KaxCluster)",
+                            _ => "",
+                        };
+
+                        println!("{} at {:#0x} size {}", name, 0x0, id_size);
+                        println!("|  + Seek position: {} size {}", seek.position, position_size);
+                    }
+
                     if seek_head.is_some() {
                         panic!("already got a SeekHead element");
                     } else {
@@ -115,15 +147,15 @@ fn run(filename: &str) -> std::io::Result<()> {
                     }
                 }
                 SegmentElement::Info(i) => {
-                    println!("|+ Segment Information");
-                    println!("| + timestamp scale: {}", i.timecode_scale);
-                    println!("| + multiplexing application: {}", i.muxing_app);
-                    println!("| + writing application: {}", i.writing_app);
+                    println!("|+ Segment information");
+                    println!("| + Timestamp scale: {}", i.timecode_scale);
+                    println!("| + Multiplexing application: {}", i.muxing_app);
+                    println!("| + Writing application: {}", i.writing_app);
                     println!(
-                        "| + segment UID: {:?}",
+                        "| + Segment UID: {:?}",
                         i.segment_uid.as_ref().unwrap_or(&Vec::new())
                     );
-                    println!("| + duration: {}s", i.duration.unwrap_or(0f64) / 1000f64);
+                    println!("| + Duration: {}s", i.duration.unwrap_or(0f64) / 1000f64);
                     if info.is_some() {
                         panic!("already got an Info element");
                     } else {
@@ -255,14 +287,14 @@ fn run(filename: &str) -> std::io::Result<()> {
                 }
                 SegmentElement::Cluster(c) => {
                     println!("|+ Cluster");
-                    println!("|+   timecode: {}", c.timecode);
-                    println!("|+   silent_tracks: {:?}", c.silent_tracks);
-                    println!("|+   position: {:?}", c.position);
-                    println!("|+   prev_size: {:?}", c.prev_size);
-                    println!("|+   simple_block: {} elements", c.simple_block.len());
-                    println!("|+   block_group: {} elements", c.block_group.len());
+                    println!("|+   Timecode: {}", c.timecode);
+                    println!("|+   Silent_tracks: {:?}", c.silent_tracks);
+                    println!("|+   Position: {:?}", c.position);
+                    println!("|+   Prev size: {:?}", c.prev_size);
+                    println!("|+   Simple block: {} elements", c.simple_block.len());
+                    println!("|+   Block group: {} elements", c.block_group.len());
                     println!(
-                        "|+   encrypted_block: {:?} bytes",
+                        "|+   Encrypted block: {:?} bytes",
                         c.encrypted_block.as_ref().map(|s| s.len())
                     );
                     //eprintln!("got a cluster: {:#?}", c);
