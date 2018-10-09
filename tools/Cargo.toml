@@ -8,8 +8,8 @@ name = "matroska_info"
 path = "src/matroska_info.rs"
 
 [dependencies]
-av-data = { version = "0.1.0", git = "https://github.com/rust-av/rust-av" }
-av-format = { version = "0.1.0", git = "https://github.com/rust-av/rust-av" }
+av-data = { git = "https://github.com/rust-av/rust-av" }
+av-format = { git = "https://github.com/rust-av/rust-av" }
 circular = "0.2"
 log = "0.4"
 matroska = { path=".." }
