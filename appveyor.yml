@@ -88,7 +88,8 @@ environment:
 # or test failure in the matching channels/targets from failing the entire build.
 matrix:
   allow_failures:
-    - channel: stable, beta
+    - channel: stable
+    - channel: beta
 
 # If you only care about stable channel build failures, uncomment the following line:
     #- channel: beta
