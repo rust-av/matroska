@@ -13,7 +13,5 @@ rust:
   
 matrix:
   allow_failures:
-    rust:
-      - stable
-      - beta
+    - rust: stable, beta
   fast_finish: true
