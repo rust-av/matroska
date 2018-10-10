@@ -1,6 +1,7 @@
 language: rust
 cache: cargo
 sudo: false
+
 os:
   - linux
   - osx
@@ -12,5 +13,7 @@ rust:
   
 matrix:
   allow_failures:
-    - rust: nightly
+    rust:
+      - stable
+      - beta
   fast_finish: true
