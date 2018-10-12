@@ -5,12 +5,13 @@ sudo: false
 os:
   - linux
   - osx
+  - windows
 
 rust:
   - stable
   - beta
   - nightly
-  
+
 matrix:
   allow_failures:
     - rust: stable
