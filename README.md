@@ -2,6 +2,7 @@
 
 [![LICENSE](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Build Status](https://travis-ci.org/rust-av/matroska.svg?branch=master)](https://travis-ci.org/rust-av/matroska)
+[![AppVeyor Build Status](https://ci.appveyor.com/api/projects/status/github/rust-av/matroska?branch=master&svg=true)](https://ci.appveyor.com/project/rust-av/matroska)
 [![dependency status](https://deps.rs/repo/github/rust-av/matroska/status.svg)](https://deps.rs/repo/github/rust-av/matroska)
 
 ## Specification
