@@ -1,5 +1,5 @@
 #![allow(unused_assignments)]
-use ebml::{vid, vint};
+use crate::ebml::{vid, vint};
 use nom::{be_i16, be_u8, IResult};
 
 #[derive(Debug, Clone, PartialEq)]

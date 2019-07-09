@@ -8,12 +8,12 @@ use av_format::stream::Stream;
 use std::sync::Arc;
 
 use cookie_factory::GenError;
-use ebml::EBMLHeader;
-use elements::{
+use crate::ebml::EBMLHeader;
+use crate::elements::{
     Audio, Cluster, Info, Lacing, Seek, SeekHead, SimpleBlock, TrackEntry, Tracks, Video,
 };
-use serializer::ebml::{gen_ebml_header, EbmlSize};
-use serializer::elements::{
+use crate::serializer::ebml::{gen_ebml_header, EbmlSize};
+use crate::serializer::elements::{
     gen_cluster, gen_info, gen_seek_head, gen_segment_header_unknown_size, gen_simple_block_header,
     gen_tracks,
 };
@@ -172,7 +172,7 @@ impl MkvMuxer {
         if let Some(ref info) = self.info.as_ref() {
             let mut origin = (&buf).as_ptr() as usize;
             let mut needed = 0usize;
-            let mut offset;
+            let offset;
             loop {
                 if needed > 0 {
                     let len = needed + buf.len();
@@ -203,7 +203,7 @@ impl MkvMuxer {
         if let Some(ref tracks) = self.tracks.as_ref() {
             let mut origin = (&buf).as_ptr() as usize;
             let mut needed = 0usize;
-            let mut offset;
+            let offset;
             loop {
                 if needed > 0 {
                     let len = needed + buf.len();
