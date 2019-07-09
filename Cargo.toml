@@ -11,10 +11,10 @@ name = "matroska"
 path = "src/lib.rs"
 
 [dependencies]
-nom = "^4.0"
-cookie-factory = "^0.2"
-av-data = { git = "https://github.com/rust-av/rust-av" }
-av-format = { git = "https://github.com/rust-av/rust-av" }
+nom = "4.0"
+cookie-factory = "0.2"
+av-data = "0.1"
+av-format = "0.1"
 circular = "0.2"
 log = "0.4"
 
