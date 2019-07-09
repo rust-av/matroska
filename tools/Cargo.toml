@@ -10,7 +10,7 @@ path = "src/matroska_info.rs"
 [dependencies]
 av-data = { git = "https://github.com/rust-av/rust-av" }
 av-format = { git = "https://github.com/rust-av/rust-av" }
-circular = "0.2"
+circular = "0.3"
 log = "0.4"
 matroska = { path=".." }
 nom = "^4.0"
