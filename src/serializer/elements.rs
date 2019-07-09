@@ -1,11 +1,11 @@
-use super::ebml::{gen_uint, gen_vid, gen_vint, vint_size};
+use crate::serializer::ebml::{gen_uint, gen_vid, gen_vint, vint_size};
 use cookie_factory::*;
-use elements::SilentTracks;
-use elements::{
+use crate::elements::SilentTracks;
+use crate::elements::{
     Audio, Cluster, Colour, Info, Lacing, MasteringMetadata, Projection, Seek, SeekHead,
     SimpleBlock, TrackEntry, Tracks, Video,
 };
-use serializer::ebml::{gen_f64, gen_f64_ref, EbmlSize};
+use crate::serializer::ebml::{gen_f64, gen_f64_ref, EbmlSize};
 
 pub fn seek_size(s: &Seek) -> u8 {
     // byte size of id (vid+size)+ data and position vid+size+int
@@ -679,7 +679,7 @@ pub fn gen_block_group<'a>(input: (&'a mut [u8], usize),
 #[cfg(test)]
 mod tests {
     use super::*;
-    use elements::SegmentElement;
+    use crate::elements::SegmentElement;
     use nom::*;
     use std::iter::repeat;
 
@@ -738,7 +738,7 @@ mod tests {
 
         trace!("ser_res: {:?}", ser_res);
 
-        let parse_res = ::elements::segment_element(&data[..]);
+        let parse_res = crate::elements::segment_element(&data[..]);
         trace!("parse_res: {:?}", parse_res);
         match parse_res {
             Ok((_rest, SegmentElement::SeekHead(o))) => {

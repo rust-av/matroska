@@ -1,5 +1,5 @@
 use cookie_factory::*;
-use ebml::EBMLHeader;
+use crate::ebml::EBMLHeader;
 use nom::AsBytes;
 
 pub fn vint_size(i: u64) -> u8 {
@@ -300,7 +300,7 @@ macro_rules! gen_ebml_uint (
 #[macro_export]
 macro_rules! gen_ebml_int (
   (($i:expr, $idx:expr), $id:expr, $num:expr, $expected_size:expr) => ({
-    use serializer::ebml::gen_int;
+    use crate::serializer::ebml::gen_int;
     let needed_bytes = vint_size($expected_size as u64);
 
     do_gen!(($i, $idx),
@@ -553,7 +553,7 @@ mod tests {
         }
         info!("{}", (&data[..]).to_hex(16));
 
-        let parse_res = ::ebml::vint(&data[..]);
+        let parse_res = crate::ebml::vint(&data[..]);
         info!("parse_res: {:?}", parse_res);
         match parse_res {
             Ok((_rest, o)) => {
@@ -589,7 +589,7 @@ mod tests {
         }
         info!("{}", (&data[..]).to_hex(16));
 
-        let parse_res = ::ebml::vid(&data[..]);
+        let parse_res = crate::ebml::vid(&data[..]);
         info!("parse_res: {:?}", parse_res);
         match parse_res {
             Ok((_rest, o)) => {
@@ -696,7 +696,7 @@ mod tests {
         }
 
         info!("{}", (&data[..]).to_hex(16));
-        let parse_res = ::ebml::ebml_header(&data[..]);
+        let parse_res = crate::ebml::ebml_header(&data[..]);
         info!("parse_res: {:?}", parse_res);
         match parse_res {
           Ok((_rest, h)) => {

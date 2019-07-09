@@ -7,12 +7,12 @@ use av_format::demuxer::{Demuxer, Event};
 use av_format::demuxer::{Descr, Descriptor};
 use av_format::error::*;
 use av_format::stream::Stream;
-use rational::Rational64;
+use crate::rational::Rational64;
 use std::collections::VecDeque;
 use std::io::SeekFrom;
 
-use ebml::{ebml_header, EBMLHeader};
-use elements::{
+use crate::ebml::{ebml_header, EBMLHeader};
+use crate::elements::{
     segment, segment_element, simple_block, Cluster, Info, SeekHead, SegmentElement, TrackEntry,
     Tracks,
 };
