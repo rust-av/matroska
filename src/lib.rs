@@ -4,9 +4,6 @@ extern crate nom;
 #[macro_use]
 extern crate cookie_factory;
 
-#[macro_use]
-extern crate log;
-
 extern crate av_data;
 extern crate av_format;
 

@@ -407,7 +407,7 @@ macro_rules! gen_dbg (
         let sl = unsafe {
           from_raw_parts_mut(p as *mut u8, len)
         };
-        trace!("gen_dbg {}->{}: {}:\n{}", idx, index, stringify!($submac!($($args)*)), (&sl[idx..index]).to_hex(16));
+        log::trace!("gen_dbg {}->{}: {}:\n{}", idx, index, stringify!($submac!($($args)*)), (&sl[idx..index]).to_hex(16));
         Ok((sl, index))
       },
       Err(e) => Err(e),
@@ -542,6 +542,7 @@ impl EbmlSize for Vec<u64> {
 mod tests {
     use super::*;
     use nom::*;
+    use log::info;
 
     fn test_vint_serializer(i: u64) -> bool {
         info!("testing for {}", i);
