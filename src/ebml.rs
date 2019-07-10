@@ -151,12 +151,12 @@ fn parse_str(input: &[u8], size: u64) -> IResult<&[u8], ElementData> {
 pub fn parse_str_data(input: &[u8], size: u64) -> IResult<&[u8], String> {
     do_parse!(
         input,
-        s: take_s!(size as usize) >> (String::from_utf8(s.to_owned()).unwrap()) //FIXME: maybe do not unwrap here
+        s: take!(size as usize) >> (String::from_utf8(s.to_owned()).unwrap()) //FIXME: maybe do not unwrap here
     )
 }
 
 pub fn parse_binary_data(input: &[u8], size: u64) -> IResult<&[u8], Vec<u8>> {
-    do_parse!(input, s: take_s!(size as usize) >> (s.to_owned()))
+    do_parse!(input, s: take!(size as usize) >> (s.to_owned()))
 }
 
 //FIXME: handle default values

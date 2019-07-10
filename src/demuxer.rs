@@ -107,7 +107,7 @@ impl MkvDemuxer {
 use nom::Needed;
 
 impl Demuxer for MkvDemuxer {
-    fn read_headers(&mut self, buf: &Box<Buffered>, info: &mut GlobalInfo) -> Result<SeekFrom> {
+    fn read_headers(&mut self, buf: &Box<dyn Buffered>, info: &mut GlobalInfo) -> Result<SeekFrom> {
         match self.parse_until_tracks(buf.data()) {
             Ok((i, _)) => {
                 info.duration = self
@@ -137,7 +137,7 @@ impl Demuxer for MkvDemuxer {
         }
     }
 
-    fn read_event(&mut self, buf: &Box<Buffered>) -> Result<(SeekFrom, Event)> {
+    fn read_event(&mut self, buf: &Box<dyn Buffered>) -> Result<(SeekFrom, Event)> {
         if let Some(event) = self.queue.pop_front() {
             Ok((SeekFrom::Current(0), event))
         } else {
@@ -299,7 +299,7 @@ struct Des {
 }
 
 impl Descriptor for Des {
-    fn create(&self) -> Box<Demuxer> {
+    fn create(&self) -> Box<dyn Demuxer> {
         Box::new(MkvDemuxer::new())
     }
     fn describe<'a>(&'a self) -> &'a Descr {
@@ -313,7 +313,7 @@ impl Descriptor for Des {
     }
 }
 
-pub const MKV_DESC: &Descriptor = &Des {
+pub const MKV_DESC: &dyn Descriptor = &Des {
     d: Descr {
         name: "matroska",
         demuxer: "mkv",
