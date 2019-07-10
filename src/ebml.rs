@@ -1,5 +1,5 @@
-use nom::{Err, ErrorKind, IResult, Needed};
 use log::trace;
+use nom::{Err, ErrorKind, IResult, Needed};
 
 /*
 struct Document {
@@ -49,7 +49,13 @@ pub fn vint(input: &[u8]) -> IResult<&[u8], u64> {
 
     let mut val = (v ^ (1 << (7 - len))) as u64;
 
-    trace!("vint {:08b} {:08b} {:08b} {}", val, v, (1 << (8 - len)), len);
+    trace!(
+        "vint {:08b} {:08b} {:08b} {}",
+        val,
+        v,
+        (1 << (8 - len)),
+        len
+    );
 
     for i in 0..len as usize {
         val = (val << 8) | input[i + 1] as u64;
@@ -362,8 +368,8 @@ named!(pub ebml_header<EBMLHeader>,
 #[allow(non_upper_case_globals)]
 mod tests {
     use super::*;
-    use nom::{HexDisplay, Offset};
     use log::trace;
+    use nom::{HexDisplay, Offset};
 
     const single_stream: &'static [u8] = include_bytes!("../assets/single_stream.mkv");
     const webm: &'static [u8] = include_bytes!("../assets/big-buck-bunny_trailer.webm");

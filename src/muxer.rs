@@ -1,23 +1,22 @@
-use av_data::packet::Packet;
-use av_data::params::MediaKind;
-use av_data::value::Value;
-use av_format::common::GlobalInfo;
-use av_format::error::*;
-use av_format::muxer::*;
-use av_format::stream::Stream;
-use std::sync::Arc;
+use av_data::{packet::Packet, params::MediaKind, value::Value};
+use av_format::{common::GlobalInfo, error::*, muxer::*, stream::Stream};
 use log::error;
+use std::sync::Arc;
 
+use crate::{
+    ebml::EBMLHeader,
+    elements::{
+        Audio, Cluster, Info, Lacing, Seek, SeekHead, SimpleBlock, TrackEntry, Tracks, Video,
+    },
+    serializer::{
+        ebml::{gen_ebml_header, EbmlSize},
+        elements::{
+            gen_cluster, gen_info, gen_seek_head, gen_segment_header_unknown_size,
+            gen_simple_block_header, gen_tracks,
+        },
+    },
+};
 use cookie_factory::GenError;
-use crate::ebml::EBMLHeader;
-use crate::elements::{
-    Audio, Cluster, Info, Lacing, Seek, SeekHead, SimpleBlock, TrackEntry, Tracks, Video,
-};
-use crate::serializer::ebml::{gen_ebml_header, EbmlSize};
-use crate::serializer::elements::{
-    gen_cluster, gen_info, gen_seek_head, gen_segment_header_unknown_size, gen_simple_block_header,
-    gen_tracks,
-};
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct MkvMuxer {
@@ -476,11 +475,11 @@ pub fn gen_mkv_prefix<'a>(
 
 pub fn stream_to_track(s: &Stream) -> TrackEntry {
     /*let track_type = match s.params.kind {
-    Some(MediaKind::Video(_)) => 0x1,
-    Some(MediaKind::Audio(_)) => 0x2,
-    _                         => 0,
-  };
-  */
+      Some(MediaKind::Video(_)) => 0x1,
+      Some(MediaKind::Audio(_)) => 0x2,
+      _                         => 0,
+    };
+    */
 
     let codec_id = match s.params.codec_id.as_ref().map(|s| s.as_str()) {
         Some("opus") => String::from("A_OPUS"),

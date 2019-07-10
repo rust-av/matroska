@@ -110,10 +110,10 @@ fn run(filename: &str) -> std::io::Result<()> {
                 SegmentElement::SeekHead(s) => {
                     println!("|+ Seek head at {:#0x} size {}", 0x0, b.data().offset(i));
                     for seek in s.positions.iter() {
-                        let id: u64 = ((seek.id[0] as u64) << 24) |
-                            ((seek.id[1] as u64) << 16) |
-                            ((seek.id[2] as u64) << 8) |
-                            seek.id[3] as u64;
+                        let id: u64 = ((seek.id[0] as u64) << 24)
+                            | ((seek.id[1] as u64) << 16)
+                            | ((seek.id[2] as u64) << 8)
+                            | seek.id[3] as u64;
 
                         let element_size = seek.size(0x4DBB);
                         let id_size = seek.id.size(0x53AB);
@@ -137,7 +137,10 @@ fn run(filename: &str) -> std::io::Result<()> {
                         };
 
                         println!("{} at {:#0x} size {}", name, 0x0, id_size);
-                        println!("|  + Seek position: {} size {}", seek.position, position_size);
+                        println!(
+                            "|  + Seek position: {} size {}",
+                            seek.position, position_size
+                        );
                     }
 
                     if seek_head.is_some() {

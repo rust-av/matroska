@@ -1,5 +1,5 @@
-use cookie_factory::*;
 use crate::ebml::EBMLHeader;
+use cookie_factory::*;
 use nom::AsBytes;
 
 pub fn vint_size(i: u64) -> u8 {
@@ -541,8 +541,8 @@ impl EbmlSize for Vec<u64> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use nom::*;
     use log::info;
+    use nom::*;
 
     fn test_vint_serializer(i: u64) -> bool {
         info!("testing for {}", i);

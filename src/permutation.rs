@@ -500,11 +500,11 @@ mod tests {
         let g = &b"hiabcdm"[..];
         assert_eq!(perm(g), Ok((&b"m"[..], expected3)));
         /*
-    let d = &b"efgxyzabcdefghi"[..];
-    assert_eq!(perm(d), Error(error_position!(&b"xyzabcdefghi"[..], ErrorKind::Permutation)));
+            let d = &b"efgxyzabcdefghi"[..];
+            assert_eq!(perm(d), Error(error_position!(&b"xyzabcdefghi"[..], ErrorKind::Permutation)));
 
-    let e = &b"efgabc"[..];
-    assert_eq!(perm(e), Incomplete(Needed::Size(7)));
-*/
+            let e = &b"efgabc"[..];
+            assert_eq!(perm(e), Incomplete(Needed::Size(7)));
+        */
     }
 }

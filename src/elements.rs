@@ -983,9 +983,9 @@ pub struct Tags {}
 #[allow(non_upper_case_globals)]
 mod tests {
     use super::*;
+    use log::debug;
     use nom::{HexDisplay, Offset};
     use std::cmp::min;
-    use log::debug;
 
     const mkv: &'static [u8] = include_bytes!("../assets/single_stream.mkv");
     const webm: &'static [u8] = include_bytes!("../assets/big-buck-bunny_trailer.webm");
