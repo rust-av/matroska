@@ -1,19 +1,10 @@
-extern crate av_data;
-extern crate av_format;
-extern crate matroska;
-extern crate nom;
-
-extern crate pretty_env_logger;
-
-use av_format::buffer::AccReader;
-use av_format::demuxer::{self, Event};
-use av_format::muxer;
-use std::fs::File;
-use std::io::Cursor;
-use std::sync::Arc;
-
-use matroska::demuxer::MKV_DESC;
-use matroska::muxer::MkvMuxer;
+use av_format::{
+    buffer::AccReader,
+    demuxer::{self, Event},
+    muxer,
+};
+use matroska::{demuxer::MKV_DESC, muxer::MkvMuxer};
+use std::{fs::File, io::Cursor, sync::Arc};
 
 fn main() {
     pretty_env_logger::init();

@@ -1,23 +1,22 @@
-use av_data::packet::Packet;
-use av_data::params::*;
-use av_data::timeinfo::TimeInfo;
-use av_format::buffer::Buffered;
-use av_format::common::GlobalInfo;
-use av_format::demuxer::{Demuxer, Event};
-use av_format::demuxer::{Descr, Descriptor};
-use av_format::error::*;
-use av_format::stream::Stream;
-use crate::rational::Rational64;
-use std::collections::VecDeque;
-use std::io::SeekFrom;
-use log::{trace, debug, error};
-
-use crate::ebml::{ebml_header, EBMLHeader};
-use crate::elements::{
-    segment, segment_element, simple_block, Cluster, Info, SeekHead, SegmentElement, TrackEntry,
-    Tracks,
+use crate::{
+    ebml::{ebml_header, EBMLHeader},
+    elements::{
+        segment, segment_element, simple_block, Cluster, Info, SeekHead, SegmentElement,
+        TrackEntry, Tracks,
+    },
+    rational::Rational64,
 };
+use av_data::{packet::Packet, params::*, timeinfo::TimeInfo};
+use av_format::{
+    buffer::Buffered,
+    common::GlobalInfo,
+    demuxer::{Demuxer, Descr, Descriptor, Event},
+    error::*,
+    stream::Stream,
+};
+use log::{debug, error, trace};
 use nom::{self, Err, IResult, Offset};
+use std::{collections::VecDeque, io::SeekFrom};
 
 #[derive(Debug, Clone)]
 pub struct MkvDemuxer {
@@ -328,11 +327,10 @@ pub const MKV_DESC: &dyn Descriptor = &Des {
 #[allow(non_upper_case_globals)]
 mod tests {
     use super::*;
-    use av_format::buffer::*;
-    use av_format::demuxer::Context;
+    use av_format::{buffer::*, demuxer::Context};
+    use log::info;
     use nom::Offset;
     use std::io::Cursor;
-    use log::info;
 
     const webm: &'static [u8] = include_bytes!("../assets/bbb-vp9-opus.webm");
 

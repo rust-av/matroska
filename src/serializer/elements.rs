@@ -1,11 +1,11 @@
-use crate::serializer::ebml::{gen_uint, gen_vid, gen_vint, vint_size};
-use cookie_factory::*;
-use crate::elements::SilentTracks;
-use crate::elements::{
-    Audio, Cluster, Colour, Info, Lacing, MasteringMetadata, Projection, Seek, SeekHead,
-    SimpleBlock, TrackEntry, Tracks, Video,
+use crate::{
+    elements::{
+        Audio, Cluster, Colour, Info, Lacing, MasteringMetadata, Projection, Seek, SeekHead,
+        SilentTracks, SimpleBlock, TrackEntry, Tracks, Video,
+    },
+    serializer::ebml::{gen_f64, gen_f64_ref, gen_uint, gen_vid, gen_vint, vint_size, EbmlSize},
 };
-use crate::serializer::ebml::{gen_f64, gen_f64_ref, EbmlSize};
+use cookie_factory::*;
 
 pub fn seek_size(s: &Seek) -> u8 {
     // byte size of id (vid+size)+ data and position vid+size+int
@@ -623,12 +623,12 @@ pub fn gen_xiph_laced_frames<'a>(
     }
 
     /*
-  let sizes: Vec<usize> = frames.iter().map(|frame| frame.len()).collect();
-  do_gen!(input,
-    gen_be_u8!((frames.len() - 1) as u8) >>
+    let sizes: Vec<usize> = frames.iter().map(|frame| frame.len()).collect();
+    do_gen!(input,
+      gen_be_u8!((frames.len() - 1) as u8) >>
 
-  )
-  */
+    )
+    */
     Err(GenError::NotYetImplemented)
 }
 
@@ -680,9 +680,9 @@ pub fn gen_block_group<'a>(input: (&'a mut [u8], usize),
 mod tests {
     use super::*;
     use crate::elements::SegmentElement;
+    use log::trace;
     use nom::*;
     use std::iter::repeat;
-    use log::trace;
 
     fn test_seek_head_serializer(seeks: Vec<(u64, Vec<u8>)>) -> bool {
         trace!("testing for {:?}", seeks);
@@ -720,7 +720,8 @@ mod tests {
                 .map(|(position, id)| Seek {
                     id: id,
                     position: position,
-                }).collect(),
+                })
+                .collect(),
         };
 
         let ser_res = {
@@ -731,9 +732,9 @@ mod tests {
                 trace!("should fail: {:?}", should_fail);
                 return should_fail;
                 /*if should_fail {
-          trace!("should fail");
-          return true;
-        }*/
+                  trace!("should fail");
+                  return true;
+                }*/
             }
         };
 
