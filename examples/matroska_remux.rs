@@ -4,8 +4,6 @@ extern crate matroska;
 extern crate nom;
 
 extern crate pretty_env_logger;
-#[macro_use]
-extern crate log;
 
 use av_format::buffer::AccReader;
 use av_format::demuxer::{self, Event};
