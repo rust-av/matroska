@@ -15,7 +15,7 @@ macro_rules! permutation_opt (
 
         let void_res = $crate::ebml::skip_void(input);
         if let Ok((i,_)) = void_res {
-          trace!("skipping void element");
+          log::trace!("skipping void element");
           input = i;
           continue;
         }
@@ -32,7 +32,7 @@ macro_rules! permutation_opt (
       if let Some(unwrapped_res) = permutation_opt_unwrap!(0, (), res, $($rest)*) {
         Ok((input, unwrapped_res))
       } else if let ::std::option::Option::Some(need) = needed {
-        trace!("needed: {:?}", need);
+        log::trace!("needed: {:?}", need);
         Err(::nom::Err::convert(need))
       } else if let ::std::option::Option::Some(e) = permutation_error {
         Err(::nom::Err::Error(e))

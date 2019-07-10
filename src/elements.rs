@@ -985,6 +985,7 @@ mod tests {
     use super::*;
     use nom::{HexDisplay, Offset};
     use std::cmp::min;
+    use log::debug;
 
     const mkv: &'static [u8] = include_bytes!("../assets/single_stream.mkv");
     const webm: &'static [u8] = include_bytes!("../assets/big-buck-bunny_trailer.webm");

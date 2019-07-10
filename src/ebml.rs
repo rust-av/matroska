@@ -1,4 +1,5 @@
 use nom::{Err, ErrorKind, IResult, Needed};
+use log::trace;
 
 /*
 struct Document {
@@ -362,6 +363,7 @@ named!(pub ebml_header<EBMLHeader>,
 mod tests {
     use super::*;
     use nom::{HexDisplay, Offset};
+    use log::trace;
 
     const single_stream: &'static [u8] = include_bytes!("../assets/single_stream.mkv");
     const webm: &'static [u8] = include_bytes!("../assets/big-buck-bunny_trailer.webm");

@@ -6,6 +6,7 @@ use av_format::error::*;
 use av_format::muxer::*;
 use av_format::stream::Stream;
 use std::sync::Arc;
+use log::error;
 
 use cookie_factory::GenError;
 use crate::ebml::EBMLHeader;

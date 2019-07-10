@@ -10,6 +10,7 @@ use av_format::stream::Stream;
 use crate::rational::Rational64;
 use std::collections::VecDeque;
 use std::io::SeekFrom;
+use log::{trace, debug, error};
 
 use crate::ebml::{ebml_header, EBMLHeader};
 use crate::elements::{
@@ -331,6 +332,7 @@ mod tests {
     use av_format::demuxer::Context;
     use nom::Offset;
     use std::io::Cursor;
+    use log::info;
 
     const webm: &'static [u8] = include_bytes!("../assets/bbb-vp9-opus.webm");
 
