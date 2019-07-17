@@ -2,12 +2,14 @@
 macro_rules! permutation_opt (
   ($i:expr, $($rest:tt)*) => (
     {
-      use ::nom::Convert;
+      // use ::nom::Convert;
 
       let mut res    = permutation_opt_init!((), $($rest)*);
       let mut input  = $i;
+
       let mut needed = ::std::option::Option::None;
-      let mut permutation_error: Option<::nom::Context<&[u8],u32>>  = ::std::option::Option::None;
+      // let mut permutation_error: Option<::nom::Context<&[u8],u32>>  = ::std::option::Option::None;
+      let mut permutation_error = ::nom::error::ErrorKind::Fix;
 
       loop {
         //trace!("current res: {:?}", res);
@@ -24,7 +26,7 @@ macro_rules! permutation_opt (
         //if we reach that part, it means none of the parsers were able to read anything
         if !all_done {
           //FIXME: should wrap the error returned by the child parser
-          permutation_error = ::std::option::Option::Some(error_position!(input, ::nom::ErrorKind::Permutation));
+          // permutation_error = ::std::option::Option::Some(error_position!(input, ::nom::ErrorKind::Permutation));
         }
         break;
       }
@@ -34,10 +36,10 @@ macro_rules! permutation_opt (
       } else if let ::std::option::Option::Some(need) = needed {
         log::trace!("needed: {:?}", need);
         Err(::nom::Err::convert(need))
-      } else if let ::std::option::Option::Some(e) = permutation_error {
-        Err(::nom::Err::Error(e))
+      // } else if let ::std::option::Option::Some(e) = permutation_error {
+      //   Err(::nom::Err::Error(e))
       } else {
-        Err(::nom::Err::Error(error_position!($i, ::nom::ErrorKind::Permutation)))
+        Err(::nom::Err::Error(error_position!($i, ::nom::error::ErrorKind::Permutation)))
       }
     }
   );

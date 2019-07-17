@@ -1,7 +1,7 @@
 #![recursion_limit = "256"]
 #[macro_use]
 extern crate nom;
-#[macro_use]
+// #[macro_use]
 extern crate cookie_factory;
 
 extern crate av_data;
@@ -11,17 +11,17 @@ extern crate av_format;
 #[macro_use]
 extern crate quickcheck;
 
-use av_data::rational;
+// use av_data::rational;
 
 #[macro_use]
 pub mod permutation;
-#[macro_use]
+// #[macro_use]
 pub mod ebml;
-pub mod elements;
-#[macro_use]
-pub mod serializer;
-pub mod demuxer;
-pub mod muxer;
+// pub mod elements;
+// #[macro_use]
+// pub mod serializer;
+// pub mod demuxer;
+// pub mod muxer;
 
 #[cfg(test)]
 mod tests {

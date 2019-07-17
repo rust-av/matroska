@@ -1,5 +1,14 @@
 use log::trace;
-use nom::{Err, ErrorKind, IResult, Needed};
+use nom::{Err, IResult, Needed};
+use nom::error::{ErrorKind};
+
+/* nom5 note
+ *
+ * Temporary use of ErrorKind::Fix instead of Custom
+ *
+ * TODO: define good custom error
+ *
+*/
 
 /*
 struct Document {
@@ -40,7 +49,8 @@ pub fn vint(input: &[u8]) -> IResult<&[u8], u64> {
     let len = v.leading_zeros();
 
     if len == 8 {
-        return Err(Err::Error(error_position!(input, ErrorKind::Custom(100))));
+        // NOM5: was Custom(100)
+        return Err(Err::Error(error_position!(input, ErrorKind::Fix)));
     }
 
     if input.len() <= len as usize {
@@ -77,7 +87,8 @@ pub fn vid(input: &[u8]) -> IResult<&[u8], u64> {
     let len = v.leading_zeros();
 
     if len == 8 {
-        return Err(Err::Error(error_position!(input, ErrorKind::Custom(101))));
+        // NOM5: was Custom(101)
+        return Err(Err::Error(error_position!(input, ErrorKind::Fix)));
     }
 
     if input.len() <= len as usize {
@@ -122,7 +133,8 @@ pub fn parse_uint_data(input: &[u8], size: u64) -> IResult<&[u8], u64> {
     let mut val = 0;
 
     if size > 8 {
-        return Err(Err::Error(error_position!(input, ErrorKind::Custom(102))));
+        // NOM5: was Custom(102)
+        return Err(Err::Error(error_position!(input, ErrorKind::Fix)));
     }
 
     for i in 0..size as usize {
@@ -136,7 +148,8 @@ pub fn parse_int_data(input: &[u8], size: u64) -> IResult<&[u8], i64> {
     let mut val = 0;
 
     if size > 8 {
-        return Err(Err::Error(error_position!(input, ErrorKind::Custom(103))));
+        // NOM5: was Custom(103)
+        return Err(Err::Error(error_position!(input, ErrorKind::Fix)));
     }
 
     for i in 0..size as usize {
@@ -169,7 +182,7 @@ pub fn parse_binary_data(input: &[u8], size: u64) -> IResult<&[u8], Vec<u8>> {
 //FIXME: handle default values
 //FIXME: is that really following IEEE_754-1985 ?
 pub fn parse_float_data(input: &[u8], size: u64) -> IResult<&[u8], f64> {
-    use nom::{be_f32, be_f64};
+    use nom::number::streaming::{be_f32, be_f64};
     if size == 0 {
         Ok((input, 0f64))
     } else if size == 4 {
@@ -177,7 +190,8 @@ pub fn parse_float_data(input: &[u8], size: u64) -> IResult<&[u8], f64> {
     } else if size == 8 {
         flat_map!(input, take!(8), be_f64)
     } else {
-        Err(Err::Error(error_position!(input, ErrorKind::Custom(104))))
+        // NOM5: was Custom(104)
+        Err(Err::Error(error_position!(input, ErrorKind::Fix)))
     }
 }
 /*
@@ -212,11 +226,11 @@ named!(pub parse_element<Element>,
 #[macro_export]
 macro_rules! ebml_uint (
   ($i: expr, $id:expr) => ({
-    use $crate::ebml::{vid, vint, parse_uint_data};
+    use $crate::ebml::{vid, vint};
     do_parse!($i,
-               verify!(vid, |val:u64| val == $id)
+               verify!(vid, |val:&u64| *val == $id)
       >> size: vint
-      >> data: apply!(parse_uint_data, size)
+      >> data: parse_uint_data(size)
       >> (data)
     )
   })
@@ -227,9 +241,9 @@ macro_rules! ebml_int (
   ($i: expr, $id:expr) => ({
     use $crate::ebml::{vid, vint, parse_int_data};
     do_parse!($i,
-               verify!(vid, |val:u64| val == $id)
+               verify!(vid, |val:&u64| *val == $id)
       >> size: vint
-      >> data: apply!(parse_int_data, size)
+      >> data: parse_int_data(size)
       >> (data)
     )
   })
@@ -240,9 +254,9 @@ macro_rules! ebml_float (
   ($i: expr, $id:expr) => ({
     use $crate::ebml::{vid, vint, parse_float_data};
     do_parse!($i,
-               verify!(vid, |val:u64| val == $id)
+               verify!(vid, |val:&u64| *val == $id)
       >> size: vint
-      >> data: apply!(parse_float_data, size)
+      >> data: parse_float_data(size)
       >> (data)
     )
   })
@@ -251,12 +265,12 @@ macro_rules! ebml_float (
 #[macro_export]
 macro_rules! ebml_str (
   ($i: expr, $id:expr) => ({
-    use $crate::ebml::{vid, vint, parse_str_data};
+    use $crate::ebml::{vid, vint};
 
     do_parse!($i,
-               verify!(vid, |val:u64| val == $id)
+               verify!(vid, |val:&u64| *val == $id)
       >> size: vint
-      >> data: apply!(parse_str_data, size)
+      >> data: parse_str_data(size)
       >> (data)
     )
   })
@@ -268,9 +282,9 @@ macro_rules! ebml_binary (
     use $crate::ebml::{vid, vint, parse_binary_data};
 
     do_parse!($i,
-               verify!(vid, |val:u64| val == $id)
+               verify!(vid, |val:&u64| *val == $id)
       >> size: vint
-      >> data: apply!(parse_binary_data, size)
+      >> data: parse_binary_data(size)
       >> (data)
     )
   })
@@ -282,7 +296,7 @@ macro_rules! ebml_binary_ref (
     use $crate::ebml::{vid, vint};
 
     do_parse!($i,
-               verify!(vid, |val:u64| val == $id)
+               verify!(vid, |val:&u64| *val == $id)
       >> size: vint
       >> data: take!(size)
       >> (data)
@@ -295,7 +309,7 @@ macro_rules! ebml_master (
   ($i: expr, $id:expr, $submac:ident!( $($args:tt)* )) => ({
     use $crate::ebml::{vid, vint};
     do_parse!($i,
-               verify!(vid, |val:u64| val == $id)
+               verify!(vid, |val:&u64| *val == $id)
       >> size: vint
       >> data: flat_map!(take!(size as usize), $submac!($($args)*))
       >> (data)
@@ -318,7 +332,8 @@ macro_rules! eat_void (
 
 named!(pub skip_void,
 do_parse!(
-        verify!(vid, |val:u64| val == 0xEC) >>
+        // NOM5: why?
+        verify!(vid, |val:&u64| *val == 0xEC) >>
   size: vint >>
   data: take!(size) >>
   (data)
@@ -335,6 +350,7 @@ pub struct EBMLHeader {
     pub doc_type_read_version: u64,
 }
 
+// named!(pub ebml_header<EBMLHeader>,
 named!(pub ebml_header<EBMLHeader>,
   ebml_master!(0x1A45DFA3,
     do_parse!(
