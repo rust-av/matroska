@@ -1,6 +1,6 @@
 #![allow(unused_assignments)]
-use crate::ebml::{vid, vint};
-use nom::{be_i16, be_u8, IResult};
+use crate::ebml::{vid, vint, Error};
+use nom::{number::streaming::{be_i16, be_u8}, IResult};
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum SegmentElement<'a> {
@@ -17,9 +17,9 @@ pub enum SegmentElement<'a> {
 }
 
 // https://datatracker.ietf.org/doc/html/draft-lhomme-cellar-matroska-03#section-7.3.3
-named!(pub segment<(u64, Option<u64>)>,
+named!(pub segment<&[u8], (u64, Option<u64>), Error>,
   do_parse!(
-    id:   verify!(vid, |val:u64| val == 0x18538067) >>
+    id:   verify!(vid, |val:&u64| *val == 0x18538067) >>
     size: opt!(vint)   >>
     (id, size)
   )
@@ -53,7 +53,7 @@ macro_rules! sub_element(
 );
 
 // Segment, the root element, has id 0x18538067
-named!(pub segment_element<SegmentElement>,
+named!(pub segment_element<&[u8], SegmentElement, Error>,
   switch!(vid,
       0x114D9B74 => sub_element!(seek_head)
     | 0x1549A966 => sub_element!(info)
@@ -73,17 +73,17 @@ named!(pub segment_element<SegmentElement>,
 );
 
 // hack to fix type inference issues
-pub fn ret_tags(input: &[u8]) -> IResult<&[u8], SegmentElement, u32> {
+pub fn ret_tags(input: &[u8]) -> IResult<&[u8], SegmentElement, Error> {
     Ok((input, SegmentElement::Tags(Tags {})))
 }
 
 // hack to fix type inference issues
-pub fn ret_attachments(input: &[u8]) -> IResult<&[u8], SegmentElement, u32> {
+pub fn ret_attachments(input: &[u8]) -> IResult<&[u8], SegmentElement, Error> {
     Ok((input, SegmentElement::Attachments(Attachments {})))
 }
 
 // hack to fix type inference issues
-pub fn ret_cues(input: &[u8]) -> IResult<&[u8], SegmentElement, u32> {
+pub fn ret_cues(input: &[u8]) -> IResult<&[u8], SegmentElement, Error> {
     Ok((input, SegmentElement::Cues(Cues {})))
 }
 
@@ -93,7 +93,7 @@ pub struct SeekHead {
 }
 
 //https://datatracker.ietf.org/doc/html/draft-lhomme-cellar-matroska-03#section-7.3.4
-named!(pub seek_head<SegmentElement>,
+named!(pub seek_head<&[u8], SegmentElement, Error>,
   do_parse!(
     positions: many1!(complete!(seek)) >>
     (SegmentElement::SeekHead(SeekHead {
@@ -109,7 +109,7 @@ pub struct Seek {
 }
 
 //https://datatracker.ietf.org/doc/html/draft-lhomme-cellar-matroska-03#section-7.3.4
-named!(pub seek<Seek>,
+named!(pub seek<&[u8], Seek, Error>,
   ebml_master!(0x4DBB,
     do_parse!(
       t: permutation_opt!(
@@ -143,7 +143,7 @@ pub struct Info {
 }
 
 //https://datatracker.ietf.org/doc/html/draft-lhomme-cellar-matroska-03#section-7.3.8
-named!(pub info<SegmentElement>,
+named!(pub info<&[u8], SegmentElement, Error>,
   do_parse!(
     t: permutation_opt!(
       ebml_binary!(0x73A4)?, // SegmentUID
@@ -183,13 +183,13 @@ named!(pub info<SegmentElement>,
 pub struct ChapterTranslate {}
 
 // hack to fix type inference issues
-pub fn ret_chapter_translate(input: &[u8]) -> IResult<&[u8], ChapterTranslate, u32> {
+pub fn ret_chapter_translate(input: &[u8]) -> IResult<&[u8], ChapterTranslate, Error> {
     Ok((input, ChapterTranslate {}))
 }
 
 //https://datatracker.ietf.org/doc/html/draft-lhomme-cellar-matroska-03#section-7.3.16
 //TODO
-named!(pub chapter_translate<&[u8], ChapterTranslate, u32>,
+named!(pub chapter_translate<&[u8], ChapterTranslate, Error>,
   //ebml_master!(0x6924, value!(ChapterTranslate{}))
   ebml_master!(0x6924, call!(ret_chapter_translate))
 );
@@ -206,7 +206,7 @@ pub struct Cluster<'a> {
     pub encrypted_block: Option<&'a [u8]>,
 }
 
-named!(pub cluster<SegmentElement>,
+named!(pub cluster<&[u8], SegmentElement, Error>,
   do_parse!(
     t: permutation_opt!(
       ebml_uint!(0xE7),
@@ -237,7 +237,7 @@ pub struct SilentTracks {
 }
 
 //https://datatracker.ietf.org/doc/html/draft-lhomme-cellar-matroska-03#section-7.3.16
-named!(pub silent_tracks<SilentTracks>,
+named!(pub silent_tracks<&[u8], SilentTracks, Error>,
   ebml_master!(0x5854, map!(many0!(ebml_uint!(0x58D7)), |v| SilentTracks { numbers: v }))
 );
 
@@ -258,7 +258,7 @@ pub struct BlockGroup<'a> {
 
 //https://datatracker.ietf.org/doc/html/draft-lhomme-cellar-matroska-03#section-7.3.16
 //TODO
-named!(pub block_group<BlockGroup>,
+named!(pub block_group<&[u8], BlockGroup, Error>,
   ebml_master!(0x5854,
     do_parse!(
       t: permutation_opt!(
@@ -295,12 +295,12 @@ named!(pub block_group<BlockGroup>,
 pub struct BlockAdditions {}
 
 // hack to fix type inference issues
-pub fn ret_block_additions(input: &[u8]) -> IResult<&[u8], BlockAdditions, u32> {
+pub fn ret_block_additions(input: &[u8]) -> IResult<&[u8], BlockAdditions, Error> {
     Ok((input, BlockAdditions {}))
 }
 //https://datatracker.ietf.org/doc/html/draft-lhomme-cellar-matroska-03#section-7.3.16
 //TODO
-named!(pub block_additions<BlockAdditions>,
+named!(pub block_additions<&[u8], BlockAdditions, Error>,
   ebml_master!(0x75A1, call!(ret_block_additions))
 );
 
@@ -308,12 +308,12 @@ named!(pub block_additions<BlockAdditions>,
 pub struct Slices {}
 
 // hack to fix type inference issues
-pub fn ret_slices(input: &[u8]) -> IResult<&[u8], Slices, u32> {
+pub fn ret_slices(input: &[u8]) -> IResult<&[u8], Slices, Error> {
     Ok((input, Slices {}))
 }
 //https://datatracker.ietf.org/doc/html/draft-lhomme-cellar-matroska-03#section-7.3.46
 //TODO
-named!(pub slices<Slices>,
+named!(pub slices<&[u8], Slices, Error>,
   ebml_master!(0x8E, call!(ret_slices))
 );
 
@@ -321,12 +321,12 @@ named!(pub slices<Slices>,
 pub struct ReferenceFrame {}
 
 // hack to fix type inference issues
-pub fn ret_reference_frame(input: &[u8]) -> IResult<&[u8], ReferenceFrame, u32> {
+pub fn ret_reference_frame(input: &[u8]) -> IResult<&[u8], ReferenceFrame, Error> {
     Ok((input, ReferenceFrame {}))
 }
 //https://datatracker.ietf.org/doc/html/draft-lhomme-cellar-matroska-03#section-7.3.53
 //TODO
-named!(pub reference_frame<ReferenceFrame>,
+named!(pub reference_frame<&[u8], ReferenceFrame, Error>,
   ebml_master!(0xC8, call!(ret_reference_frame))
 );
 
@@ -361,7 +361,7 @@ pub struct LacedData {
     pub frame_count: u8,
 }
 
-named!(pub simple_block<SimpleBlock>,
+named!(pub simple_block<&[u8], SimpleBlock, Error>,
   do_parse!(
        track_number: vint
     >> timecode:     be_i16
@@ -418,7 +418,7 @@ impl Tracks {
 }
 
 //https://datatracker.ietf.org/doc/html/draft-lhomme-cellar-matroska-03#section-7.3.16
-named!(pub tracks<SegmentElement>,
+named!(pub tracks<&[u8], SegmentElement, Error>,
   map!(many1!(complete!(eat_void!(track_entry))), |v| SegmentElement::Tracks(Tracks { tracks: v }))
 );
 
@@ -466,7 +466,7 @@ pub struct TrackEntry {
     pub stream_index: usize,
 }
 
-named!(pub track_entry<TrackEntry>,
+named!(pub track_entry<&[u8], TrackEntry, Error>,
   ebml_master!(0xAE,
     do_parse!(
       t: permutation_opt!(
@@ -560,7 +560,7 @@ pub struct TrackTranslate {
     pub track_id: u64,
 }
 
-named!(pub track_translate<TrackTranslate>,
+named!(pub track_translate<&[u8], TrackTranslate, Error>,
   ebml_master!(0x6624,
     do_parse!(
       t: permutation_opt!(
@@ -582,7 +582,7 @@ pub struct TrackOperation {
     pub join_blocks: Option<TrackJoinBlocks>,
 }
 
-named!(pub track_operation<TrackOperation>,
+named!(pub track_operation<&[u8], TrackOperation, Error>,
   ebml_master!(0xE2,
     do_parse!(
       t: permutation_opt!(
@@ -601,7 +601,7 @@ pub struct TrackCombinePlanes {
     pub track_planes: Vec<TrackPlane>,
 }
 
-named!(pub track_combine_planes<TrackCombinePlanes>,
+named!(pub track_combine_planes<&[u8], TrackCombinePlanes, Error>,
   ebml_master!(0xE3, map!(many1!(complete!(track_plane)), |v| TrackCombinePlanes { track_planes: v }))
 );
 
@@ -611,7 +611,7 @@ pub struct TrackPlane {
     pub plane_type: u64,
 }
 
-named!(pub track_plane<TrackPlane>,
+named!(pub track_plane<&[u8], TrackPlane, Error>,
   ebml_master!(0xE4,
     do_parse!(
       t: permutation_opt!(
@@ -630,7 +630,7 @@ pub struct TrackJoinBlocks {
     pub uid: Vec<u64>,
 }
 
-named!(pub track_join_blocks<TrackJoinBlocks>,
+named!(pub track_join_blocks<&[u8], TrackJoinBlocks, Error>,
   ebml_master!(0xE9, map!(many1!(complete!(ebml_uint!(0xED))), |v| TrackJoinBlocks { uid: v }))
 );
 
@@ -639,7 +639,7 @@ pub struct ContentEncodings {
     pub content_encoding: Vec<ContentEncoding>,
 }
 
-named!(pub content_encodings<ContentEncodings>,
+named!(pub content_encodings<&[u8], ContentEncodings, Error>,
   ebml_master!(0x6D80, map!(many1!(complete!(content_encoding)), |v| ContentEncodings { content_encoding: v }))
 );
 
@@ -652,7 +652,7 @@ pub struct ContentEncoding {
     encryption: Option<ContentEncryption>,
 }
 
-named!(pub content_encoding<ContentEncoding>,
+named!(pub content_encoding<&[u8], ContentEncoding, Error>,
   ebml_master!(0x6240,
     do_parse!(
       t: permutation_opt!(
@@ -678,7 +678,7 @@ pub struct ContentCompression {
     settings: Option<u64>,
 }
 
-named!(pub content_compression<ContentCompression>,
+named!(pub content_compression<&[u8], ContentCompression, Error>,
   ebml_master!(0x5034,
     do_parse!(
       t: permutation_opt!(
@@ -702,7 +702,7 @@ pub struct ContentEncryption {
     sig_hash_algo: Option<u64>,
 }
 
-named!(pub content_encryption<ContentEncryption>,
+named!(pub content_encryption<&[u8], ContentEncryption, Error>,
   ebml_master!(0x5035,
     do_parse!(
       t: permutation_opt!(
@@ -733,7 +733,7 @@ pub struct Audio {
     pub bit_depth: Option<u64>,
 }
 
-named!(pub audio<Audio>,
+named!(pub audio<&[u8], Audio, Error>,
   ebml_master!(0xE1,
     do_parse!(
       t: permutation_opt!(
@@ -777,7 +777,7 @@ pub struct Video {
     pub projection: Option<Projection>,
 }
 
-named!(pub video<Video>,
+named!(pub video<&[u8], Video, Error>,
   ebml_master!(0xE0,
     do_parse!(
       t: permutation_opt!(
@@ -845,7 +845,7 @@ pub struct Colour {
     pub mastering_metadata: Option<MasteringMetadata>,
 }
 
-named!(pub colour<Colour>,
+named!(pub colour<&[u8], Colour, Error>,
   ebml_master!(0x55B0,
     do_parse!(
       t: permutation_opt!(
@@ -897,7 +897,7 @@ pub struct MasteringMetadata {
     pub luminance_min: Option<f64>,
 }
 
-named!(pub mastering_metadata<MasteringMetadata>,
+named!(pub mastering_metadata<&[u8], MasteringMetadata, Error>,
   ebml_master!(0x55D0,
     do_parse!(
       t: permutation_opt!(
@@ -936,7 +936,7 @@ pub struct Projection {
     pub projection_pose_roll: f64,
 }
 
-named!(pub projection<Projection>,
+named!(pub projection<&[u8], Projection, Error>,
   ebml_master!(0x7670,
     do_parse!(
       t: permutation_opt!(
@@ -960,12 +960,12 @@ named!(pub projection<Projection>,
 pub struct Chapters {}
 
 // hack to fix type inference issues
-pub fn ret_chapters(input: &[u8]) -> IResult<&[u8], SegmentElement, u32> {
+pub fn ret_chapters(input: &[u8]) -> IResult<&[u8], SegmentElement, Error> {
     Ok((input, SegmentElement::Chapters(Chapters {})))
 }
 //https://datatracker.ietf.org/doc/html/draft-lhomme-cellar-matroska-03#section-7.3.199
 //TODO
-named!(pub chapters<SegmentElement>,
+named!(pub chapters<&[u8], SegmentElement, Error>,
   //EditionEntry
   ebml_master!(0x45B9, call!(ret_chapters))
 );

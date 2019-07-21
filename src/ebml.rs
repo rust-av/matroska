@@ -61,7 +61,7 @@ impl<'a> nom::error::ParseError<&'a[u8]> for Error<'a> {
   }
 }
 
-fn custom_error(input: &[u8], code: u8) -> Error {
+pub fn custom_error(input: &[u8], code: u8) -> Error {
   Error {input, kind: ErrorKind::Custom(code) }
 }
 
@@ -246,7 +246,7 @@ named!(pub parse_element<Element>,
 #[macro_export]
 macro_rules! ebml_uint (
   ($i: expr, $id:expr) => ({
-    use $crate::ebml::{vid, vint};
+    use $crate::ebml::{vid, vint, parse_uint_data};
     do_parse!($i,
                verify!(vid, |val:&u64| *val == $id)
       >> size: vint
@@ -285,7 +285,7 @@ macro_rules! ebml_float (
 #[macro_export]
 macro_rules! ebml_str (
   ($i: expr, $id:expr) => ({
-    use $crate::ebml::{vid, vint};
+    use $crate::ebml::{vid, vint, parse_str_data};
 
     do_parse!($i,
                verify!(vid, |val:&u64| *val == $id)
