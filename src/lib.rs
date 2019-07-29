@@ -11,14 +11,14 @@ extern crate av_format;
 #[macro_use]
 extern crate quickcheck;
 
-use av_data::rational;
+// use av_data::rational;
 
 #[macro_use]
 pub mod permutation;
 #[macro_use]
 pub mod ebml;
 pub mod elements;
-#[macro_use]
+ #[macro_use]
 pub mod serializer;
 pub mod demuxer;
 pub mod muxer;

@@ -1,10 +1,10 @@
 use crate::{
-    ebml::{ebml_header, EBMLHeader},
+    ebml::{self, ebml_header, EBMLHeader, custom_error},
     elements::{
         segment, segment_element, simple_block, Cluster, Info, SeekHead, SegmentElement,
         TrackEntry, Tracks,
     },
-    rational::Rational64,
+    av_data::rational::Rational64,
 };
 use av_data::{packet::Packet, params::*, timeinfo::TimeInfo};
 use av_format::{
@@ -40,12 +40,12 @@ impl MkvDemuxer {
         }
     }
 
-    pub fn parse_until_tracks<'a>(&mut self, original_input: &'a [u8]) -> IResult<&'a [u8], ()> {
-        let (i1, header) = try_parse!(original_input, ebml_header);
+    pub fn parse_until_tracks<'a>(&mut self, original_input: &'a [u8]) -> IResult<&'a [u8], (), ebml::Error<'a>> {
+        let (i1, header) = ebml_header(original_input)?;
 
         self.header = Some(header);
 
-        let (mut input, _) = try_parse!(i1, segment);
+        let (mut input, _) = segment(i1)?;
 
         self.seek_head = None;
         self.info = None;
@@ -58,16 +58,13 @@ impl MkvDemuxer {
 
             // println!("offset: {}", original_input.offset(input));
 
-            let (i3, element) = try_parse!(input, segment_element);
+            let (i3, element) = segment_element(input)?;
 
             match element {
                 SegmentElement::SeekHead(s) => {
                     trace!("got seek head: {:#?}", s);
                     if self.seek_head.is_some() {
-                        return Err(Err::Error(error_position!(
-                            input,
-                            nom::ErrorKind::Custom(1)
-                        )));
+                        return Err(Err::Error(custom_error(input, 1)));
                     } else {
                         self.seek_head = Some(s);
                     }
@@ -75,10 +72,7 @@ impl MkvDemuxer {
                 SegmentElement::Info(i) => {
                     trace!("got info: {:#?}", i);
                     if self.info.is_some() {
-                        return Err(Err::Error(error_position!(
-                            input,
-                            nom::ErrorKind::Custom(1)
-                        )));
+                        return Err(Err::Error(custom_error(input, 1)));
                     } else {
                         self.info = Some(i);
                     }
@@ -86,10 +80,7 @@ impl MkvDemuxer {
                 SegmentElement::Tracks(t) => {
                     trace!("got tracks: {:#?}", t);
                     if self.tracks.is_some() {
-                        return Err(Err::Error(error_position!(
-                            input,
-                            nom::ErrorKind::Custom(1)
-                        )));
+                        return Err(Err::Error(custom_error(input, 1)));
                     } else {
                         self.tracks = Some(t);
                     }

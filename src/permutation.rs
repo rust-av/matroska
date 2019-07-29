@@ -2,12 +2,12 @@
 macro_rules! permutation_opt (
   ($i:expr, $($rest:tt)*) => (
     {
-      use ::nom::Convert;
-
+      use crate::ebml::Error;
       let mut res    = permutation_opt_init!((), $($rest)*);
       let mut input  = $i;
+
       let mut needed = ::std::option::Option::None;
-      let mut permutation_error: Option<::nom::Context<&[u8],u32>>  = ::std::option::Option::None;
+      let mut permutation_error: Option<Error>  = ::std::option::Option::None;
 
       loop {
         //trace!("current res: {:?}", res);
@@ -24,7 +24,7 @@ macro_rules! permutation_opt (
         //if we reach that part, it means none of the parsers were able to read anything
         if !all_done {
           //FIXME: should wrap the error returned by the child parser
-          permutation_error = ::std::option::Option::Some(error_position!(input, ::nom::ErrorKind::Permutation));
+          permutation_error = ::std::option::Option::Some(error_position!(input, ::nom::error::ErrorKind::Permutation));
         }
         break;
       }
@@ -33,15 +33,15 @@ macro_rules! permutation_opt (
         Ok((input, unwrapped_res))
       } else if let ::std::option::Option::Some(need) = needed {
         log::trace!("needed: {:?}", need);
-        Err(::nom::Err::convert(need))
+        Err(::nom::Err::Incomplete(need))
       } else if let ::std::option::Option::Some(e) = permutation_error {
         Err(::nom::Err::Error(e))
       } else {
-        Err(::nom::Err::Error(error_position!($i, ::nom::ErrorKind::Permutation)))
+        Err(::nom::Err::Error(error_position!($i, ::nom::error::ErrorKind::Permutation)))
       }
-    }
+      }
+    );
   );
-);
 
 #[doc(hidden)]
 #[macro_export]
@@ -310,7 +310,11 @@ macro_rules! permutation_opt_iterator (
       Err(::nom::Err::Error(_)) => {
         $all_done = false;
       },
-      Err(e) => {
+      Err(::nom::Err::Failure(_)) => {
+        //FIXME: maybe return the underlying error too
+        break;
+      },
+      Err(::nom::Err::Incomplete(e)) => {
         $needed = ::std::option::Option::Some(e);
         break;
       }
@@ -331,7 +335,11 @@ macro_rules! permutation_opt_iterator (
         Err(::nom::Err::Error(_)) => {
           $all_done = false;
         },
-        Err(e) => {
+        Err(::nom::Err::Failure(_)) => {
+          //FIXME: maybe return the underlying error too
+          break;
+        },
+        Err(::nom::Err::Incomplete(e)) => {
           $needed = ::std::option::Option::Some(e);
           break;
         }
@@ -361,7 +369,11 @@ macro_rules! permutation_opt_iterator (
       Err(::nom::Err::Error(_)) => {
         $all_done = false;
       },
-      Err(e) => {
+      Err(::nom::Err::Failure(_)) => {
+        //FIXME: maybe return the underlying error too
+        break;
+      },
+      Err(::nom::Err::Incomplete(e)) => {
         $needed = ::std::option::Option::Some(e);
         break;
       }
@@ -381,7 +393,11 @@ macro_rules! permutation_opt_iterator (
         Err(::nom::Err::Error(_)) => {
           $all_done = false;
         },
-        Err(e) => {
+        Err(::nom::Err::Failure(_)) => {
+          //FIXME: maybe return the underlying error too
+          break;
+        },
+        Err(::nom::Err::Incomplete(e)) => {
           $needed = ::std::option::Option::Some(e);
           break;
         }
@@ -392,7 +408,8 @@ macro_rules! permutation_opt_iterator (
 
 #[cfg(test)]
 mod tests {
-    use nom::{Err, ErrorKind, Needed};
+    use nom::{Err, error::ErrorKind, Needed};
+    use crate::ebml::Error;
 
     // reproduce the tag and take macros, because of module import order
     macro_rules! tag (
@@ -414,6 +431,7 @@ mod tests {
     macro_rules! tag_bytes (
     ($i:expr, $bytes: expr) => (
       {
+        use crate::ebml::Error;
         use std::cmp::min;
         let len = $i.len();
         let blen = $bytes.len();
@@ -421,8 +439,8 @@ mod tests {
         let reduced = &$i[..m];
         let b       = &$bytes[..m];
 
-        let res: ::nom::IResult<_,_> = if reduced != b {
-          Err(Err::Error(error_position!($i, ::nom::ErrorKind::Tag)))
+        let res: ::nom::IResult<_,_,Error> = if reduced != b {
+          Err(Err::Error(error_position!($i, ::nom::error::ErrorKind::Tag)))
         } else if m < blen {
           Err(Err::Incomplete(::nom::Needed::Size(blen)))
         } else {
@@ -436,7 +454,7 @@ mod tests {
     #[test]
     fn permutation() {
         named!(
-            perm<(&[u8], &[u8], &[u8])>,
+            perm<&[u8], (&[u8], &[u8], &[u8]), Error>,
             permutation!(dbg_dmp!(tag!("abcd")), tag!("efg"), tag!("hi"))
         );
 
@@ -453,7 +471,7 @@ mod tests {
         assert_eq!(
             perm(d),
             Err(Err::Error(error_position!(
-                &b"efgxyzabcdefghi"[..],
+                &b"xyzabcdefghi"[..],
                 ErrorKind::Permutation
             )))
         );
@@ -465,7 +483,7 @@ mod tests {
     #[test]
     fn optional_permutation() {
         named!(
-            perm<(&[u8], Option<&[u8]>, &[u8], Option<&[u8]>)>,
+            perm<&[u8], (&[u8], Option<&[u8]>, &[u8], Option<&[u8]>), Error>,
             permutation_opt!(
                 dbg_dmp!(tag!("abcd")),
                 dbg_dmp!(tag!("efg"))?,

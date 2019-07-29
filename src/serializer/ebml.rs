@@ -541,6 +541,7 @@ impl EbmlSize for Vec<u64> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::ebml::Error;
     use log::info;
     use nom::*;
 
@@ -620,7 +621,7 @@ mod tests {
         }
         info!("{}", (&data[..]).to_hex(16));
 
-        let parse_res: IResult<&[u8], u64> = ebml_uint!(&data[..], id);
+        let parse_res: IResult<&[u8], u64, Error> = ebml_uint!(&data[..], id);
         info!("parse_res: {:?}", parse_res);
         match parse_res {
             Ok((_rest, o)) => {
@@ -658,7 +659,7 @@ mod tests {
         }
         info!("{}", (&data[..]).to_hex(16));
 
-        let parse_res: IResult<&[u8], u64> = ebml_uint!(&data[..], id);
+        let parse_res: IResult<&[u8], u64, Error> = ebml_uint!(&data[..], id);
         info!("parse_res: {:?}", parse_res);
         match parse_res {
           Ok((_rest, o)) => {
