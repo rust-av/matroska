@@ -13,5 +13,5 @@ av-format = { git = "https://github.com/rust-av/rust-av" }
 circular = "0.3"
 log = "0.4"
 matroska = { path=".." }
-nom = "^4.0"
+nom = "5.0"
 pretty_env_logger = "0.3"
