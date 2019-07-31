@@ -5,8 +5,9 @@ use crate::{
         segment, segment_element, simple_block, Cluster, Info, SeekHead, SegmentElement,
         TrackEntry, Tracks,
     },
+    fourcc::*,
 };
-use av_data::{packet::Packet, params::*, pixel::Formaton, pixel::*, timeinfo::TimeInfo};
+use av_data::{packet::Packet, params::*, pixel::*, timeinfo::TimeInfo};
 use av_format::{
     buffer::Buffered,
     common::GlobalInfo,
@@ -182,9 +183,7 @@ fn track_entry_video_kind(t: &TrackEntry) -> Option<MediaKind> {
     // TODO: Validate that a track::video exists for track::type video before.
 
     if let Some(ref video) = t.video {
-        let mut format = None;
-
-        if let Some(ref colour) = video.colour {
+        let format = if let Some(ref colour) = video.colour {
             let chroma = &[
                 Chromaton::new(0, 0, false, 8, 0, 0, 1),
                 Chromaton::new(
@@ -207,8 +206,8 @@ fn track_entry_video_kind(t: &TrackEntry) -> Option<MediaKind> {
                 ),
             ];
 
-            let f= Arc::new(Formaton::new(
-                ColorModel::CMYK, // where to check for other color scheme?
+            let f = Arc::new(Formaton::new(
+                colour_space_to_color_model(&video.colour_space.as_ref().unwrap()).unwrap(),
                 chroma,
                 0,
                 false, // is RGB
@@ -216,11 +215,20 @@ fn track_entry_video_kind(t: &TrackEntry) -> Option<MediaKind> {
                 false,
             ));
 
-            f.set_primaries(FromPrimitive::from_u64(colour.primaries.unwrap_or_else(|| 2)).unwrap());
-            f.set_xfer(FromPrimitive::from_u64(colour.transfer_characteristics.unwrap_or_else(|| 2)) .unwrap());
-            f.set_matrix(FromPrimitive::from_u64(colour.matrix_coefficients.unwrap_or_else(|| 2)).unwrap());
+            f.set_primaries(
+                FromPrimitive::from_u64(colour.primaries.unwrap_or_else(|| 2)).unwrap(),
+            );
+            f.set_xfer(
+                FromPrimitive::from_u64(colour.transfer_characteristics.unwrap_or_else(|| 2))
+                    .unwrap(),
+            );
+            f.set_matrix(
+                FromPrimitive::from_u64(colour.matrix_coefficients.unwrap_or_else(|| 2)).unwrap(),
+            );
 
-            format = Some(f);
+            Some(f)
+        } else {
+            None
         };
 
         let v = VideoInfo {
@@ -231,6 +239,75 @@ fn track_entry_video_kind(t: &TrackEntry) -> Option<MediaKind> {
         Some(MediaKind::Video(v))
     } else {
         None
+    }
+}
+
+// parse fourCC value into pixel::ColorModel
+fn colour_space_to_color_model(cs: &[u8]) -> Option<ColorModel> {
+    match bytes_to_fourcc_lte(cs[0], cs[1], cs[2], cs[3]) {
+        ENCODING_I420 => Some(ColorModel::Trichromatic(TrichromaticEncodingSystem::YUV(
+            YUVSystem::YCoCg,
+        ))),
+        ENCODING_I420_16 => Some(ColorModel::Trichromatic(TrichromaticEncodingSystem::YUV(
+            YUVSystem::YCoCg,
+        ))),
+        ENCODING_I420_10 => Some(ColorModel::Trichromatic(TrichromaticEncodingSystem::YUV(
+            YUVSystem::YCoCg,
+        ))),
+        ENCODING_I420_S => Some(ColorModel::Trichromatic(TrichromaticEncodingSystem::YUV(
+            YUVSystem::YCoCg,
+        ))),
+        ENCODING_I420_SLICE => Some(ColorModel::Trichromatic(TrichromaticEncodingSystem::YUV(
+            YUVSystem::YCoCg,
+        ))),
+        ENCODING_YV12 => Some(ColorModel::Trichromatic(TrichromaticEncodingSystem::YUV(
+            YUVSystem::YCoCg,
+        ))),
+        ENCODING_I422 => Some(ColorModel::Trichromatic(TrichromaticEncodingSystem::YUV(
+            YUVSystem::YCoCg,
+        ))),
+        ENCODING_I422_SLICE => Some(ColorModel::Trichromatic(TrichromaticEncodingSystem::YUV(
+            YUVSystem::YCoCg,
+        ))),
+        ENCODING_YUYV => Some(ColorModel::Trichromatic(TrichromaticEncodingSystem::YUV(
+            YUVSystem::YCoCg,
+        ))),
+        ENCODING_YVYU => Some(ColorModel::Trichromatic(TrichromaticEncodingSystem::YUV(
+            YUVSystem::YCoCg,
+        ))),
+        ENCODING_UYVY => Some(ColorModel::Trichromatic(TrichromaticEncodingSystem::YUV(
+            YUVSystem::YCoCg,
+        ))),
+        ENCODING_VYUY => Some(ColorModel::Trichromatic(TrichromaticEncodingSystem::YUV(
+            YUVSystem::YCoCg,
+        ))),
+        ENCODING_NV12 => Some(ColorModel::Trichromatic(TrichromaticEncodingSystem::YUV(
+            YUVSystem::YCoCg,
+        ))),
+        ENCODING_NV21 => Some(ColorModel::Trichromatic(TrichromaticEncodingSystem::YUV(
+            YUVSystem::YCoCg,
+        ))),
+        ENCODING_ARGB => Some(ColorModel::Trichromatic(TrichromaticEncodingSystem::RGB)),
+        ENCODING_ARGB_SLICE => Some(ColorModel::Trichromatic(TrichromaticEncodingSystem::RGB)),
+        ENCODING_RGBA => Some(ColorModel::Trichromatic(TrichromaticEncodingSystem::RGB)),
+        ENCODING_RGBA_SLICE => Some(ColorModel::Trichromatic(TrichromaticEncodingSystem::RGB)),
+        ENCODING_ABGR => Some(ColorModel::Trichromatic(TrichromaticEncodingSystem::RGB)),
+        ENCODING_ABGR_SLICE => Some(ColorModel::Trichromatic(TrichromaticEncodingSystem::RGB)),
+        ENCODING_BGRA => Some(ColorModel::Trichromatic(TrichromaticEncodingSystem::RGB)),
+        ENCODING_BGRA_SLICE => Some(ColorModel::Trichromatic(TrichromaticEncodingSystem::RGB)),
+        ENCODING_RGB16 => Some(ColorModel::Trichromatic(TrichromaticEncodingSystem::RGB)),
+        ENCODING_RGB16_SLICE => Some(ColorModel::Trichromatic(TrichromaticEncodingSystem::RGB)),
+        ENCODING_RGB24 => Some(ColorModel::Trichromatic(TrichromaticEncodingSystem::RGB)),
+        ENCODING_RGB24_SLICE => Some(ColorModel::Trichromatic(TrichromaticEncodingSystem::RGB)),
+        ENCODING_RGB32 => Some(ColorModel::Trichromatic(TrichromaticEncodingSystem::RGB)),
+        ENCODING_RGB32_SLICE => Some(ColorModel::Trichromatic(TrichromaticEncodingSystem::RGB)),
+        ENCODING_BGR16 => Some(ColorModel::Trichromatic(TrichromaticEncodingSystem::RGB)),
+        ENCODING_BGR16_SLICE => Some(ColorModel::Trichromatic(TrichromaticEncodingSystem::RGB)),
+        ENCODING_BGR24 => Some(ColorModel::Trichromatic(TrichromaticEncodingSystem::RGB)),
+        ENCODING_BGR24_SLICE => Some(ColorModel::Trichromatic(TrichromaticEncodingSystem::RGB)),
+        ENCODING_BGR32 => Some(ColorModel::Trichromatic(TrichromaticEncodingSystem::RGB)),
+        ENCODING_BGR32_SLICE => Some(ColorModel::Trichromatic(TrichromaticEncodingSystem::RGB)),
+        _ => None,
     }
 }
 

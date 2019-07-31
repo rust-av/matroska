@@ -827,7 +827,7 @@ named!(pub video<&[u8], Video, Error>,
   )
 );
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Default)]
 pub struct Colour {
     pub matrix_coefficients: Option<u64>,
     pub bits_per_channel: Option<u64>,

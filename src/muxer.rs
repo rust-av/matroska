@@ -6,7 +6,7 @@ use std::sync::Arc;
 use crate::{
     ebml::EBMLHeader,
     elements::{
-        Audio, Cluster, Info, Lacing, Seek, SeekHead, SimpleBlock, TrackEntry, Tracks, Video,
+        Audio, Cluster, Info, Lacing, Seek, SeekHead, SimpleBlock, TrackEntry, Tracks, Video, Colour
     },
     serializer::{
         ebml::{gen_ebml_header, EbmlSize},
@@ -508,6 +508,12 @@ pub fn stream_to_track(s: &Stream) -> TrackEntry {
             t.video = Some(Video {
                 pixel_width: v.width as u64,
                 pixel_height: v.height as u64,
+                colour: Some(Colour{
+                    matrix_coefficients: Some(v.format.as_ref().unwrap().get_matrix() as u64),
+                    transfer_characteristics: Some(v.format.as_ref().unwrap().get_xfer() as u64),
+                    primaries: Some(v.format.as_ref().unwrap().get_primaries() as u64),
+                    ..Default::default()
+                }),
                 ..Default::default()
             });
         }
