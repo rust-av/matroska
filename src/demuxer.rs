@@ -1,12 +1,12 @@
 use crate::{
-    ebml::{self, ebml_header, EBMLHeader, custom_error},
+    av_data::rational::Rational64,
+    ebml::{self, custom_error, ebml_header, EBMLHeader},
     elements::{
         segment, segment_element, simple_block, Cluster, Info, SeekHead, SegmentElement,
         TrackEntry, Tracks,
     },
-    av_data::rational::Rational64,
 };
-use av_data::{packet::Packet, params::*, timeinfo::TimeInfo};
+use av_data::{packet::Packet, params::*, pixel::Formaton, pixel::*, timeinfo::TimeInfo};
 use av_format::{
     buffer::Buffered,
     common::GlobalInfo,
@@ -16,6 +16,7 @@ use av_format::{
 };
 use log::{debug, error, trace};
 use nom::{self, Err, IResult, Offset};
+use std::sync::Arc;
 use std::{collections::VecDeque, io::SeekFrom};
 
 #[derive(Debug, Clone)]
@@ -40,7 +41,10 @@ impl MkvDemuxer {
         }
     }
 
-    pub fn parse_until_tracks<'a>(&mut self, original_input: &'a [u8]) -> IResult<&'a [u8], (), ebml::Error<'a>> {
+    pub fn parse_until_tracks<'a>(
+        &mut self,
+        original_input: &'a [u8],
+    ) -> IResult<&'a [u8], (), ebml::Error<'a>> {
         let (i1, header) = ebml_header(original_input)?;
 
         self.header = Some(header);
@@ -176,12 +180,53 @@ fn track_entry_codec_id(t: &TrackEntry) -> Option<String> {
 
 fn track_entry_video_kind(t: &TrackEntry) -> Option<MediaKind> {
     // TODO: Validate that a track::video exists for track::type video before.
+
     if let Some(ref video) = t.video {
+        let mut format = None;
+
+        if let Some(ref colour) = video.colour {
+            let chroma = &[
+                Chromaton::new(0, 0, false, 8, 0, 0, 1),
+                Chromaton::new(
+                    colour.cb_subsampling_vert.unwrap_or_else(|| 0) as u8,
+                    colour.cb_subsampling_horz.unwrap_or_else(|| 0) as u8,
+                    false,
+                    0,
+                    8,
+                    0,
+                    1,
+                ),
+                Chromaton::new(
+                    colour.cb_subsampling_vert.unwrap_or_else(|| 0) as u8,
+                    colour.cb_subsampling_horz.unwrap_or_else(|| 0) as u8,
+                    false,
+                    0,
+                    8,
+                    0,
+                    1,
+                ),
+            ];
+
+            let f= Arc::new(Formaton::new(
+                ColorModel::CMYK, // where to check for other color scheme?
+                chroma,
+                0,
+                false, // is RGB
+                false,
+                false,
+            ));
+
+            f.set_primaries(FromPrimitive::from_u64(colour.primaries.unwrap_or_else(|| 2)).unwrap());
+            f.set_xfer(FromPrimitive::from_u64(colour.transfer_characteristics.unwrap_or_else(|| 2)) .unwrap());
+            f.set_matrix(FromPrimitive::from_u64(colour.matrix_coefficients.unwrap_or_else(|| 2)).unwrap());
+
+            format = Some(f);
+        };
+
         let v = VideoInfo {
             width: video.pixel_width as usize,
             height: video.pixel_height as usize,
-            // TODO parse Colour and/or CodecPrivate to extract the format
-            format: None,
+            format: format,
         };
         Some(MediaKind::Video(v))
     } else {
