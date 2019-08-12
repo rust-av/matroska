@@ -145,7 +145,7 @@ pub struct Info {
 //https://datatracker.ietf.org/doc/html/draft-lhomme-cellar-matroska-03#section-7.3.8
 named!(pub info<&[u8], SegmentElement, Error>,
   do_parse!(
-    t: permutation_opt!(
+    t: permutation!(
       ebml_binary!(0x73A4)?, // SegmentUID
       ebml_str!(0x7384)?,    // SegmentFIlename FIXME SHOULD BE UTF-8 not str
       ebml_binary!(0x3CB923)?,         // PrevUID
@@ -614,7 +614,7 @@ pub struct TrackPlane {
 named!(pub track_plane<&[u8], TrackPlane, Error>,
   ebml_master!(0xE4,
     do_parse!(
-      t: permutation_opt!(
+      t: permutation!(
         ebml_uint!(0xE5),
         ebml_uint!(0xE6)
       ) >> (TrackPlane {
@@ -900,7 +900,7 @@ pub struct MasteringMetadata {
 named!(pub mastering_metadata<&[u8], MasteringMetadata, Error>,
   ebml_master!(0x55D0,
     do_parse!(
-      t: permutation_opt!(
+      t: permutation!(
         ebml_float!(0x55D1)?,
         ebml_float!(0x55D2)?,
         ebml_float!(0x55D3)?,
@@ -939,7 +939,7 @@ pub struct Projection {
 named!(pub projection<&[u8], Projection, Error>,
   ebml_master!(0x7670,
     do_parse!(
-      t: permutation_opt!(
+      t: permutation!(
         ebml_uint!(0x7671),
         ebml_binary!(0x7672)?,
         ebml_float!(0x7673),
