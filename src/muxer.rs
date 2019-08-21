@@ -288,7 +288,7 @@ impl Muxer for MkvMuxer {
         let mut v = Vec::with_capacity(16);
 
         let s = SimpleBlock {
-            track_number: pkt.stream_index as u64,
+            track_number: pkt.stream_index as u64 + 1,
             timecode: pkt.t.pts.or(pkt.t.dts).unwrap_or(0) as i16,
             keyframe: pkt.is_key,
             invisible: false,
@@ -492,7 +492,7 @@ pub fn stream_to_track(s: &Stream) -> TrackEntry {
 
     let mut t = TrackEntry {
         track_uid: s.id as u64,
-        track_number: s.index as u64,
+        track_number: s.index as u64 + 1,
         track_type: 0,
         codec_id,
         default_duration: s.duration,
