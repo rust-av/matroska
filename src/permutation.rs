@@ -408,8 +408,8 @@ macro_rules! permutation_opt_iterator (
 
 #[cfg(test)]
 mod tests {
-    use nom::{Err, error::ErrorKind, Needed};
     use crate::ebml::Error;
+    use nom::{error::ErrorKind, Err, Needed};
 
     // reproduce the tag and take macros, because of module import order
     macro_rules! tag (

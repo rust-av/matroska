@@ -15,7 +15,8 @@ use av_format::{
     stream::Stream,
 };
 use log::{debug, error, trace};
-use nom::{self, Err, IResult, Offset};
+use nom::{self, Err, IResult, Needed, Offset};
+use std::sync::Arc;
 use std::{collections::VecDeque, io::SeekFrom};
 
 #[derive(Debug, Clone)]
@@ -40,7 +41,10 @@ impl MkvDemuxer {
         }
     }
 
-    pub fn parse_until_tracks<'a>(&mut self, original_input: &'a [u8]) -> IResult<&'a [u8], (), ebml::Error<'a>> {
+    pub fn parse_until_tracks<'a>(
+        &mut self,
+        original_input: &'a [u8],
+    ) -> IResult<&'a [u8], (), ebml::Error<'a>> {
         let (i1, header) = ebml_header(original_input)?;
 
         self.header = Some(header);
@@ -94,8 +98,6 @@ impl MkvDemuxer {
         }
     }
 }
-
-use nom::Needed;
 
 impl Demuxer for MkvDemuxer {
     fn read_headers(&mut self, buf: &Box<dyn Buffered>, info: &mut GlobalInfo) -> Result<SeekFrom> {

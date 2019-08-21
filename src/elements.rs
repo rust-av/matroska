@@ -1,6 +1,9 @@
 #![allow(unused_assignments)]
 use crate::ebml::{vid, vint, Error};
-use nom::{number::streaming::{be_i16, be_u8}, IResult};
+use nom::{
+    number::streaming::{be_i16, be_u8},
+    IResult,
+};
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum SegmentElement<'a> {
@@ -24,13 +27,6 @@ named!(pub segment<&[u8], (u64, Option<u64>), Error>,
     (id, size)
   )
 );
-
-/*
-named!(skip,
-       do_parse!(
-    size: vint >> data: take!(size) >> (data)
-  ));
-*/
 
 #[macro_export]
 macro_rules! sub_element(
@@ -188,7 +184,6 @@ pub fn ret_chapter_translate(input: &[u8]) -> IResult<&[u8], ChapterTranslate, E
 }
 
 //https://datatracker.ietf.org/doc/html/draft-lhomme-cellar-matroska-03#section-7.3.16
-//TODO
 named!(pub chapter_translate<&[u8], ChapterTranslate, Error>,
   //ebml_master!(0x6924, value!(ChapterTranslate{}))
   ebml_master!(0x6924, call!(ret_chapter_translate))
@@ -227,9 +222,6 @@ named!(pub cluster<&[u8], SegmentElement, Error>,
     }))
   )
 );
-
-//named!(simple_blocks< Vec< &[u8] > >, many0!(ebml_binary_ref!(0xA3)));
-//named!(block_groups< Vec<BlockGroup> >, many0!(block_group));
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct SilentTracks {
@@ -827,7 +819,7 @@ named!(pub video<&[u8], Video, Error>,
   )
 );
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Default)]
 pub struct Colour {
     pub matrix_coefficients: Option<u64>,
     pub bits_per_channel: Option<u64>,
