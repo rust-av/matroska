@@ -39,30 +39,36 @@ pub struct Element {
 }
 */
 
-#[derive(Debug,PartialEq)]
+#[derive(Debug, PartialEq)]
 pub struct Error<'a> {
-  input: &'a [u8],
-  kind: ErrorKind,
+    input: &'a [u8],
+    kind: ErrorKind,
 }
 
-#[derive(Debug,PartialEq)]
+#[derive(Debug, PartialEq)]
 pub enum ErrorKind {
-  Nom(nom::error::ErrorKind),
-  Custom(u8),
+    Nom(nom::error::ErrorKind),
+    Custom(u8),
 }
 
-impl<'a> nom::error::ParseError<&'a[u8]> for Error<'a> {
-  fn from_error_kind(input: &'a[u8], kind: nom::error::ErrorKind) -> Self {
-    Error { input, kind: ErrorKind::Nom(kind) }
-  }
+impl<'a> nom::error::ParseError<&'a [u8]> for Error<'a> {
+    fn from_error_kind(input: &'a [u8], kind: nom::error::ErrorKind) -> Self {
+        Error {
+            input,
+            kind: ErrorKind::Nom(kind),
+        }
+    }
 
-  fn append(input: &'a[u8], kind: nom::error::ErrorKind, other: Self) -> Self {
-    other
-  }
+    fn append(_input: &'a [u8], _kind: nom::error::ErrorKind, other: Self) -> Self {
+        other
+    }
 }
 
 pub fn custom_error(input: &[u8], code: u8) -> Error {
-  Error {input, kind: ErrorKind::Custom(code) }
+    Error {
+        input,
+        kind: ErrorKind::Custom(code),
+    }
 }
 
 pub fn vint(input: &[u8]) -> IResult<&[u8], u64, Error> {
