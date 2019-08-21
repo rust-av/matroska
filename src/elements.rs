@@ -330,6 +330,28 @@ pub struct Block {
     pub lacing: Lacing,
 }
 
+named!(pub block<&[u8], Block, Error>,
+  do_parse!(
+       track_number: vint
+    >> timecode:     be_i16
+    >> flags:        map_opt!(be_u8, block_flags)
+    >> (Block {
+      track_number: track_number,
+      timecode:     timecode,
+      invisible:    flags.invisible,
+      lacing:       flags.lacing,
+    })
+  )
+);
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct BlockFlags {
+    pub keyframe: bool,
+    pub invisible: bool,
+    pub lacing: Lacing,
+    pub discardable: bool,
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub struct SimpleBlock {
     pub track_number: u64,
@@ -340,24 +362,29 @@ pub struct SimpleBlock {
     pub discardable: bool,
 }
 
-#[derive(Debug, Clone, PartialEq)]
-pub enum Lacing {
-    None,
-    Xiph,
-    EBML,
-    FixedSize,
-}
+fn block_flags(data: u8) -> Option<BlockFlags> {
+    let lacing_data = ((data << 6) >> 6) >> 5;
+    let lacing = match lacing_data {
+        0 => Lacing::None,
+        1 => Lacing::Xiph,
+        2 => Lacing::FixedSize,
+        3 => Lacing::EBML,
+        _ => return None,
+    };
 
-#[derive(Debug, Clone, PartialEq)]
-pub struct LacedData {
-    pub frame_count: u8,
+    Some(BlockFlags {
+        keyframe: (data & 1) != 0,
+        invisible: (data & (1 << 4)) != 0,
+        lacing: lacing,
+        discardable: (data & (1 << 7)) != 0,
+    })
 }
 
 named!(pub simple_block<&[u8], SimpleBlock, Error>,
   do_parse!(
        track_number: vint
     >> timecode:     be_i16
-    >> flags:        map_opt!(be_u8, simple_block_flags)
+    >> flags:        map_opt!(be_u8, block_flags)
     >> (SimpleBlock {
       track_number: track_number,
       timecode:     timecode,
@@ -377,22 +404,17 @@ pub struct SimpleBlockFlags {
     pub discardable: bool,
 }
 
-pub fn simple_block_flags(data: u8) -> Option<SimpleBlockFlags> {
-    let lacing_data = ((data << 6) >> 6) >> 5;
-    let lacing = match lacing_data {
-        0 => Lacing::None,
-        1 => Lacing::Xiph,
-        2 => Lacing::FixedSize,
-        3 => Lacing::EBML,
-        _ => return None,
-    };
+#[derive(Debug, Clone, PartialEq)]
+pub enum Lacing {
+    None,
+    Xiph,
+    EBML,
+    FixedSize,
+}
 
-    Some(SimpleBlockFlags {
-        keyframe: (data & 1) != 0,
-        invisible: (data & (1 << 4)) != 0,
-        lacing: lacing,
-        discardable: (data & (1 << 7)) != 0,
-    })
+#[derive(Debug, Clone, PartialEq)]
+pub struct LacedData {
+    pub frame_count: u8,
 }
 
 #[derive(Debug, Clone, PartialEq)]
