@@ -21,6 +21,7 @@ pub mod elements;
  #[macro_use]
 pub mod serializer;
 pub mod demuxer;
+pub mod fourcc;
 pub mod muxer;
 
 #[cfg(test)]
