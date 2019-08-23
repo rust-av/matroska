@@ -1,5 +1,5 @@
 use log::trace;
-use nom::{Err, IResult, Needed};
+use nom::{Err, IResult, Needed, combinator::{flat_map, map, map_parser, verify}, bytes::streaming::take};
 
 /* nom5 note
  *
@@ -213,9 +213,11 @@ pub fn parse_float_data(input: &[u8], size: u64) -> IResult<&[u8], f64, Error> {
     if size == 0 {
         Ok((input, 0f64))
     } else if size == 4 {
-        map!(input, flat_map!(take!(4), be_f32), |val| val as f64)
+        //map!(input, flat_map!(take!(4), be_f32), |val| val as f64)
+        map(map_parser(take(4usize), be_f32), |val| val as f64)(input)
     } else if size == 8 {
-        flat_map!(input, take!(8), be_f64)
+        //flat_map!(input, take!(8), be_f64)
+        map_parser(take(8usize), be_f64)(input)
     } else {
         Err(Err::Error(custom_error(input, 104)))
     }
@@ -252,83 +254,93 @@ named!(pub parse_element<Element>,
 #[macro_export]
 macro_rules! ebml_uint (
   ($i: expr, $id:expr) => ({
-    use $crate::ebml::{vid, vint, parse_uint_data};
-    do_parse!($i,
-               verify!(vid, |val:&u64| *val == $id)
-      >> size: vint
-      >> data: call!(parse_uint_data, size)
-      >> (data)
-    )
+    $crate::ebml::ebml_uint($id)($i)
   })
 );
+
+pub fn ebml_uint(id: u64) -> impl Fn(&[u8]) -> IResult<&[u8], u64, Error> {
+  move |i| {
+    let (i, _) = verify(vid, |val:&u64| *val == id)(i)?;
+    let (i, size) = vint(i)?;
+    parse_uint_data(i, size)
+  }
+}
 
 #[macro_export]
 macro_rules! ebml_int (
   ($i: expr, $id:expr) => ({
-    use $crate::ebml::{vid, vint, parse_int_data};
-    do_parse!($i,
-               verify!(vid, |val:&u64| *val == $id)
-      >> size: vint
-      >> data: call!(parse_int_data, size)
-      >> (data)
-    )
+    $crate::ebml::ebml_int($id)($i)
   })
 );
+
+pub fn ebml_int(id: u64) -> impl Fn(&[u8]) -> IResult<&[u8], i64, Error> {
+  move |i| {
+    let (i, _) = verify(vid, |val:&u64| *val == id)(i)?;
+    let (i, size) = vint(i)?;
+    parse_int_data(i, size)
+  }
+}
 
 #[macro_export]
 macro_rules! ebml_float (
   ($i: expr, $id:expr) => ({
-    use $crate::ebml::{vid, vint, parse_float_data};
-    do_parse!($i,
-               verify!(vid, |val:&u64| *val == $id)
-      >> size: vint
-      >> data: call!(parse_float_data, size)
-      >> (data)
-    )
+    $crate::ebml::ebml_float($id)($i)
   })
 );
+
+pub fn ebml_float(id: u64) -> impl Fn(&[u8]) -> IResult<&[u8], f64, Error> {
+  move |i| {
+    let (i, _) = verify(vid, |val:&u64| *val == id)(i)?;
+    let (i, size) = vint(i)?;
+    parse_float_data(i, size)
+  }
+}
 
 #[macro_export]
 macro_rules! ebml_str (
   ($i: expr, $id:expr) => ({
-    use $crate::ebml::{vid, vint, parse_str_data};
-
-    do_parse!($i,
-               verify!(vid, |val:&u64| *val == $id)
-      >> size: vint
-      >> data: call!(parse_str_data, size)
-      >> (data)
-    )
+    $crate::ebml::ebml_str($id)($i)
   })
 );
+
+pub fn ebml_str(id: u64) -> impl Fn(&[u8]) -> IResult<&[u8], String, Error> {
+  move |i| {
+    let (i, _) = verify(vid, |val:&u64| *val == id)(i)?;
+    let (i, size) = vint(i)?;
+    parse_str_data(i, size)
+  }
+}
 
 #[macro_export]
 macro_rules! ebml_binary (
   ($i: expr, $id:expr) => ({
-    use $crate::ebml::{vid, vint, parse_binary_data};
-
-    do_parse!($i,
-               verify!(vid, |val:&u64| *val == $id)
-      >> size: vint
-      >> data: call!(parse_binary_data, size)
-      >> (data)
-    )
+    $crate::ebml::ebml_binary($id)($i)
   })
 );
+
+pub fn ebml_binary(id: u64) -> impl Fn(&[u8]) -> IResult<&[u8], Vec<u8>, Error> {
+  move |i| {
+    let (i, _) = verify(vid, |val:&u64| *val == id)(i)?;
+    let (i, size) = vint(i)?;
+    parse_binary_data(i, size)
+  }
+}
 
 #[macro_export]
 macro_rules! ebml_binary_ref (
   ($i: expr, $id:expr) => ({
-    use $crate::ebml::{vid, vint};
-
-    do_parse!($i,
-               verify!(vid, |val:&u64| *val == $id)
-      >> size: vint
-      >> data: take!(size)
-      >> (data)
-    )
+    $crate::ebml::ebml_binary_ref($id)($i)
   })
 );
+
+pub fn ebml_binary_ref(id: u64) -> impl Fn(&[u8]) -> IResult<&[u8], &[u8], Error> {
+  move |i| {
+    let (i, _) = verify(vid, |val:&u64| *val == id)(i)?;
+    let (i, size) = vint(i)?;
+    take(size)(i)
+  }
+}
+
 
 #[macro_export]
 macro_rules! ebml_master (
