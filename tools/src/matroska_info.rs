@@ -16,6 +16,7 @@ use matroska::elements::{segment, segment_element, SegmentElement};
 use matroska::serializer::ebml::EbmlSize;
 
 fn main() {
+    better_panic::install();
     pretty_env_logger::init();
     let mut args = env::args();
     let _ = args.next().expect("first arg is program path");
