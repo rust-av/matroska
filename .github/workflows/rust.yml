@@ -3,13 +3,35 @@ name: Rust
 on: [push, pull_request]
 
 jobs:
-  build:
+  test-x86_64:
+    strategy:
+      matrix:
+        platform: [ubuntu-latest, windows-latest]
 
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.platform }}
 
     steps:
     - uses: actions/checkout@v1
-    - name: Build
-      run: cargo build --verbose
+    - name: Print rust version
+      run:  rustc -vV
+    - name: Run tests
+      run: cargo test --verbose
+
+  test-windows-i686:
+
+    runs-on: windows-latest
+
+    steps:
+    - uses: actions/checkout@v1
+    - name: Install i686-pc-windows-msvc
+      env:
+        CHANNEL: stable
+        TARGET: i686-pc-windows-msvc
+      run: |
+        rustup self update
+        rustup toolchain install %CHANNEL%-%TARGET%
+        rustup set default-host %TARGET%
+    - name: Print rust version
+      run: rustc -vV
     - name: Run tests
       run: cargo test --verbose
