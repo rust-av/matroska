@@ -111,7 +111,7 @@ fn run(filename: &str) -> std::io::Result<()> {
                 SegmentElement::SeekHead(s) => {
                     println!("|+ Seek head at {:#0x} size {}", 0x0, b.data().offset(i));
                     for seek in s.positions.iter() {
-                        let id: u64 = ((seek.id[0] as u64) << 24)
+                        let _id: u64 = ((seek.id[0] as u64) << 24)
                             | ((seek.id[1] as u64) << 16)
                             | ((seek.id[2] as u64) << 8)
                             | seek.id[3] as u64;
