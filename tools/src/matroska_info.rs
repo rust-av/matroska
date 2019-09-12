@@ -1,10 +1,3 @@
-extern crate av_data;
-extern crate av_format;
-extern crate circular;
-extern crate matroska;
-extern crate nom;
-extern crate pretty_env_logger;
-
 use circular::Buffer;
 use nom::{Err, Offset};
 use std::env;
