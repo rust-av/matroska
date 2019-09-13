@@ -39,8 +39,12 @@ fn run(filename: &str) -> std::io::Result<()> {
             println!("|+ EBML read version: {}", header.read_version);
             println!("|+ EBML maximum ID length: {}", header.max_id_length);
             println!("|+ EBML maximum size length: {}", header.max_size_length);
-            println!("|+ Doc type: {}", header.doc_type);
-            println!("|+ Doc type read version: {}", header.doc_type_read_version);
+            println!("|+ Document type: {}", header.doc_type);
+            println!("|+ Document type version: {}", header.doc_type_version);
+            println!(
+                "|+ Document type read version: {}",
+                header.doc_type_read_version
+            );
 
             b.data().offset(remaining)
         } else {
