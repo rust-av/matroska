@@ -256,11 +256,11 @@ macro_rules! ebml_uint (
 );
 
 pub fn ebml_uint(id: u64) -> impl Fn(&[u8]) -> IResult<&[u8], u64, Error> {
-  move |i| {
-    let (i, _) = verify(vid, |val:&u64| *val == id)(i)?;
-    let (i, size) = vint(i)?;
-    parse_uint_data(i, size)
-  }
+    move |i| {
+        let (i, _) = verify(vid, |val: &u64| *val == id)(i)?;
+        let (i, size) = vint(i)?;
+        parse_uint_data(i, size)
+    }
 }
 
 #[macro_export]
@@ -271,11 +271,11 @@ macro_rules! ebml_int (
 );
 
 pub fn ebml_int(id: u64) -> impl Fn(&[u8]) -> IResult<&[u8], i64, Error> {
-  move |i| {
-    let (i, _) = verify(vid, |val:&u64| *val == id)(i)?;
-    let (i, size) = vint(i)?;
-    parse_int_data(i, size)
-  }
+    move |i| {
+        let (i, _) = verify(vid, |val: &u64| *val == id)(i)?;
+        let (i, size) = vint(i)?;
+        parse_int_data(i, size)
+    }
 }
 
 #[macro_export]
@@ -286,11 +286,11 @@ macro_rules! ebml_float (
 );
 
 pub fn ebml_float(id: u64) -> impl Fn(&[u8]) -> IResult<&[u8], f64, Error> {
-  move |i| {
-    let (i, _) = verify(vid, |val:&u64| *val == id)(i)?;
-    let (i, size) = vint(i)?;
-    parse_float_data(i, size)
-  }
+    move |i| {
+        let (i, _) = verify(vid, |val: &u64| *val == id)(i)?;
+        let (i, size) = vint(i)?;
+        parse_float_data(i, size)
+    }
 }
 
 #[macro_export]
@@ -301,11 +301,11 @@ macro_rules! ebml_str (
 );
 
 pub fn ebml_str(id: u64) -> impl Fn(&[u8]) -> IResult<&[u8], String, Error> {
-  move |i| {
-    let (i, _) = verify(vid, |val:&u64| *val == id)(i)?;
-    let (i, size) = vint(i)?;
-    parse_str_data(i, size)
-  }
+    move |i| {
+        let (i, _) = verify(vid, |val: &u64| *val == id)(i)?;
+        let (i, size) = vint(i)?;
+        parse_str_data(i, size)
+    }
 }
 
 #[macro_export]
@@ -316,11 +316,11 @@ macro_rules! ebml_binary (
 );
 
 pub fn ebml_binary(id: u64) -> impl Fn(&[u8]) -> IResult<&[u8], Vec<u8>, Error> {
-  move |i| {
-    let (i, _) = verify(vid, |val:&u64| *val == id)(i)?;
-    let (i, size) = vint(i)?;
-    parse_binary_data(i, size)
-  }
+    move |i| {
+        let (i, _) = verify(vid, |val: &u64| *val == id)(i)?;
+        let (i, size) = vint(i)?;
+        parse_binary_data(i, size)
+    }
 }
 
 #[macro_export]
