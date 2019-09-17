@@ -1,7 +1,7 @@
 # Matroska
 
 [![LICENSE](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-[![Actions Status](https://github.com/rust-av/matroska/workflows/rust/badge.svg)](https://github.com/rust-av/matroska/actions)
+[![Actions Status](https://github.com/rust-av/matroska/workflows/matroska/badge.svg)](https://github.com/rust-av/matroska/actions)
 [![dependency status](https://deps.rs/repo/github/rust-av/matroska/status.svg)](https://deps.rs/repo/github/rust-av/matroska)
 
 ## Specification

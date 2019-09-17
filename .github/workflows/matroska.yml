@@ -1,4 +1,4 @@
-name: Rust
+name: matroska
 
 on: [push, pull_request]
 
