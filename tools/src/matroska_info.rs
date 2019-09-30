@@ -1,32 +1,62 @@
 use circular::Buffer;
+use err_derive::Error;
 use nom::{Err, Offset};
 use std::env;
 use std::fs::File;
-use std::io::Read;
+use std::io::{self, Read};
 
 use matroska::ebml::ebml_header;
 use matroska::elements::{segment, segment_element, SegmentElement};
 use matroska::serializer::ebml::EbmlSize;
 
-fn main() {
-    better_panic::install();
+#[derive(Debug, Error)]
+pub enum InfoError {
+    #[error(display = "expected file path")]
+    NoPathReceived,
+    #[error(display = "no more data to read or parse")]
+    NoMoreData,
+    #[error(display = "unable to parse header")]
+    ParseHeader,
+    #[error(display = "already got a SeekHead element")]
+    SeekHeadElement,
+    #[error(display = "already got an Info element")]
+    InfoElement,
+    #[error(display = "already got a Tracks element")]
+    TracksElement,
+    #[error(display = "unexpected element: {}", _0)]
+    UnexpectedElement(String),
+    #[error(display = "offset {:X?}: got unknown element: {:X?} {:#?}", _0, _1, _2)]
+    UnknownElement(usize, u64, Option<u64>),
+    #[error(display = "failed parsing: {}", _0)]
+    Parse(String),
+    #[error(display = "could not read the file: {}", _0)]
+    Io(#[error(cause)] io::Error),
+}
+
+impl From<io::Error> for InfoError {
+    fn from(e: io::Error) -> Self {
+        InfoError::Io(e)
+    }
+}
+
+fn main() -> Result<(), InfoError> {
+    better_panic::init();
     pretty_env_logger::init();
     let mut args = env::args();
     let _ = args.next().expect("first arg is program path");
-    let filename = args.next().expect("expected file path");
+    let filename = args.next().ok_or(InfoError::NoPathReceived)?;
 
-    //println!("filename: {}", filename);
-    run(&filename).expect("should parse file correctly");
+    run(&filename)
 }
 
-fn run(filename: &str) -> std::io::Result<()> {
+fn run(filename: &str) -> Result<(), InfoError> {
     let mut file = File::open(filename)?;
 
     let capacity = 5242880;
     let mut b = Buffer::with_capacity(capacity);
 
     // we write into the `&mut[u8]` returned by `space()`
-    let sz = file.read(b.space()).expect("should write");
+    let sz = file.read(b.space())?;
     b.fill(sz);
     //eprintln!("write {:#?}", sz);
 
@@ -48,7 +78,7 @@ fn run(filename: &str) -> std::io::Result<()> {
 
             b.data().offset(remaining)
         } else {
-            panic!("couldn't parse header");
+            return Err(InfoError::ParseHeader);
         }
     };
 
@@ -63,7 +93,7 @@ fn run(filename: &str) -> std::io::Result<()> {
 
             b.data().offset(remaining)
         } else {
-            panic!("couldn't parse header");
+            return Err(InfoError::ParseHeader);
         }
     };
 
@@ -82,25 +112,27 @@ fn run(filename: &str) -> std::io::Result<()> {
         if b.available_space() == 0 {
             b.shift();
             if b.available_space() == 0 {
-                println!("buffer is already full,  cannot refill");
+                println!("buffer is already full, cannot refill");
                 break;
             }
         }
 
         // refill the buffer
-        let sz = file.read(b.space()).expect("should read");
+        let sz = file.read(b.space())?;
         b.fill(sz);
 
         // if there's no more available data in the buffer after a write, that means we reached
         // the end of the file
         if b.available_data() == 0 {
-            panic!("no more data to read or parse, stopping the reading loop");
+            return Err(InfoError::NoMoreData);
         }
 
         let offset = {
             let (i, element) = match segment_element(b.data()) {
                 Ok((i, o)) => (i, o),
-                Err(Err::Error(e)) | Err(Err::Failure(e)) => panic!("failed parsing: {:?}", e),
+                Err(Err::Error(e)) | Err(Err::Failure(e)) => {
+                    return Err(InfoError::Parse(format!("{:?}", e)))
+                }
                 Err(Err::Incomplete(_i)) => continue,
             };
 
@@ -142,7 +174,7 @@ fn run(filename: &str) -> std::io::Result<()> {
                     }
 
                     if seek_head.is_some() {
-                        panic!("already got a SeekHead element");
+                        return Err(InfoError::SeekHeadElement);
                     } else {
                         seek_head = Some(s);
                     }
@@ -158,7 +190,7 @@ fn run(filename: &str) -> std::io::Result<()> {
                     );
                     println!("| + Duration: {}s", i.duration.unwrap_or(0f64) / 1000f64);
                     if info.is_some() {
-                        panic!("already got an Info element");
+                        return Err(InfoError::InfoElement);
                     } else {
                         info = Some(i);
                     }
@@ -217,7 +249,7 @@ fn run(filename: &str) -> std::io::Result<()> {
                         }
                     }
                     if tracks.is_some() {
-                        panic!("already got a Tracks element");
+                        return Err(InfoError::TracksElement);
                     } else {
                         tracks = Some(t);
                     }
@@ -229,9 +261,7 @@ fn run(filename: &str) -> std::io::Result<()> {
                 SegmentElement::Void(s) => {
                     println!("|+ EbmlVoid (size: {})", s);
                 }
-                el => {
-                    panic!("got unexpected element: {:#?}", el);
-                }
+                el => return Err(InfoError::UnexpectedElement(format!("{:?}", el))),
             }
 
             b.data().offset(i)
@@ -251,7 +281,7 @@ fn run(filename: &str) -> std::io::Result<()> {
         }
 
         // refill the buffer
-        let sz = file.read(b.space()).expect("should read");
+        let sz = file.read(b.space())?;
         b.fill(sz);
 
         /*
@@ -273,7 +303,9 @@ fn run(filename: &str) -> std::io::Result<()> {
         let offset = {
             let (i, element) = match segment_element(b.data()) {
                 Ok((i, o)) => (i, o),
-                Err(Err::Error(e)) | Err(Err::Failure(e)) => panic!("failed parsing: {:?}", e),
+                Err(Err::Error(e)) | Err(Err::Failure(e)) => {
+                    return Err(InfoError::Parse(format!("{:?}", e)))
+                }
                 Err(Err::Incomplete(_)) => continue,
             };
 
@@ -281,10 +313,9 @@ fn run(filename: &str) -> std::io::Result<()> {
                 SegmentElement::SeekHead(_)
                 | SegmentElement::Info(_)
                 | SegmentElement::Tracks(_) => {
-                    panic!(
-                        "unexpected seek head, info or tracks element: {:?}",
-                        element
-                    );
+                    return Err(InfoError::UnexpectedElement(format!(
+                        "seek head, info or tracks element"
+                    )));
                 }
                 SegmentElement::Cluster(c) => {
                     println!("|+ Cluster");
@@ -310,14 +341,9 @@ fn run(filename: &str) -> std::io::Result<()> {
                     println!("|+ Cues");
                 }
                 SegmentElement::Unknown(id, data) => {
-                    panic!(
-                        "offset {:X?}: got unknown element: {:X?} {:#?}",
-                        _consumed, id, data
-                    );
+                    return Err(InfoError::UnknownElement(_consumed, id, data))
                 }
-                el => {
-                    panic!("got unexpected element: {:#?}", el);
-                }
+                el => return Err(InfoError::UnexpectedElement(format!("{:?}", el))),
             }
 
             b.data().offset(i)
