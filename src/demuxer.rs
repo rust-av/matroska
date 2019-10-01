@@ -236,7 +236,7 @@ pub fn track_to_stream(info: &Info, t: &TrackEntry) -> Stream {
 
     Stream {
         id: t.track_uid as isize,
-        index: 0,
+        index: t.stream_index,
         start: None,
         duration: t.default_duration,
         timebase: Rational64::new(num, 1000 * 1000 * 1000),
