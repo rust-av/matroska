@@ -58,7 +58,7 @@ pub fn gen_seek<'a>(
         input,
         0x4DBB,
         vint_size(capacity),
-        gen_ebml_binary!(0x53AB, s.id) >>
+        gen_ebml_binary!(0x53AB, &s.id) >>
     //gen_ebml_uint!(0x53AC, s.position, vint_size(s.position))
     gen_ebml_uint!(0x53AC, s.position, 8)
     )
