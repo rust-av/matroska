@@ -64,6 +64,7 @@ fn main() {
                         muxer.write_trailer().unwrap();
                         break;
                     }
+                    _ => break
                 }
             }
             Err(e) => {
