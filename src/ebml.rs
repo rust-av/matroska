@@ -1,13 +1,10 @@
-use log::trace;
-use nom::{Err, IResult, Needed, combinator::{flat_map, map, map_parser, verify}, bytes::streaming::take};
-
-/* nom5 note
- *
- * Temporary use of ErrorKind::Fix instead of Custom
- *
- * TODO: define good custom error
- *
-*/
+use log::{error, trace};
+use nom::{
+    bytes::streaming::take,
+    combinator::{map, map_parser, verify},
+    Err, IResult, Needed,
+};
+use std::convert::TryFrom;
 
 /*
 struct Document {
@@ -334,13 +331,15 @@ macro_rules! ebml_binary_ref (
 );
 
 pub fn ebml_binary_ref(id: u64) -> impl Fn(&[u8]) -> IResult<&[u8], &[u8], Error> {
-  move |i| {
-    let (i, _) = verify(vid, |val:&u64| *val == id)(i)?;
-    let (i, size) = vint(i)?;
-    take(size)(i)
-  }
+    move |i| {
+        let (i, _) = verify(vid, |val: &u64| *val == id)(i)?;
+        let (i, size) = vint(i)?;
+        take(usize::try_from(size).map_err(|_| {
+            error!("Not possible to convert size into usize");
+            nom::Err::Error(custom_error(i, 0))
+        })?)(i)
+    }
 }
-
 
 #[macro_export]
 macro_rules! ebml_master (
