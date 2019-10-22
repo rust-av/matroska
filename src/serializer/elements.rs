@@ -10,7 +10,7 @@ use cookie_factory::*;
 pub fn seek_size(s: &Seek) -> u8 {
     // byte size of id (vid+size)+ data and position vid+size+int
     // FIXME: arbitrarily bad value
-    vint_size(vint_size((s.id.len() + 10) as u64) as u64)
+    vint_size(u64::from(vint_size((s.id.len() + 10) as u64)))
 }
 
 /*
@@ -25,19 +25,19 @@ pub fn gen_segment<'a>(input: (&'a mut [u8], usize),
 }
 */
 
-pub fn gen_segment_header<'a>(
-    input: (&'a mut [u8], usize),
+pub fn gen_segment_header(
+    input: (&mut [u8], usize),
     size: u64,
-) -> Result<(&'a mut [u8], usize), GenError> {
+) -> Result<(&mut [u8], usize), GenError> {
     do_gen!(
         input,
         gen_call!(gen_vid, 0x18538067) >> gen_call!(gen_vint, size)
     )
 }
 
-pub fn gen_segment_header_unknown_size<'a>(
-    input: (&'a mut [u8], usize),
-) -> Result<(&'a mut [u8], usize), GenError> {
+pub fn gen_segment_header_unknown_size(
+    input: (&mut [u8], usize),
+) -> Result<(&mut [u8], usize), GenError> {
     do_gen!(input, gen_call!(gen_vid, 0x18538067) >> gen_be_u8!(0xFF))
 }
 
@@ -100,6 +100,8 @@ impl EbmlSize for Info {
     }
 }
 
+// Clippy thinks this function is too complicated, but it doesn't really make sense to split it up
+#[allow(clippy::cognitive_complexity)]
 pub fn gen_info<'a>(
     input: (&'a mut [u8], usize),
     i: &Info,
@@ -193,6 +195,8 @@ impl EbmlSize for TrackEntry {
     }
 }
 
+// Clippy thinks this function is too complicated, but it doesn't really make sense to split it up
+#[allow(clippy::cognitive_complexity)]
 pub fn gen_track_entry<'a>(
     input: (&'a mut [u8], usize),
     t: &TrackEntry,
@@ -254,6 +258,8 @@ impl EbmlSize for Audio {
     }
 }
 
+// Clippy thinks this function is too complicated, but it doesn't really make sense to split it up
+#[allow(clippy::cognitive_complexity)]
 pub fn gen_track_entry_audio<'a>(
     input: (&'a mut [u8], usize),
     a: &Audio,
@@ -300,6 +306,8 @@ impl EbmlSize for Video {
     }
 }
 
+// Clippy thinks this function is too complicated, but it doesn't really make sense to split it up
+#[allow(clippy::cognitive_complexity)]
 pub fn gen_track_entry_video<'a>(
     input: (&'a mut [u8], usize),
     v: &Video,
@@ -355,6 +363,8 @@ impl EbmlSize for Colour {
     }
 }
 
+// Clippy thinks this function is too complicated, but it doesn't really make sense to split it up
+#[allow(clippy::cognitive_complexity)]
 pub fn gen_track_entry_video_colour<'a>(
     input: (&'a mut [u8], usize),
     c: &Colour,
@@ -403,6 +413,8 @@ impl EbmlSize for MasteringMetadata {
     }
 }
 
+// Clippy thinks this function is too complicated, but it doesn't really make sense to split it up
+#[allow(clippy::cognitive_complexity)]
 pub fn gen_track_entry_video_colour_mastering_metadata<'a>(
     input: (&'a mut [u8], usize),
     m: &MasteringMetadata,
@@ -528,6 +540,8 @@ impl<'a> EbmlSize for Cluster<'a> {
     }
 }
 
+// Clippy thinks this function is too complicated, but it doesn't really make sense to split it up
+#[allow(clippy::cognitive_complexity)]
 pub fn gen_cluster<'a>(
     input: (&'a mut [u8], usize),
     c: &Cluster,
@@ -618,7 +632,7 @@ pub fn gen_xiph_laced_frames<'a>(
     _input: (&'a mut [u8], usize),
     frames: &[&[u8]],
 ) -> Result<(&'a mut [u8], usize), GenError> {
-    if frames.len() == 0 {
+    if frames.is_empty() {
         return Err(GenError::NotYetImplemented);
     }
 
