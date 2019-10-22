@@ -3,35 +3,63 @@ name: matroska
 on: [push, pull_request]
 
 jobs:
-  test-x86_64:
+  clippy-rustfmt:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v1
+    - name: Install stable
+      uses: actions-rs/toolchain@v1
+      with:
+        profile: minimal
+        toolchain: stable
+        override: true
+        components: clippy, rustfmt
+    - name: Run clippy
+      uses: actions-rs/clippy-check@v1
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}
+        args: --all --all-features
+    - name: Run rustfmt
+      uses: actions-rs/cargo@v1
+      with:
+        command: fmt
+        args: --all -- --check
+
+  tests:
     strategy:
       matrix:
-        platform: [ubuntu-latest, windows-latest]
+        toolchain:
+         - stable-x86_64-apple-darwin
+         - stable-x86_64-unknown-linux-gnu
+         - stable-x86_64-pc-windows-msvc
+         - stable-i686-pc-windows-msvc
+        include:
+         - toolchain: stable-x86_64-apple-darwin
+           os: macOS-latest
+         - toolchain: stable-x86_64-unknown-linux-gnu
+           os: ubuntu-latest
+         - toolchain: stable-x86_64-pc-windows-msvc
+           os: windows-latest
+         - toolchain: stable-i686-pc-windows-msvc
+           os: windows-latest
 
-    runs-on: ${{ matrix.platform }}
+    runs-on: ${{ matrix.os }}
 
     steps:
     - uses: actions/checkout@v1
-    - name: Print rust version
-      run:  rustc -vV
+    - name: Install stable
+      uses: actions-rs/toolchain@v1
+      with:
+        profile: minimal
+        toolchain: ${{ matrix.toolchain }}
+        override: true
     - name: Run tests
-      run: cargo test --verbose
-
-  test-windows-i686:
-
-    runs-on: windows-latest
-
-    steps:
-    - uses: actions/checkout@v1
-    - name: Install i686-pc-windows-msvc
-      env:
-        CHANNEL: stable
-        TARGET: i686-pc-windows-msvc
-      run: |
-        rustup self update
-        rustup toolchain install %CHANNEL%-%TARGET%
-        rustup set default-host %TARGET%
-    - name: Print rust version
-      run: rustc -vV
-    - name: Run tests
-      run: cargo test --verbose
+      uses: actions-rs/cargo@v1
+      with:
+        command: test
+        args: --all-features --verbose
+    - name: Run doc
+      uses: actions-rs/cargo@v1
+      with:
+        command: doc
+        args: --all-features --verbose
