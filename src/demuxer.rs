@@ -6,7 +6,7 @@ use crate::{
         TrackEntry, Tracks,
     },
 };
-use av_data::{packet::Packet, params::*, timeinfo::TimeInfo};
+use av_data::{packet::Packet, params::*, pixel::Formaton, pixel::*, timeinfo::TimeInfo};
 use av_format::{
     buffer::Buffered,
     common::GlobalInfo,
@@ -15,7 +15,7 @@ use av_format::{
     stream::Stream,
 };
 use log::{debug, error, trace};
-use nom::{self, Err, IResult, Needed, Offset};
+use nom::{self, Err, IResult, Offset, Needed};
 use std::sync::Arc;
 use std::{collections::VecDeque, io::SeekFrom};
 
@@ -178,12 +178,53 @@ fn track_entry_codec_id(t: &TrackEntry) -> Option<String> {
 
 fn track_entry_video_kind(t: &TrackEntry) -> Option<MediaKind> {
     // TODO: Validate that a track::video exists for track::type video before.
+
     if let Some(ref video) = t.video {
+        let mut format = None;
+
+        if let Some(ref colour) = video.colour {
+            let chroma = &[
+                Chromaton::new(0, 0, false, 8, 0, 0, 1),
+                Chromaton::new(
+                    colour.cb_subsampling_vert.unwrap_or_else(|| 0) as u8,
+                    colour.cb_subsampling_horz.unwrap_or_else(|| 0) as u8,
+                    false,
+                    0,
+                    8,
+                    0,
+                    1,
+                ),
+                Chromaton::new(
+                    colour.cb_subsampling_vert.unwrap_or_else(|| 0) as u8,
+                    colour.cb_subsampling_horz.unwrap_or_else(|| 0) as u8,
+                    false,
+                    0,
+                    8,
+                    0,
+                    1,
+                ),
+            ];
+
+            let f= Arc::new(Formaton::new(
+                ColorModel::CMYK, // where to check for other color scheme?
+                chroma,
+                0,
+                false, // is RGB
+                false,
+                false,
+            ));
+
+            f.set_primaries(FromPrimitive::from_u64(colour.primaries.unwrap_or_else(|| 2)).unwrap());
+            f.set_xfer(FromPrimitive::from_u64(colour.transfer_characteristics.unwrap_or_else(|| 2)) .unwrap());
+            f.set_matrix(FromPrimitive::from_u64(colour.matrix_coefficients.unwrap_or_else(|| 2)).unwrap());
+
+            format = Some(f);
+        };
+
         let v = VideoInfo {
             width: video.pixel_width as usize,
             height: video.pixel_height as usize,
-            // TODO parse Colour and/or CodecPrivate to extract the format
-            format: None,
+            format: format,
         };
         Some(MediaKind::Video(v))
     } else {
