@@ -19,7 +19,7 @@ use nom::{self, Err, IResult, Needed, Offset};
 use std::sync::Arc;
 use std::{collections::VecDeque, io::SeekFrom};
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct MkvDemuxer {
     pub header: Option<EBMLHeader>,
     pub seek_head: Option<SeekHead>,
@@ -264,7 +264,7 @@ impl<'a> Cluster<'a> {
                     let packet = Packet {
                         data: i.into(),
                         t: TimeInfo {
-                            pts: Some(block.timecode as i64),
+                            pts: Some(i64::from(block.timecode)),
                             dts: None,
                             duration: None,
                             timebase: None,
@@ -295,7 +295,7 @@ impl Descriptor for Des {
     fn create(&self) -> Box<dyn Demuxer> {
         Box::new(MkvDemuxer::new())
     }
-    fn describe<'a>(&'a self) -> &'a Descr {
+    fn describe(&self) -> &Descr {
         &self.d
     }
     fn probe(&self, data: &[u8]) -> u8 {
