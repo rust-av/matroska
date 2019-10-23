@@ -731,10 +731,7 @@ mod tests {
             positions: seeks
                 .iter()
                 .cloned()
-                .map(|(position, id)| Seek {
-                    id: id,
-                    position: position,
-                })
+                .map(|(position, id)| Seek { id, position })
                 .collect(),
         };
 

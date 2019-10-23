@@ -69,7 +69,7 @@ pub fn custom_error(input: &[u8], code: u8) -> Error {
 }
 
 pub fn vint(input: &[u8]) -> IResult<&[u8], u64, Error> {
-    if input.len() == 0 {
+    if input.is_empty() {
         return Err(Err::Incomplete(Needed::Size(1)));
     }
 
@@ -84,7 +84,7 @@ pub fn vint(input: &[u8]) -> IResult<&[u8], u64, Error> {
         return Err(Err::Incomplete(Needed::Size(1)));
     }
 
-    let mut val = (v ^ (1 << (7 - len))) as u64;
+    let mut val = u64::from(v ^ (1 << (7 - len)));
 
     trace!(
         "vint {:08b} {:08b} {:08b} {}",
@@ -95,7 +95,7 @@ pub fn vint(input: &[u8]) -> IResult<&[u8], u64, Error> {
     );
 
     for i in 0..len as usize {
-        val = (val << 8) | input[i + 1] as u64;
+        val = (val << 8) | u64::from(input[i + 1]);
     }
 
     trace!("     result {:08x}", val);
@@ -106,7 +106,7 @@ pub fn vint(input: &[u8]) -> IResult<&[u8], u64, Error> {
 // The ID are represented in the specification as their binary representation
 // do not drop the marker bit.
 pub fn vid(input: &[u8]) -> IResult<&[u8], u64, Error> {
-    if input.len() == 0 {
+    if input.is_empty() {
         return Err(Err::Incomplete(Needed::Size(1)));
     }
 
@@ -121,12 +121,12 @@ pub fn vid(input: &[u8]) -> IResult<&[u8], u64, Error> {
         return Err(Err::Incomplete(Needed::Size(1)));
     }
 
-    let mut val = v as u64;
+    let mut val = u64::from(v);
 
     trace!("vid {:08b} {:08b} {:08b} {}", val, v, (1 << (8 - len)), len);
 
     for i in 0..len as usize {
-        val = (val << 8) | input[i + 1] as u64;
+        val = (val << 8) | u64::from(input[i + 1]);
     }
 
     trace!("     result {:08x}", val);
@@ -148,8 +148,8 @@ fn parse_uint(input: &[u8], size: u64) -> IResult<&[u8], ElementData> {
         return IResult::Error(ErrorKind::Custom(1));
     }
 
-    for i in 0..size as usize {
-        val = (val << 8) | input[i] as u64;
+    for i in input.iter().take(size as usize) {
+        val = (val << 8) | u64::from(*i);
     }
 
     IResult::Done(&input[size as usize..], ElementData::Unsigned(val))
@@ -162,8 +162,8 @@ pub fn parse_uint_data(input: &[u8], size: u64) -> IResult<&[u8], u64, Error> {
         return Err(Err::Error(custom_error(input, 102)));
     }
 
-    for i in 0..size as usize {
-        val = (val << 8) | input[i] as u64;
+    for i in input.iter().take(size as usize) {
+        val = (val << 8) | u64::from(*i);
     }
 
     Ok((&input[size as usize..], val))
@@ -176,8 +176,8 @@ pub fn parse_int_data(input: &[u8], size: u64) -> IResult<&[u8], i64, Error> {
         return Err(Err::Error(custom_error(input, 103)));
     }
 
-    for i in 0..size as usize {
-        val = (val << 8) | input[i] as u64;
+    for i in input.iter().take(size as usize) {
+        val = (val << 8) | u64::from(*i);
     }
 
     //FIXME: is that right?
@@ -210,8 +210,8 @@ pub fn parse_float_data(input: &[u8], size: u64) -> IResult<&[u8], f64, Error> {
     if size == 0 {
         Ok((input, 0f64))
     } else if size == 4 {
-        //map!(input, flat_map!(take!(4), be_f32), |val| val as f64)
-        map(map_parser(take(4usize), be_f32), |val| val as f64)(input)
+        //map!(input, flat_map!(take!(4), be_f32), f64::from)
+        map(map_parser(take(4usize), be_f32), f64::from)(input)
     } else if size == 8 {
         //flat_map!(input, take!(8), be_f64)
         map_parser(take(8usize), be_f64)(input)

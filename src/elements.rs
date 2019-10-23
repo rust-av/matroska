@@ -5,6 +5,8 @@ use nom::{
     IResult,
 };
 
+// Allow because this shouldn't be a problem
+#[allow(clippy::large_enum_variant)]
 #[derive(Debug, Clone, PartialEq)]
 pub enum SegmentElement<'a> {
     SeekHead(SeekHead),
@@ -362,6 +364,8 @@ pub struct SimpleBlock {
     pub discardable: bool,
 }
 
+// Allow for consistency reasons
+#[allow(clippy::redundant_field_names)]
 fn block_flags(data: u8) -> Option<BlockFlags> {
     let lacing_data = ((data << 6) >> 6) >> 5;
     let lacing = match lacing_data {
