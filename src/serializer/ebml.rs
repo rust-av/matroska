@@ -6,7 +6,7 @@ pub fn vint_size(i: u64) -> u8 {
     let mut val = 1;
 
     loop {
-        if ((i + 1) >> val * 7) == 0 {
+        if ((i + 1) >> (val * 7)) == 0 {
             break;
         }
 
@@ -16,27 +16,26 @@ pub fn vint_size(i: u64) -> u8 {
 }
 
 pub fn log2(i: u64) -> u32 {
-    let res = 64 - (i | 1).leading_zeros();
-    res
+    64 - (i | 1).leading_zeros()
 }
 
 pub fn vid_size(i: u64) -> u8 {
     ((log2(i + 1) - 1) / 7) as u8
 }
 
-pub fn gen_vint<'a>(
-    mut input: (&'a mut [u8], usize),
+pub fn gen_vint(
+    mut input: (&mut [u8], usize),
     mut num: u64,
-) -> Result<(&'a mut [u8], usize), GenError> {
+) -> Result<(&mut [u8], usize), GenError> {
     let needed_bytes = vint_size(num);
 
     assert!(num < (1u64 << 56) - 1);
 
-    num |= 1u64 << needed_bytes * 7;
+    num |= 1u64 << (needed_bytes * 7);
 
     let mut i = needed_bytes - 1;
     loop {
-        match gen_be_u8!(input, (num >> i * 8) as u8) {
+        match gen_be_u8!(input, (num >> (i * 8)) as u8) {
             Ok(next) => {
                 input = next;
             }
@@ -52,16 +51,13 @@ pub fn gen_vint<'a>(
     Ok(input)
 }
 
-pub fn gen_vid<'a>(
-    mut input: (&'a mut [u8], usize),
-    num: u64,
-) -> Result<(&'a mut [u8], usize), GenError> {
+pub fn gen_vid(mut input: (&mut [u8], usize), num: u64) -> Result<(&mut [u8], usize), GenError> {
     let needed_bytes = vid_size(num);
 
     let mut i = needed_bytes - 1;
 
     loop {
-        match gen_be_u8!(input, (num >> i * 8) as u8) {
+        match gen_be_u8!(input, (num >> (i * 8)) as u8) {
             Ok(next) => {
                 input = next;
             }
@@ -77,10 +73,7 @@ pub fn gen_vid<'a>(
     Ok(input)
 }
 
-pub fn gen_uint<'a>(
-    mut input: (&'a mut [u8], usize),
-    num: u64,
-) -> Result<(&'a mut [u8], usize), GenError> {
+pub fn gen_uint(mut input: (&mut [u8], usize), num: u64) -> Result<(&mut [u8], usize), GenError> {
     let needed_bytes = vint_size(num);
 
     let mut i = needed_bytes - 1;
@@ -102,15 +95,12 @@ pub fn gen_uint<'a>(
 }
 
 //FIXME: is it the right implementation?
-pub fn gen_int<'a>(
-    mut input: (&'a mut [u8], usize),
-    num: i64,
-) -> Result<(&'a mut [u8], usize), GenError> {
+pub fn gen_int(mut input: (&mut [u8], usize), num: i64) -> Result<(&mut [u8], usize), GenError> {
     let needed_bytes = vint_size(num as u64);
 
     let mut i = needed_bytes - 1;
     loop {
-        match gen_be_i8!(input, (num >> i * 8) as i8) {
+        match gen_be_i8!(input, (num >> (i * 8)) as i8) {
             Ok(next) => {
                 input = next;
             }
@@ -132,105 +122,99 @@ pub fn vid_size(id: u64) -> u8 {
 }
 */
 
-pub fn gen_u64<'a>(
-    input: (&'a mut [u8], usize),
+pub fn gen_u64(
+    input: (&mut [u8], usize),
     id: u64,
     num: u64,
-) -> Result<(&'a mut [u8], usize), GenError> {
+) -> Result<(&mut [u8], usize), GenError> {
     do_gen!(
         input,
         gen_call!(gen_vid, id) >> gen_call!(gen_vint, 8) >> gen_be_u64!(num)
     )
 }
 
-pub fn gen_u32<'a>(
-    input: (&'a mut [u8], usize),
+pub fn gen_u32(
+    input: (&mut [u8], usize),
     id: u64,
     num: u32,
-) -> Result<(&'a mut [u8], usize), GenError> {
+) -> Result<(&mut [u8], usize), GenError> {
     do_gen!(
         input,
         gen_call!(gen_vid, id) >> gen_call!(gen_vint, 4) >> gen_be_u32!(num)
     )
 }
 
-pub fn gen_u16<'a>(
-    input: (&'a mut [u8], usize),
+pub fn gen_u16(
+    input: (&mut [u8], usize),
     id: u64,
     num: u16,
-) -> Result<(&'a mut [u8], usize), GenError> {
+) -> Result<(&mut [u8], usize), GenError> {
     do_gen!(
         input,
         gen_call!(gen_vid, id) >> gen_call!(gen_vint, 2) >> gen_be_u16!(num)
     )
 }
 
-pub fn gen_u8<'a>(
-    input: (&'a mut [u8], usize),
-    id: u64,
-    num: u8,
-) -> Result<(&'a mut [u8], usize), GenError> {
+pub fn gen_u8(input: (&mut [u8], usize), id: u64, num: u8) -> Result<(&mut [u8], usize), GenError> {
     do_gen!(
         input,
         gen_call!(gen_vid, id) >> gen_call!(gen_vint, 1) >> gen_be_u8!(num)
     )
 }
 
-pub fn gen_i64<'a>(
-    input: (&'a mut [u8], usize),
+pub fn gen_i64(
+    input: (&mut [u8], usize),
     id: u64,
     num: i64,
-) -> Result<(&'a mut [u8], usize), GenError> {
+) -> Result<(&mut [u8], usize), GenError> {
     do_gen!(
         input,
         gen_call!(gen_vid, id) >> gen_call!(gen_vint, 8) >> gen_be_i64!(num)
     )
 }
 
-pub fn gen_i32<'a>(
-    input: (&'a mut [u8], usize),
+pub fn gen_i32(
+    input: (&mut [u8], usize),
     id: u64,
     num: i32,
-) -> Result<(&'a mut [u8], usize), GenError> {
+) -> Result<(&mut [u8], usize), GenError> {
     do_gen!(
         input,
         gen_call!(gen_vid, id) >> gen_call!(gen_vint, 4) >> gen_be_i32!(num)
     )
 }
 
-pub fn gen_i16<'a>(
-    input: (&'a mut [u8], usize),
+pub fn gen_i16(
+    input: (&mut [u8], usize),
     id: u64,
     num: i16,
-) -> Result<(&'a mut [u8], usize), GenError> {
+) -> Result<(&mut [u8], usize), GenError> {
     do_gen!(
         input,
         gen_call!(gen_vid, id) >> gen_call!(gen_vint, 2) >> gen_be_i16!(num)
     )
 }
 
-pub fn gen_i8<'a>(
-    input: (&'a mut [u8], usize),
-    id: u64,
-    num: i8,
-) -> Result<(&'a mut [u8], usize), GenError> {
+pub fn gen_i8(input: (&mut [u8], usize), id: u64, num: i8) -> Result<(&mut [u8], usize), GenError> {
     do_gen!(
         input,
         gen_call!(gen_vid, id) >> gen_call!(gen_vint, 1) >> gen_be_i8!(num)
     )
 }
 
-pub fn gen_f64<'a>(
-    input: (&'a mut [u8], usize),
+pub fn gen_f64(
+    input: (&mut [u8], usize),
     id: u64,
     num: f64,
-) -> Result<(&'a mut [u8], usize), GenError> {
+) -> Result<(&mut [u8], usize), GenError> {
     do_gen!(
         input,
         gen_call!(gen_vid, id) >> gen_call!(gen_vint, 8) >> gen_be_f64!(num)
     )
 }
 
+// Allow because this looks like a false positive
+#[allow(clippy::trivially_copy_pass_by_ref)]
 pub fn gen_f64_ref<'a>(
     input: (&'a mut [u8], usize),
     id: u64,
@@ -428,6 +412,8 @@ impl EbmlSize for EBMLHeader {
 }
 
 //trace_macros!(true);
+// Clippy thinks this function is too complicated, but it doesn't really make sense to split it up
+#[allow(clippy::cognitive_complexity)]
 pub fn gen_ebml_header<'a>(
     input: (&'a mut [u8], usize),
     h: &EBMLHeader,
@@ -448,10 +434,7 @@ pub fn gen_ebml_header<'a>(
     )
 }
 
-pub fn gen_u64_a<'a>(
-    input: (&'a mut [u8], usize),
-    num: u64,
-) -> Result<(&'a mut [u8], usize), GenError> {
+pub fn gen_u64_a(input: (&mut [u8], usize), num: u64) -> Result<(&mut [u8], usize), GenError> {
     gen_dbg!((input.0, input.1), gen_be_u64!(num))
 }
 
@@ -488,22 +471,22 @@ impl EbmlSize for f64 {
 
 impl<T: EbmlSize> EbmlSize for Option<T> {
     fn capacity(&self) -> usize {
-        match self {
-            &Some(ref value) => value.capacity(),
-            &None => 0,
+        match *self {
+            Some(ref value) => value.capacity(),
+            None => 0,
         }
     }
 
     fn size(&self, id: u64) -> usize {
-        match self {
-            &Some(_) => {
+        match *self {
+            Some(_) => {
                 let id_size = vid_size(id);
                 let self_size = self.capacity();
                 let size_tag_size = vint_size(self_size as u64);
 
                 id_size as usize + size_tag_size as usize + self_size as usize
             }
-            &None => 0,
+            None => 0,
         }
     }
 }

@@ -16,7 +16,6 @@ use av_format::{
 };
 use log::{debug, error, trace};
 use nom::{self, Err, IResult, Needed, Offset};
-use std::sync::Arc;
 use std::{collections::VecDeque, io::SeekFrom};
 
 #[derive(Debug, Clone, Default)]
@@ -206,6 +205,8 @@ fn track_entry_audio_kind(t: &TrackEntry) -> Option<MediaKind> {
         } else {
             unimplemented!("Convert matroska map to rust-av map")
         };
+        // Allow for consistency reasons
+        #[allow(clippy::redundant_field_names)]
         let a = AudioInfo {
             rate: rate as usize,
             map: map,

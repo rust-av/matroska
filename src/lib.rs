@@ -1,5 +1,8 @@
 #![recursion_limit = "256"]
 #![allow(clippy::unreadable_literal)]
+// TODO: avoid these or replace
+//#![allow(clippy::large_enum_variant)]
+//
 #[macro_use]
 extern crate nom;
 #[macro_use]
