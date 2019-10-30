@@ -33,14 +33,7 @@ pub enum InfoError {
     Io(#[error(cause)] io::Error),
 }
 
-impl From<io::Error> for InfoError {
-    fn from(e: io::Error) -> Self {
-        InfoError::Io(e)
-    }
-}
-
 fn main() -> Result<(), InfoError> {
-    better_panic::init();
     pretty_env_logger::init();
     let mut args = env::args();
     let _ = args.next().expect("first arg is program path");
@@ -52,7 +45,7 @@ fn main() -> Result<(), InfoError> {
 fn run(filename: &str) -> Result<(), InfoError> {
     let mut file = File::open(filename)?;
 
-    let capacity = 5242880;
+    let capacity = 5_242_880;
     let mut b = Buffer::with_capacity(capacity);
 
     // we write into the `&mut[u8]` returned by `space()`
@@ -140,10 +133,10 @@ fn run(filename: &str) -> Result<(), InfoError> {
                 SegmentElement::SeekHead(s) => {
                     println!("|+ Seek head at {:#0x} size {}", 0x0, b.data().offset(i));
                     for seek in s.positions.iter() {
-                        let _id: u64 = ((seek.id[0] as u64) << 24)
-                            | ((seek.id[1] as u64) << 16)
-                            | ((seek.id[2] as u64) << 8)
-                            | seek.id[3] as u64;
+                        let _id: u64 = (u64::from(seek.id[0]) << 24)
+                            | (u64::from(seek.id[1]) << 16)
+                            | (u64::from(seek.id[2]) << 8)
+                            | u64::from(seek.id[3]);
 
                         let element_size = seek.size(0x4DBB);
                         let id_size = seek.id.size(0x53AB);
@@ -313,9 +306,9 @@ fn run(filename: &str) -> Result<(), InfoError> {
                 SegmentElement::SeekHead(_)
                 | SegmentElement::Info(_)
                 | SegmentElement::Tracks(_) => {
-                    return Err(InfoError::UnexpectedElement(format!(
-                        "seek head, info or tracks element"
-                    )));
+                    return Err(InfoError::UnexpectedElement(
+                        "seek head, info or tracks element".to_string(),
+                    ));
                 }
                 SegmentElement::Cluster(c) => {
                     println!("|+ Cluster");
