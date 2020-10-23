@@ -26,6 +26,12 @@ pub struct MkvDemuxer {
     pub tracks: Option<Tracks>,
     pub queue: VecDeque<Event>,
     pub blockstream: Vec<u8>,
+    pub params: Option<DemuxerParams>,
+}
+
+#[derive(Debug, Clone, Default)]
+pub struct DemuxerParams {
+    pub track_numbers: Option<Vec<u64>>,
 }
 
 impl MkvDemuxer {
@@ -37,6 +43,14 @@ impl MkvDemuxer {
             tracks: None,
             queue: VecDeque::new(),
             blockstream: Vec::new(),
+            params: None,
+        }
+    }
+
+    pub fn with_params(params: DemuxerParams) -> MkvDemuxer {
+        MkvDemuxer {
+            params: Some(params),
+            ..Default::default()
         }
     }
 
@@ -85,6 +99,22 @@ impl MkvDemuxer {
                     if self.tracks.is_some() {
                         return Err(Err::Error(custom_error(input, 1)));
                     } else {
+                        let mut t = t;
+
+                        // Only keep tracks we're interested in
+                        match &self.params {
+                            Some(params) => {
+                                if let Some(track_numbers) = &params.track_numbers {
+                                    t.tracks = t
+                                        .tracks
+                                        .into_iter()
+                                        .filter(|tr| track_numbers.contains(&tr.track_number))
+                                        .collect();
+                                }
+                            }
+                            _ => (),
+                        };
+
                         self.tracks = Some(t);
                     }
                 }
