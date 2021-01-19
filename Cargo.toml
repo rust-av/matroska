@@ -14,7 +14,7 @@ path = "src/lib.rs"
 [dependencies]
 nom = "5.0"
 cookie-factory = "0.3"
-av-data = "0.2"
+av-data = "0.3"
 av-format = "0.2"
 circular = "0.3"
 log = "0.4"
