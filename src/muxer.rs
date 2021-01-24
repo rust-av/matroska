@@ -1,6 +1,7 @@
 use av_data::{packet::Packet, params::MediaKind, value::Value};
 use av_format::{common::GlobalInfo, error::*, muxer::*, stream::Stream};
 use log::error;
+use std::io::Write;
 use std::sync::Arc;
 
 use crate::{
@@ -237,7 +238,8 @@ impl Muxer for MkvMuxer {
         Ok(())
     }
 
-    fn write_header(&mut self, buf: &mut Vec<u8>) -> Result<()> {
+    fn write_header(&mut self, out: &mut dyn Write) -> Result<()> {
+        let mut buf = Vec::new();
         let mut ebml_header = Vec::new();
         self.write_ebml_header(&mut ebml_header)?;
         let mut segment_header = Vec::new();
@@ -282,10 +284,12 @@ impl Muxer for MkvMuxer {
         buf.extend_from_slice(&info);
         buf.extend_from_slice(&tracks);
 
+        out.write_all(&buf).unwrap();
+
         Ok(())
     }
 
-    fn write_packet(&mut self, buf: &mut Vec<u8>, pkt: Arc<Packet>) -> Result<()> {
+    fn write_packet(&mut self, out: &mut dyn Write, pkt: Arc<Packet>) -> Result<()> {
         let mut v = Vec::with_capacity(16);
 
         let s = SimpleBlock {
@@ -346,7 +350,7 @@ impl Muxer for MkvMuxer {
                     encrypted_block: None,
                 };
 
-                buf.resize(cluster.size(0x1F43B675), 0);
+                let mut buf: Vec<u8> = vec![0; cluster.size(0x1F43B675)];
                 let mut origin = (&buf).as_ptr() as usize;
                 let mut needed = 0usize;
                 let offset;
@@ -357,7 +361,7 @@ impl Muxer for MkvMuxer {
                         origin = (&buf).as_ptr() as usize;
                     }
 
-                    match gen_cluster((buf, 0), &cluster) {
+                    match gen_cluster((&mut buf, 0), &cluster) {
                         Err(GenError::BufferTooSmall(sz)) => {
                             needed = sz;
                         }
@@ -372,6 +376,7 @@ impl Muxer for MkvMuxer {
                     };
                 }
                 buf.truncate(offset);
+                out.write_all(&buf).unwrap();
             }
 
             self.blocks.truncate(0);
@@ -381,7 +386,7 @@ impl Muxer for MkvMuxer {
         Ok(())
     }
 
-    fn write_trailer(&mut self, buf: &mut Vec<u8>) -> Result<()> {
+    fn write_trailer(&mut self, out: &mut dyn Write) -> Result<()> {
         let nb = self.blocks.len();
 
         if nb > 0 {
@@ -397,7 +402,7 @@ impl Muxer for MkvMuxer {
                 encrypted_block: None,
             };
 
-            buf.resize(cluster.size(0x1F43B675), 0);
+            let mut buf: Vec<u8> = vec![0; cluster.size(0x1F43B675)];
             let mut origin = (&buf).as_ptr() as usize;
             let mut needed = 0usize;
             let offset;
@@ -408,7 +413,7 @@ impl Muxer for MkvMuxer {
                     origin = (&buf).as_ptr() as usize;
                 }
 
-                match gen_cluster((buf, 0), &cluster) {
+                match gen_cluster((&mut buf, 0), &cluster) {
                     Err(GenError::BufferTooSmall(sz)) => {
                         needed = sz;
                     }
@@ -423,6 +428,7 @@ impl Muxer for MkvMuxer {
                 };
             }
             buf.truncate(offset);
+            out.write_all(&buf).unwrap();
         }
 
         Ok(())
