@@ -12,7 +12,7 @@ name = "matroska"
 path = "src/lib.rs"
 
 [dependencies]
-nom = "5.0"
+nom = "6.1"
 cookie-factory = "0.3"
 av-data = "0.3"
 av-format = "0.3"
