@@ -488,7 +488,7 @@ pub fn stream_to_track(s: &Stream) -> TrackEntry {
     };
     */
 
-    let codec_id = match s.params.codec_id.as_ref().map(|s| s.as_str()) {
+    let codec_id = match s.params.codec_id.as_deref() {
         Some("opus") => String::from("A_OPUS"),
         Some("vorbis") => String::from("A_VORBIS"),
         Some("av1") => String::from("V_AV1"),

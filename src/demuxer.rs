@@ -102,17 +102,14 @@ impl MkvDemuxer {
                         let mut t = t;
 
                         // Only keep tracks we're interested in
-                        match &self.params {
-                            Some(params) => {
-                                if let Some(track_numbers) = &params.track_numbers {
-                                    t.tracks = t
-                                        .tracks
-                                        .into_iter()
-                                        .filter(|tr| track_numbers.contains(&tr.track_number))
-                                        .collect();
-                                }
+                        if let Some(params) = &self.params {
+                            if let Some(track_numbers) = &params.track_numbers {
+                                t.tracks = t
+                                    .tracks
+                                    .into_iter()
+                                    .filter(|tr| track_numbers.contains(&tr.track_number))
+                                    .collect();
                             }
-                            _ => (),
                         };
 
                         self.tracks = Some(t);

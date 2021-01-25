@@ -95,7 +95,7 @@ named!(pub seek_head<&[u8], SegmentElement, Error>,
   do_parse!(
     positions: many1!(complete!(seek)) >>
     (SegmentElement::SeekHead(SeekHead {
-      positions: positions,
+      positions,
     }))
   )
 );
@@ -338,8 +338,8 @@ named!(pub block<&[u8], Block, Error>,
     >> timecode:     be_i16
     >> flags:        map_opt!(be_u8, block_flags)
     >> (Block {
-      track_number: track_number,
-      timecode:     timecode,
+      track_number,
+      timecode,
       invisible:    flags.invisible,
       lacing:       flags.lacing,
     })
@@ -390,8 +390,8 @@ named!(pub simple_block<&[u8], SimpleBlock, Error>,
     >> timecode:     be_i16
     >> flags:        map_opt!(be_u8, block_flags)
     >> (SimpleBlock {
-      track_number: track_number,
-      timecode:     timecode,
+      track_number,
+      timecode,
       keyframe:     flags.keyframe,
       invisible:    flags.invisible,
       lacing:       flags.lacing,
