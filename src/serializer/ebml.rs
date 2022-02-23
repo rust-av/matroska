@@ -545,7 +545,7 @@ mod tests {
                 assert_eq!(i, o);
                 return true;
             }
-            e => panic!(format!("parse error: {:?}", e)),
+            e => panic!("{}", format!("parse error: {:?}", e)),
         }
     }
 
@@ -582,7 +582,7 @@ mod tests {
                 assert_eq!(id, o);
                 return true;
             }
-            e => panic!(format!("parse error: {:?}", e)),
+            e => panic!("{}", format!("parse error: {:?}", e)),
         }
     }
 
@@ -611,7 +611,7 @@ mod tests {
                 assert_eq!(num, o);
                 return true;
             }
-            e => panic!(format!("parse error: {:?}", e)),
+            e => panic!("{}", format!("parse error: {:?}", e)),
         }
     }
 
@@ -649,7 +649,7 @@ mod tests {
             assert_eq!(num as u64, o);
             return true;
           },
-          e => panic!(format!("parse error: {:?}", e)),
+          e => panic!("{}", format!("parse error: {:?}", e)),
         }
       }
     }
@@ -688,7 +688,7 @@ mod tests {
             assert_eq!(header, h);
             return true;
           },
-          e => panic!(format!("parse error: {:?}", e)),
+          e => panic!("{}", format!("parse error: {:?}", e)),
         }
       }
     }

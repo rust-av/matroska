@@ -769,7 +769,7 @@ mod tests {
                     return true;
                 }
 
-                panic!(format!("parse error: {:?} for input: {:?}", e, seeks))
+                panic!("{}", format!("parse error: {:?} for input: {:?}", e, seeks))
             }
         }
     }
