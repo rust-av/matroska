@@ -144,7 +144,7 @@ impl Demuxer for MkvDemuxer {
             }
             Err(Err::Incomplete(needed)) => {
                 let sz = match needed {
-                    Needed::Size(size) => buf.data().len() + size,
+                    Needed::Size(size) => buf.data().len() + usize::from(size),
                     _ => 1024,
                 };
                 Err(Error::MoreDataNeeded(sz))
@@ -180,7 +180,9 @@ impl Demuxer for MkvDemuxer {
                     }
                     Ok((seek, Event::MoreDataNeeded(0)))
                 }
-                Err(Err::Incomplete(Needed::Size(size))) => Err(Error::MoreDataNeeded(size)),
+                Err(Err::Incomplete(Needed::Size(size))) => {
+                    Err(Error::MoreDataNeeded(usize::from(size)))
+                }
                 e => {
                     error!("{:?}", e);
                     Err(Error::InvalidData)
