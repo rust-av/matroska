@@ -4,8 +4,6 @@
 //#![allow(clippy::large_enum_variant)]
 //
 #[macro_use]
-extern crate nom;
-#[macro_use]
 extern crate cookie_factory;
 
 extern crate av_data;
@@ -17,9 +15,6 @@ extern crate quickcheck;
 
 // use av_data::rational;
 
-#[macro_use]
-pub mod permutation;
-#[macro_use]
 pub mod ebml;
 pub mod elements;
 #[macro_use]

@@ -1,10 +1,14 @@
-use log::{error, trace};
-use nom::{
-    bytes::streaming::take,
-    combinator::{map, map_parser, verify},
-    Err, IResult, Needed,
-};
 use std::convert::TryFrom;
+
+use log::trace;
+use nom::{
+    branch::permutation,
+    bytes::streaming::take,
+    combinator::{complete, flat_map, map, map_parser, opt, verify},
+    number::streaming::{be_f32, be_f64},
+    sequence::{pair, preceded},
+    Err, IResult, Needed, Parser,
+};
 
 /*
 struct Document {
@@ -68,9 +72,16 @@ pub fn custom_error(input: &[u8], code: u8) -> Error {
     }
 }
 
+pub(crate) fn usize_error(input: &[u8], size: u64) -> Result<usize, nom::Err<Error>> {
+    usize::try_from(size).map_err(|_| {
+        log::error!("Not possible to convert size into usize");
+        nom::Err::Error(custom_error(input, 0))
+    })
+}
+
 pub fn vint(input: &[u8]) -> IResult<&[u8], u64, Error> {
     if input.is_empty() {
-        return Err(Err::Incomplete(Needed::Size(1)));
+        return Err(Err::Incomplete(Needed::new(1)));
     }
 
     let v = input[0];
@@ -81,7 +92,7 @@ pub fn vint(input: &[u8]) -> IResult<&[u8], u64, Error> {
     }
 
     if input.len() <= len as usize {
-        return Err(Err::Incomplete(Needed::Size(1)));
+        return Err(Err::Incomplete(Needed::new(1)));
     }
 
     let mut val = u64::from(v ^ (1 << (7 - len)));
@@ -107,7 +118,7 @@ pub fn vint(input: &[u8]) -> IResult<&[u8], u64, Error> {
 // do not drop the marker bit.
 pub fn vid(input: &[u8]) -> IResult<&[u8], u64, Error> {
     if input.is_empty() {
-        return Err(Err::Incomplete(Needed::Size(1)));
+        return Err(Err::Incomplete(Needed::new(1)));
     }
 
     let v = input[0];
@@ -118,7 +129,7 @@ pub fn vid(input: &[u8]) -> IResult<&[u8], u64, Error> {
     }
 
     if input.len() <= len as usize {
-        return Err(Err::Incomplete(Needed::Size(1)));
+        return Err(Err::Incomplete(Needed::new(1)));
     }
 
     let mut val = u64::from(v);
@@ -134,214 +145,114 @@ pub fn vid(input: &[u8]) -> IResult<&[u8], u64, Error> {
     Ok((&input[len as usize + 1..], val))
 }
 
-/*
-fn parse_master(input: &[u8], _: u64) -> IResult<&[u8], ElementData> {
-    map!(input,
-         many0!(parse_element),
-         |elem| ElementData::Master(elem))
+pub fn parse_uint_data(size: u64) -> impl Fn(&[u8]) -> IResult<&[u8], u64, Error> {
+    move |input| {
+        let mut val = 0;
+
+        if size > 8 {
+            return Err(Err::Error(custom_error(input, 102)));
+        }
+
+        for i in input.iter().take(size as usize) {
+            val = (val << 8) | u64::from(*i);
+        }
+
+        Ok((&input[size as usize..], val))
+    }
 }
 
-fn parse_uint(input: &[u8], size: u64) -> IResult<&[u8], ElementData> {
-    let mut val = 0;
+pub fn parse_int_data(size: u64) -> impl Fn(&[u8]) -> IResult<&[u8], i64, Error> {
+    move |input| {
+        let mut val = 0;
 
-    if size > 8 {
-        return IResult::Error(ErrorKind::Custom(1));
+        if size > 8 {
+            return Err(Err::Error(custom_error(input, 103)));
+        }
+
+        for i in input.iter().take(size as usize) {
+            val = (val << 8) | u64::from(*i);
+        }
+
+        //FIXME: is that right?
+        Ok((&input[size as usize..], val as i64))
     }
-
-    for i in input.iter().take(size as usize) {
-        val = (val << 8) | u64::from(*i);
-    }
-
-    IResult::Done(&input[size as usize..], ElementData::Unsigned(val))
-}
-*/
-pub fn parse_uint_data(input: &[u8], size: u64) -> IResult<&[u8], u64, Error> {
-    let mut val = 0;
-
-    if size > 8 {
-        return Err(Err::Error(custom_error(input, 102)));
-    }
-
-    for i in input.iter().take(size as usize) {
-        val = (val << 8) | u64::from(*i);
-    }
-
-    Ok((&input[size as usize..], val))
 }
 
-pub fn parse_int_data(input: &[u8], size: u64) -> IResult<&[u8], i64, Error> {
-    let mut val = 0;
-
-    if size > 8 {
-        return Err(Err::Error(custom_error(input, 103)));
+pub fn parse_str_data(size: u64) -> impl Fn(&[u8]) -> IResult<&[u8], String, Error> {
+    move |input| {
+        map(take(usize_error(input, size)?), |data: &[u8]| {
+            String::from_utf8(data.to_owned()).unwrap_or_default()
+        })(input)
     }
+}
 
-    for i in input.iter().take(size as usize) {
-        val = (val << 8) | u64::from(*i);
+pub fn parse_binary_data(size: u64) -> impl Fn(&[u8]) -> IResult<&[u8], Vec<u8>, Error> {
+    move |input| {
+        map(take(usize_error(input, size)?), |data: &[u8]| {
+            data.to_owned()
+        })(input)
     }
-
-    //FIXME: is that right?
-    Ok((&input[size as usize..], val as i64))
-}
-
-/*
-fn parse_str(input: &[u8], size: u64) -> IResult<&[u8], ElementData> {
-    do_parse!(input,
-        s: take_s!(size as usize) >>
-        ( ElementData::PlainString(String::from_utf8(s.to_owned()).unwrap()) )
-    )
-}
-*/
-pub fn parse_str_data(input: &[u8], size: u64) -> IResult<&[u8], String, Error> {
-    do_parse!(
-        input,
-        s: take!(size as usize) >> (String::from_utf8(s.to_owned()).unwrap()) //FIXME: maybe do not unwrap here
-    )
-}
-
-pub fn parse_binary_data(input: &[u8], size: u64) -> IResult<&[u8], Vec<u8>, Error> {
-    do_parse!(input, s: take!(size as usize) >> (s.to_owned()))
 }
 
 //FIXME: handle default values
 //FIXME: is that really following IEEE_754-1985 ?
-pub fn parse_float_data(input: &[u8], size: u64) -> IResult<&[u8], f64, Error> {
-    use nom::number::streaming::{be_f32, be_f64};
-    if size == 0 {
-        Ok((input, 0f64))
-    } else if size == 4 {
-        //map!(input, flat_map!(take!(4), be_f32), f64::from)
-        map(map_parser(take(4usize), be_f32), f64::from)(input)
-    } else if size == 8 {
-        //flat_map!(input, take!(8), be_f64)
-        map_parser(take(8usize), be_f64)(input)
-    } else {
-        Err(Err::Error(custom_error(input, 104)))
-    }
-}
-/*
-fn parse_element_id(input: &[u8], id: u64, size: u64) -> IResult<&[u8], ElementData> {
-    // trace!("id: 0x{:X} size: {}", id, size);
-    if input.len() < size as usize {
-        return IResult::Incomplete(Needed::Size(size as usize));
-    }
-
-    match id {
-        0x1A45DFA3 => parse_master(input, size),
-        0x4286 => parse_uint(input, size),
-        0x42F7 => parse_uint(input, size),
-        0x42F2 => parse_uint(input, size),
-        0x42F3 => parse_uint(input, size),
-        0x4282 => parse_str(input, size),
-        0x4287 => parse_uint(input, size),
-        0x4285 => parse_uint(input, size),
-        _ => IResult::Done(&input[size as usize..], ElementData::Unknown(id)),
+pub fn parse_float_data(size: u64) -> impl Fn(&[u8]) -> IResult<&[u8], f64, Error> {
+    move |input| {
+        if size == 0 {
+            Ok((input, 0f64))
+        } else if size == 4 {
+            map(map_parser(take(4usize), be_f32), f64::from)(input)
+        } else if size == 8 {
+            map_parser(take(8usize), be_f64)(input)
+        } else {
+            Err(Err::Error(custom_error(input, 104)))
+        }
     }
 }
 
-named!(pub parse_element<Element>,
-    do_parse!(
-        id : vid >>
-        size: vint >>
-        data: call!(parse_element_id, id, size) >>
-        (Element { id, size, data })
-    )
-);
-*/
-#[macro_export]
-macro_rules! ebml_uint (
-  ($i: expr, $id:expr) => ({
-    $crate::ebml::ebml_uint($id)($i)
-  })
-);
-
-pub fn ebml_uint(id: u64) -> impl Fn(&[u8]) -> IResult<&[u8], u64, Error> {
+fn ebml_support<'a, G, H, O1>(
+    id: u64,
+    second: G,
+) -> impl Fn(&'a [u8]) -> IResult<&'a [u8], O1, Error>
+where
+    G: Fn(u64) -> H,
+    H: Parser<&'a [u8], O1, Error<'a>>,
+{
     move |i| {
-        let (i, _) = verify(vid, |val: &u64| *val == id)(i)?;
-        let (i, size) = vint(i)?;
-        parse_uint_data(i, size)
+        flat_map(pair(verify(vid, |val| *val == id), vint), |(_, size)| {
+            second(size)
+        })(i)
     }
 }
 
-#[macro_export]
-macro_rules! ebml_int (
-  ($i: expr, $id:expr) => ({
-    $crate::ebml::ebml_int($id)($i)
-  })
-);
-
-pub fn ebml_int(id: u64) -> impl Fn(&[u8]) -> IResult<&[u8], i64, Error> {
-    move |i| {
-        let (i, _) = verify(vid, |val: &u64| *val == id)(i)?;
-        let (i, size) = vint(i)?;
-        parse_int_data(i, size)
-    }
+pub fn ebml_uint<'a>(id: u64) -> impl Fn(&'a [u8]) -> IResult<&'a [u8], u64, Error> {
+    ebml_support(id, parse_uint_data)
 }
 
-#[macro_export]
-macro_rules! ebml_float (
-  ($i: expr, $id:expr) => ({
-    $crate::ebml::ebml_float($id)($i)
-  })
-);
-
-pub fn ebml_float(id: u64) -> impl Fn(&[u8]) -> IResult<&[u8], f64, Error> {
-    move |i| {
-        let (i, _) = verify(vid, |val: &u64| *val == id)(i)?;
-        let (i, size) = vint(i)?;
-        parse_float_data(i, size)
-    }
+pub fn ebml_int<'a>(id: u64) -> impl Fn(&'a [u8]) -> IResult<&'a [u8], i64, Error> {
+    ebml_support(id, parse_int_data)
 }
 
-#[macro_export]
-macro_rules! ebml_str (
-  ($i: expr, $id:expr) => ({
-    $crate::ebml::ebml_str($id)($i)
-  })
-);
-
-pub fn ebml_str(id: u64) -> impl Fn(&[u8]) -> IResult<&[u8], String, Error> {
-    move |i| {
-        let (i, _) = verify(vid, |val: &u64| *val == id)(i)?;
-        let (i, size) = vint(i)?;
-        parse_str_data(i, size)
-    }
+pub fn ebml_float<'a>(id: u64) -> impl Fn(&'a [u8]) -> IResult<&'a [u8], f64, Error> {
+    ebml_support(id, parse_float_data)
 }
 
-#[macro_export]
-macro_rules! ebml_binary (
-  ($i: expr, $id:expr) => ({
-    $crate::ebml::ebml_binary($id)($i)
-  })
-);
-
-pub fn ebml_binary(id: u64) -> impl Fn(&[u8]) -> IResult<&[u8], Vec<u8>, Error> {
-    move |i| {
-        let (i, _) = verify(vid, |val: &u64| *val == id)(i)?;
-        let (i, size) = vint(i)?;
-        parse_binary_data(i, size)
-    }
+pub fn ebml_str<'a>(id: u64) -> impl Fn(&'a [u8]) -> IResult<&'a [u8], String, Error> {
+    ebml_support(id, parse_str_data)
 }
 
-#[macro_export]
-macro_rules! ebml_binary_ref (
-  ($i: expr, $id:expr) => ({
-    $crate::ebml::ebml_binary_ref($id)($i)
-  })
-);
+pub fn ebml_binary<'a>(id: u64) -> impl Fn(&'a [u8]) -> IResult<&'a [u8], Vec<u8>, Error> {
+    ebml_support(id, parse_binary_data)
+}
 
 pub fn ebml_binary_ref(id: u64) -> impl Fn(&[u8]) -> IResult<&[u8], &[u8], Error> {
     move |i| {
-        let (i, _) = verify(vid, |val: &u64| *val == id)(i)?;
-        let (i, size) = vint(i)?;
-        take(usize::try_from(size).map_err(|_| {
-            error!("Not possible to convert size into usize");
-            nom::Err::Error(custom_error(i, 0))
-        })?)(i)
+        pair(verify(vid, |val| *val == id), vint)(i)
+            .and_then(|(i, (_, size))| take(usize_error(i, size)?)(i))
     }
 }
 
-#[macro_export]
+/*#[macro_export]
 macro_rules! ebml_master (
   ($i: expr, $id:expr, $submac:ident!( $($args:tt)* )) => ({
     use $crate::ebml::{vid, vint};
@@ -352,9 +263,22 @@ macro_rules! ebml_master (
       >> (data)
     )
   })
-);
+);*/
 
-#[macro_export]
+pub fn ebml_master<'a, G, O1>(
+    id: u64,
+    second: G,
+) -> impl Fn(&'a [u8]) -> IResult<&'a [u8], O1, Error>
+where
+    G: Fn(&'a [u8]) -> IResult<&'a [u8], O1, Error> + Copy,
+{
+    move |i| {
+        pair(verify(vid, |val| *val == id), vint)(i)
+            .and_then(|(i, (_, size))| map_parser(take(usize_error(i, size)?), second)(i))
+    }
+}
+
+/*#[macro_export]
 macro_rules! eat_void (
   ($i: expr, $submac:ident!( $($args:tt)* )) => ({
     preceded!($i,
@@ -365,16 +289,19 @@ macro_rules! eat_void (
   ($i: expr, $e:expr) => ({
     eat_void!($i, call!($e))
   });
-);
+);*/
 
-named!(pub skip_void<&[u8], &[u8], Error>,
-do_parse!(
-        // NOM5: why?
-        verify!(vid, |val:&u64| *val == 0xEC) >>
-  size: vint >>
-  data: take!(size) >>
-  (data)
-  ));
+pub fn eat_void<'a, G, O1>(second: G) -> impl Fn(&'a [u8]) -> IResult<&'a [u8], O1, Error<'a>>
+where
+    G: Parser<&'a [u8], O1, Error<'a>> + Copy,
+{
+    move |i| preceded(opt(skip_void), second)(i)
+}
+
+pub fn skip_void(input: &[u8]) -> IResult<&[u8], &[u8], Error> {
+    pair(verify(vid, |val| *val == 0xEC), vint)(input)
+        .and_then(|(i, (_, size))| take(usize_error(input, size)?)(i))
+}
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct EBMLHeader {
@@ -387,35 +314,31 @@ pub struct EBMLHeader {
     pub doc_type_read_version: u64,
 }
 
-// named!(pub ebml_header<EBMLHeader>,
-named!(pub ebml_header<&[u8], EBMLHeader, Error>,
-  ebml_master!(0x1A45DFA3,
-    do_parse!(
-      t: permutation_opt!(
-        ebml_uint!(0x4286), // version
-        ebml_uint!(0x42F7), // read_version
-        ebml_uint!(0x42F2), // max id length
-        ebml_uint!(0x42F3), // max size length
-        ebml_str!(0x4282),  // doctype
-        ebml_uint!(0x4287), // doctype version
-        ebml_uint!(0x4285),  // doctype_read version
-        complete!(skip_void)?
-      ) >>
-      ({
-        EBMLHeader {
-          version:               t.0,
-          read_version:          t.1,
-          max_id_length:         t.2,
-          max_size_length:       t.3,
-          doc_type:              t.4,
-          doc_type_version:      t.5,
-          doc_type_read_version: t.6,
-
-        }
-      })
-    )
-  )
-);
+pub fn ebml_header(input: &[u8]) -> IResult<&[u8], EBMLHeader, Error> {
+    ebml_master(0x1A45DFA3, |i| {
+        map(
+            permutation((
+                ebml_uint(0x4286), // version
+                ebml_uint(0x42F7), // read_version
+                ebml_uint(0x42F2), // max id length
+                ebml_uint(0x42F3), // max size length
+                ebml_str(0x4282),  // doctype
+                ebml_uint(0x4287), // doctype version
+                ebml_uint(0x4285), // doctype_read version
+                opt(complete(skip_void)),
+            )),
+            |t| EBMLHeader {
+                version: t.0,
+                read_version: t.1,
+                max_id_length: t.2,
+                max_size_length: t.3,
+                doc_type: t.4,
+                doc_type_version: t.5,
+                doc_type_read_version: t.6,
+            },
+        )(i)
+    })(input)
+}
 
 #[cfg(test)]
 #[allow(non_upper_case_globals)]

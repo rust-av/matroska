@@ -604,7 +604,7 @@ mod tests {
         }
         info!("{}", (&data[..]).to_hex(16));
 
-        let parse_res: IResult<&[u8], u64, Error> = ebml_uint!(&data[..], id);
+        let parse_res: IResult<&[u8], u64, Error> = crate::ebml::ebml_uint(id)(&data[..]);
         info!("parse_res: {:?}", parse_res);
         match parse_res {
             Ok((_rest, o)) => {
@@ -642,7 +642,7 @@ mod tests {
         }
         info!("{}", (&data[..]).to_hex(16));
 
-        let parse_res: IResult<&[u8], u64, Error> = ebml_uint!(&data[..], id);
+        let parse_res: IResult<&[u8], u64, Error> = crate::ebml::ebml_uint(id)(&data[..]);
         info!("parse_res: {:?}", parse_res);
         match parse_res {
           Ok((_rest, o)) => {
