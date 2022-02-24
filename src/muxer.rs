@@ -77,7 +77,7 @@ impl MkvMuxer {
     }
 
     pub fn write_ebml_header(&mut self, buf: &mut Vec<u8>) -> Result<()> {
-        let mut origin = (&buf).as_ptr() as usize;
+        let mut origin = (buf).as_ptr() as usize;
 
         let mut needed = 0usize;
         let offset;
@@ -85,7 +85,7 @@ impl MkvMuxer {
             if needed > 0 {
                 let len = needed + buf.len();
                 buf.resize(len, 0);
-                origin = (&buf).as_ptr() as usize;
+                origin = (buf).as_ptr() as usize;
             }
 
             match gen_ebml_header((buf, 0), &self.header) {
@@ -108,7 +108,7 @@ impl MkvMuxer {
     }
 
     pub fn write_segment_header(&mut self, buf: &mut Vec<u8>, _size: usize) -> Result<()> {
-        let mut origin = (&buf).as_ptr() as usize;
+        let mut origin = (buf).as_ptr() as usize;
 
         let mut needed = 0usize;
         let offset;
@@ -116,7 +116,7 @@ impl MkvMuxer {
             if needed > 0 {
                 let len = needed + buf.len();
                 buf.resize(len, 0);
-                origin = (&buf).as_ptr() as usize;
+                origin = (buf).as_ptr() as usize;
             }
 
             //match gen_segment_header((buf, 0), size as u64) {
@@ -140,7 +140,7 @@ impl MkvMuxer {
     }
 
     pub fn write_seek_head(&mut self, buf: &mut Vec<u8>) -> Result<()> {
-        let mut origin = (&buf).as_ptr() as usize;
+        let mut origin = (buf).as_ptr() as usize;
 
         let mut needed = 0usize;
         let offset;
@@ -148,7 +148,7 @@ impl MkvMuxer {
             if needed > 0 {
                 let len = needed + buf.len();
                 buf.resize(len, 0);
-                origin = (&buf).as_ptr() as usize;
+                origin = (buf).as_ptr() as usize;
             }
 
             match gen_seek_head((buf, 0), &self.seek_head) {
@@ -171,15 +171,15 @@ impl MkvMuxer {
     }
 
     pub fn write_info(&mut self, buf: &mut Vec<u8>) -> Result<()> {
-        if let Some(ref info) = self.info.as_ref() {
-            let mut origin = (&buf).as_ptr() as usize;
+        if let Some(info) = self.info.as_ref() {
+            let mut origin = (buf).as_ptr() as usize;
             let mut needed = 0usize;
             let offset;
             loop {
                 if needed > 0 {
                     let len = needed + buf.len();
                     buf.resize(len, 0);
-                    origin = (&buf).as_ptr() as usize;
+                    origin = (buf).as_ptr() as usize;
                 }
 
                 match gen_info((buf, 0), info) {
@@ -202,15 +202,15 @@ impl MkvMuxer {
     }
 
     pub fn write_tracks(&mut self, buf: &mut Vec<u8>) -> Result<()> {
-        if let Some(ref tracks) = self.tracks.as_ref() {
-            let mut origin = (&buf).as_ptr() as usize;
+        if let Some(tracks) = self.tracks.as_ref() {
+            let mut origin = (buf).as_ptr() as usize;
             let mut needed = 0usize;
             let offset;
             loop {
                 if needed > 0 {
                     let len = needed + buf.len();
                     buf.resize(len, 0);
-                    origin = (&buf).as_ptr() as usize;
+                    origin = (buf).as_ptr() as usize;
                 }
 
                 match gen_tracks((buf, 0), tracks) {
