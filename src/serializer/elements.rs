@@ -1,32 +1,21 @@
+use cookie_factory::gen::set_be_u8;
+use cookie_factory::GenError;
+
 use crate::{
     elements::{
         Audio, Cluster, Colour, Info, Lacing, MasteringMetadata, Projection, Seek, SeekHead,
         SilentTracks, SimpleBlock, TrackEntry, Tracks, Video,
     },
-    serializer::ebml::{gen_f64, gen_f64_ref, gen_uint, gen_vid, gen_vint, vint_size, EbmlSize},
+    serializer::cookie_utils::{gen_many, gen_opt, gen_opt_copy, set_be_i16, tuple},
+    serializer::ebml::{
+        gen_ebml_binary, gen_ebml_int, gen_ebml_master, gen_ebml_str, gen_ebml_uint,
+        gen_ebml_uint_l, gen_f64, gen_f64_ref, gen_vid, gen_vint, vint_size, EbmlSize,
+    },
 };
-use cookie_factory::*;
 
-pub fn seek_size(s: &Seek) -> u8 {
-    // byte size of id (vid+size)+ data and position vid+size+int
-    // FIXME: arbitrarily bad value
-    vint_size(u64::from(vint_size((s.id.len() + 10) as u64)))
-}
-
-pub fn gen_segment_header(
-    input: (&mut [u8], usize),
-    size: u64,
-) -> Result<(&mut [u8], usize), GenError> {
-    do_gen!(
-        input,
-        gen_call!(gen_vid, 0x18538067) >> gen_call!(gen_vint, size)
-    )
-}
-
-pub fn gen_segment_header_unknown_size(
-    input: (&mut [u8], usize),
-) -> Result<(&mut [u8], usize), GenError> {
-    do_gen!(input, gen_call!(gen_vid, 0x18538067) >> gen_be_u8!(0xFF))
+pub(crate) fn gen_segment_header_unknown_size(
+) -> impl Fn((&mut [u8], usize)) -> Result<(&mut [u8], usize), GenError> {
+    move |input| tuple((gen_vid(0x18538067), |i| set_be_u8(i, 0xFF)))(input)
 }
 
 impl EbmlSize for Seek {
@@ -35,19 +24,19 @@ impl EbmlSize for Seek {
     }
 }
 
-pub fn gen_seek<'a>(
-    input: (&'a mut [u8], usize),
-    s: &Seek,
-) -> Result<(&'a mut [u8], usize), GenError> {
-    //let capacity =  8 + 2 + vint_size(s.id.len() as u64) as u64 + s.id.len() as u64;
-    let capacity = s.capacity() as u64;
-
-    gen_ebml_master!(
-        input,
-        0x4DBB,
-        vint_size(capacity),
-        gen_ebml_binary!(0x53AB, &s.id) >> gen_ebml_uint!(0x53AC, s.position, 8)
-    )
+fn gen_seek<'a>(
+    s: &'a Seek,
+) -> impl Fn((&'a mut [u8], usize)) -> Result<(&'a mut [u8], usize), GenError> {
+    move |input| {
+        gen_ebml_master(
+            0x4DBB,
+            vint_size(s.capacity() as u64),
+            tuple((
+                gen_ebml_binary(0x53AB, &s.id),
+                gen_ebml_uint_l(0x53AC, s.position, 8),
+            )),
+        )(input)
+    }
 }
 
 impl EbmlSize for SeekHead {
@@ -58,19 +47,13 @@ impl EbmlSize for SeekHead {
     }
 }
 
-pub fn gen_seek_head<'a>(
-    input: (&'a mut [u8], usize),
-    s: &SeekHead,
-) -> Result<(&'a mut [u8], usize), GenError> {
-    let capacity = s.capacity() as u64;
-
-    let byte_capacity = vint_size(capacity as u64);
-    gen_ebml_master!(
-        input,
-        0x114D9B74,
-        byte_capacity,
-        gen_many_ref!(&s.positions, gen_seek)
-    )
+pub(crate) fn gen_seek_head<'a>(
+    s: &'a SeekHead,
+) -> impl Fn((&'a mut [u8], usize)) -> Result<(&'a mut [u8], usize), GenError> {
+    move |input| {
+        let byte_capacity = vint_size(s.capacity() as u64);
+        gen_ebml_master(0x114D9B74, byte_capacity, gen_many(&s.positions, gen_seek))(input)
+    }
 }
 
 impl EbmlSize for Info {
@@ -86,35 +69,31 @@ impl EbmlSize for Info {
     }
 }
 
-// Clippy thinks this function is too complicated, but it doesn't really make sense to split it up
-#[allow(clippy::cognitive_complexity)]
-pub fn gen_info<'a>(
-    input: (&'a mut [u8], usize),
-    i: &Info,
-) -> Result<(&'a mut [u8], usize), GenError> {
-    let capacity = i.capacity();
-
-    let byte_capacity = vint_size(capacity as u64);
-    gen_ebml_master!(
-        input,
-        0x1549A966,
-        byte_capacity,
-        do_gen!(
-            gen_opt!(i.segment_uid, gen_ebml_binary!(0x73A4))
-                >> gen_opt!(i.segment_filename, gen_ebml_str!(0x7384))
-                >> gen_opt!(i.prev_uid, gen_ebml_binary!(0x3CB923))
-                >> gen_opt!(i.prev_filename, gen_ebml_str!(0x3C83AB))
-                >> gen_opt!(i.next_uid, gen_ebml_binary!(0x3EB923))
-                >> gen_opt!(i.next_filename, gen_ebml_str!(0x3E83BB))
-                >> gen_opt!(i.segment_family, gen_ebml_binary!(0x4444))
-                >> gen_ebml_uint!(0x2AD7B1, i.timecode_scale)
-                >> gen_opt!(i.duration, gen_call!(gen_f64_ref, 0x4489))
-                >> gen_opt!(i.date_utc, gen_ebml_binary!(0x4461))
-                >> gen_opt!(i.title, gen_ebml_str!(0x7BA9))
-                >> gen_ebml_str!(0x4D80, i.muxing_app)
-                >> gen_ebml_str!(0x5741, i.writing_app)
-        )
-    )
+pub(crate) fn gen_info<'a>(
+    i: &'a Info,
+) -> impl Fn((&'a mut [u8], usize)) -> Result<(&'a mut [u8], usize), GenError> {
+    move |input| {
+        let byte_capacity = vint_size(i.capacity() as u64);
+        gen_ebml_master(
+            0x1549A966,
+            byte_capacity,
+            tuple((
+                gen_opt(i.segment_uid.as_ref(), |v| gen_ebml_binary(0x73A4, v)),
+                gen_opt(i.segment_filename.as_ref(), |v| gen_ebml_str(0x7384, v)),
+                gen_opt(i.prev_uid.as_ref(), |v| gen_ebml_binary(0x3CB923, v)),
+                gen_opt(i.prev_filename.as_ref(), |v| gen_ebml_str(0x3C83AB, v)),
+                gen_opt(i.next_uid.as_ref(), |v| gen_ebml_binary(0x3EB923, v)),
+                gen_opt(i.next_filename.as_ref(), |v| gen_ebml_str(0x3E83BB, v)),
+                gen_opt(i.segment_family.as_ref(), |v| gen_ebml_binary(0x4444, v)),
+                gen_ebml_uint(0x2AD7B1, i.timecode_scale),
+                gen_opt(i.duration.as_ref(), |v| gen_f64_ref(0x4489, v)),
+                gen_opt(i.date_utc.as_ref(), |v| gen_ebml_binary(0x4461, v)),
+                gen_opt(i.title.as_ref(), |v| gen_ebml_str(0x7BA9, v)),
+                gen_ebml_str(0x4D80, &i.muxing_app),
+                gen_ebml_str(0x5741, &i.writing_app),
+            )),
+        )(input)
+    }
 }
 
 impl EbmlSize for Tracks {
@@ -125,19 +104,17 @@ impl EbmlSize for Tracks {
     }
 }
 
-pub fn gen_tracks<'a>(
-    input: (&'a mut [u8], usize),
-    t: &Tracks,
-) -> Result<(&'a mut [u8], usize), GenError> {
-    let capacity = t.capacity();
-
-    let byte_capacity = vint_size(capacity as u64);
-    gen_ebml_master!(
-        input,
-        0x1654AE6B,
-        byte_capacity,
-        gen_many_ref!(&t.tracks, gen_track_entry)
-    )
+pub(crate) fn gen_tracks<'a>(
+    t: &'a Tracks,
+) -> impl Fn((&'a mut [u8], usize)) -> Result<(&'a mut [u8], usize), GenError> {
+    move |input| {
+        let byte_capacity = vint_size(t.capacity() as u64);
+        gen_ebml_master(
+            0x1654AE6B,
+            byte_capacity,
+            gen_many(&t.tracks, gen_track_entry),
+        )(input)
+    }
 }
 
 impl EbmlSize for TrackEntry {
@@ -180,57 +157,61 @@ impl EbmlSize for TrackEntry {
     }
 }
 
-// Clippy thinks this function is too complicated, but it doesn't really make sense to split it up
-#[allow(clippy::cognitive_complexity)]
-pub fn gen_track_entry<'a>(
-    input: (&'a mut [u8], usize),
-    t: &TrackEntry,
-) -> Result<(&'a mut [u8], usize), GenError> {
-    let capacity = t.capacity();
+fn gen_track_entry<'a>(
+    t: &'a TrackEntry,
+) -> impl Fn((&'a mut [u8], usize)) -> Result<(&'a mut [u8], usize), GenError> {
+    move |input| {
+        let capacity = t.capacity();
 
-    let byte_capacity = vint_size(capacity as u64);
-    gen_ebml_master!(
-        input,
-        0xAE,
-        byte_capacity,
-        do_gen!(
-            gen_ebml_uint!(0xD7, t.track_number)
-                >> gen_ebml_uint!(0x73C5, t.track_uid)
-                >> gen_ebml_uint!(0x83, t.track_type)
-                >> gen_opt_copy!(t.flag_enabled, gen_ebml_uint!(0xB9))
-                >> gen_opt_copy!(t.flag_default, gen_ebml_uint!(0x88))
-                >> gen_opt_copy!(t.flag_forced, gen_ebml_uint!(0x55AA))
-                >> gen_opt_copy!(t.flag_lacing, gen_ebml_uint!(0x9C))
-                >> gen_opt_copy!(t.min_cache, gen_ebml_uint!(0x6DE7))
-                >> gen_opt_copy!(t.max_cache, gen_ebml_uint!(0x6DF8))
-                >> gen_opt_copy!(t.default_duration, gen_ebml_uint!(0x23E383))
-                >> gen_opt_copy!(t.default_decoded_field_duration, gen_ebml_uint!(0x234E7A))
-                >> gen_opt_copy!(t.track_timecode_scale, gen_call!(gen_f64, 0x23314F))
-                >> gen_opt_copy!(t.track_offset, gen_ebml_int!(0x537F))
-                >> gen_opt_copy!(t.max_block_addition_id, gen_ebml_uint!(0x55EE))
-                >> gen_opt!(t.name, gen_ebml_str!(0x536E))
-                >> gen_opt!(t.language, gen_ebml_str!(0x22B59C))
-                >> gen_opt!(t.language_ietf, gen_ebml_str!(0x22B59D))
-                >> gen_ebml_str!(0x86, t.codec_id)
-                >> gen_opt!(t.codec_private, gen_ebml_binary!(0x63A2))
-                >> gen_opt!(t.codec_name, gen_ebml_str!(0x258688))
-                >> gen_opt_copy!(t.attachment_link, gen_ebml_uint!(0x7446))
-                >> gen_opt!(t.codec_settings, gen_ebml_str!(0x3A9697))
-                >> gen_opt!(t.codec_info_url, gen_ebml_str!(0x3B4040))
-                >> gen_opt!(t.codec_download_url, gen_ebml_str!(0x26B240))
-                >> gen_opt_copy!(t.codec_decode_all, gen_ebml_uint!(0xAA))
-                >> gen_opt_copy!(t.track_overlay, gen_ebml_uint!(0x6FAB))
-                >> gen_opt_copy!(t.codec_delay, gen_ebml_uint!(0x56AA))
-                >> gen_opt_copy!(t.seek_pre_roll, gen_ebml_uint!(0x56BB))
-                >> gen_opt!(t.video, gen_call!(gen_track_entry_video))
-                >> gen_opt!(t.audio, gen_call!(gen_track_entry_audio))
-                >> gen_opt_copy!(t.trick_track_uid, gen_ebml_uint!(0xC0))
-                >> gen_opt!(t.trick_track_segment_uid, gen_ebml_binary!(0xC1))
-                >> gen_opt_copy!(t.trick_track_flag, gen_ebml_uint!(0xC6))
-                >> gen_opt_copy!(t.trick_master_track_uid, gen_ebml_uint!(0xC7))
-                >> gen_opt!(t.trick_master_track_segment_uid, gen_ebml_binary!(0xC4))
-        )
-    )
+        let byte_capacity = vint_size(capacity as u64);
+        gen_ebml_master(
+            0xAE,
+            byte_capacity,
+            tuple((
+                gen_ebml_uint(0xD7, t.track_number),
+                gen_ebml_uint(0x73C5, t.track_uid),
+                gen_ebml_uint(0x83, t.track_type),
+                gen_opt_copy(t.flag_enabled, |v| gen_ebml_uint(0xB9, v)),
+                gen_opt_copy(t.flag_default, |v| gen_ebml_uint(0x88, v)),
+                gen_opt_copy(t.flag_forced, |v| gen_ebml_uint(0x55AA, v)),
+                gen_opt_copy(t.flag_lacing, |v| gen_ebml_uint(0x9C, v)),
+                gen_opt_copy(t.min_cache, |v| gen_ebml_uint(0x6DE7, v)),
+                gen_opt_copy(t.max_cache, |v| gen_ebml_uint(0x6DF8, v)),
+                gen_opt_copy(t.default_duration, |v| gen_ebml_uint(0x23E383, v)),
+                gen_opt_copy(t.default_decoded_field_duration, |v| {
+                    gen_ebml_uint(0x234E7A, v)
+                }),
+                gen_opt_copy(t.track_timecode_scale, |v| gen_f64(0x23314F, v)),
+                gen_opt_copy(t.track_offset, |v| gen_ebml_int(0x537F, v)),
+                gen_opt_copy(t.max_block_addition_id, |v| gen_ebml_uint(0x55EE, v)),
+                gen_opt(t.name.as_ref(), |v| gen_ebml_str(0x536E, v)),
+                gen_opt(t.language.as_ref(), |v| gen_ebml_str(0x22B59C, v)),
+                gen_opt(t.language_ietf.as_ref(), |v| gen_ebml_str(0x22B59D, v)),
+                gen_ebml_str(0x86, &t.codec_id),
+                gen_opt(t.codec_private.as_ref(), |v| gen_ebml_binary(0x63A2, v)),
+                gen_opt(t.codec_name.as_ref(), |v| gen_ebml_str(0x258688, v)),
+                gen_opt_copy(t.attachment_link, |v| gen_ebml_uint(0x7446, v)),
+                gen_opt(t.codec_settings.as_ref(), |v| gen_ebml_str(0x3A9697, v)),
+                gen_opt(t.codec_info_url.as_ref(), |v| gen_ebml_str(0x3B4040, v)),
+                gen_opt(t.codec_download_url.as_ref(), |v| gen_ebml_str(0x26B240, v)),
+                gen_opt_copy(t.codec_decode_all, |v| gen_ebml_uint(0xAA, v)),
+                gen_opt_copy(t.track_overlay, |v| gen_ebml_uint(0x6FAB, v)),
+                gen_opt_copy(t.codec_delay, |v| gen_ebml_uint(0x56AA, v)),
+                gen_opt_copy(t.seek_pre_roll, |v| gen_ebml_uint(0x56BB, v)),
+                gen_opt(t.video.as_ref(), gen_track_entry_video),
+                gen_opt(t.audio.as_ref(), gen_track_entry_audio),
+                gen_opt_copy(t.trick_track_uid, |v| gen_ebml_uint(0xC0, v)),
+                gen_opt(t.trick_track_segment_uid.as_ref(), |v| {
+                    gen_ebml_binary(0xC1, v)
+                }),
+                gen_opt_copy(t.trick_track_flag, |v| gen_ebml_uint(0xC6, v)),
+                gen_opt_copy(t.trick_master_track_uid, |v| gen_ebml_uint(0xC7, v)),
+                gen_opt(t.trick_master_track_segment_uid.as_ref(), |v| {
+                    gen_ebml_binary(0xC4, v)
+                }),
+            )),
+        )(input)
+    }
 }
 
 impl EbmlSize for Audio {
@@ -243,27 +224,24 @@ impl EbmlSize for Audio {
     }
 }
 
-// Clippy thinks this function is too complicated, but it doesn't really make sense to split it up
-#[allow(clippy::cognitive_complexity)]
-pub fn gen_track_entry_audio<'a>(
-    input: (&'a mut [u8], usize),
-    a: &Audio,
-) -> Result<(&'a mut [u8], usize), GenError> {
-    let capacity = a.capacity();
-    let byte_capacity = vint_size(capacity as u64);
+fn gen_track_entry_audio<'a>(
+    a: &'a Audio,
+) -> impl Fn((&'a mut [u8], usize)) -> Result<(&'a mut [u8], usize), GenError> {
+    move |input| {
+        let byte_capacity = vint_size(a.capacity() as u64);
 
-    gen_ebml_master!(
-        input,
-        0xE1,
-        byte_capacity,
-        do_gen!(
-            gen_call!(gen_f64, 0xB5, a.sampling_frequency)
-                >> gen_opt_copy!(a.output_sampling_frequency, gen_call!(gen_f64, 0x78B5))
-                >> gen_ebml_uint!(0x9F, a.channels)
-                >> gen_opt!(a.channel_positions, gen_ebml_binary!(0x7D7B))
-                >> gen_opt_copy!(a.bit_depth, gen_ebml_uint!(0x6264))
-        )
-    )
+        gen_ebml_master(
+            0xE1,
+            byte_capacity,
+            tuple((
+                gen_f64(0xB5, a.sampling_frequency),
+                gen_opt_copy(a.output_sampling_frequency, |v| gen_f64(0x78B5, v)),
+                gen_ebml_uint(0x9F, a.channels),
+                gen_opt(a.channel_positions.as_ref(), |v| gen_ebml_binary(0x7D7B, v)),
+                gen_opt_copy(a.bit_depth, |v| gen_ebml_uint(0x6264, v)),
+            )),
+        )(input)
+    }
 }
 
 impl EbmlSize for Video {
@@ -291,42 +269,41 @@ impl EbmlSize for Video {
     }
 }
 
-// Clippy thinks this function is too complicated, but it doesn't really make sense to split it up
-#[allow(clippy::cognitive_complexity)]
-pub fn gen_track_entry_video<'a>(
-    input: (&'a mut [u8], usize),
-    v: &Video,
-) -> Result<(&'a mut [u8], usize), GenError> {
-    let capacity = v.capacity();
-    let byte_capacity = vint_size(capacity as u64);
+fn gen_track_entry_video<'a>(
+    v: &'a Video,
+) -> impl Fn((&'a mut [u8], usize)) -> Result<(&'a mut [u8], usize), GenError> {
+    move |input| {
+        let byte_capacity = vint_size(v.capacity() as u64);
 
-    gen_ebml_master!(
-        input,
-        0xE0,
-        byte_capacity,
-        do_gen!(
-            gen_opt_copy!(v.flag_interlaced, gen_ebml_uint!(0x9A))
-                >> gen_opt_copy!(v.field_order, gen_ebml_uint!(0x9D))
-                >> gen_opt_copy!(v.stereo_mode, gen_ebml_uint!(0x53B8))
-                >> gen_opt_copy!(v.alpha_mode, gen_ebml_uint!(0x53C0))
-                >> gen_opt_copy!(v.old_stereo_mode, gen_ebml_uint!(0x53B9))
-                >> gen_ebml_uint!(0xB0, v.pixel_width)
-                >> gen_ebml_uint!(0xBA, v.pixel_height)
-                >> gen_opt_copy!(v.pixel_crop_bottom, gen_ebml_uint!(0x54AA))
-                >> gen_opt_copy!(v.pixel_crop_top, gen_ebml_uint!(0x54BB))
-                >> gen_opt_copy!(v.pixel_crop_left, gen_ebml_uint!(0x54CC))
-                >> gen_opt_copy!(v.pixel_crop_right, gen_ebml_uint!(0x54DD))
-                >> gen_opt_copy!(v.display_width, gen_ebml_uint!(0x54B0))
-                >> gen_opt_copy!(v.display_height, gen_ebml_uint!(0x54BA))
-                >> gen_opt_copy!(v.display_unit, gen_ebml_uint!(0x54B2))
-                >> gen_opt_copy!(v.aspect_ratio_type, gen_ebml_uint!(0x54B3))
-                >> gen_opt!(v.colour_space, gen_ebml_binary!(0x2EB524))
-                >> gen_opt_copy!(v.gamma_value, gen_call!(gen_f64, 0x2FB523))
-                >> gen_opt_copy!(v.frame_rate, gen_call!(gen_f64, 0x2383E3))
-                >> gen_opt!(v.colour, gen_call!(gen_track_entry_video_colour))
-                >> gen_opt!(v.projection, gen_call!(gen_track_entry_video_projection))
-        )
-    )
+        gen_ebml_master(
+            0xE0,
+            byte_capacity,
+            tuple((
+                gen_opt_copy(v.flag_interlaced, |v| gen_ebml_uint(0x9A, v)),
+                gen_opt_copy(v.field_order, |v| gen_ebml_uint(0x9D, v)),
+                gen_opt_copy(v.stereo_mode, |v| gen_ebml_uint(0x53B8, v)),
+                gen_opt_copy(v.alpha_mode, |v| gen_ebml_uint(0x53C0, v)),
+                gen_opt_copy(v.old_stereo_mode, |v| gen_ebml_uint(0x53B9, v)),
+                gen_ebml_uint(0xB0, v.pixel_width),
+                gen_ebml_uint(0xBA, v.pixel_height),
+                gen_opt_copy(v.pixel_crop_bottom, |v| gen_ebml_uint(0x54AA, v)),
+                gen_opt_copy(v.pixel_crop_top, |v| gen_ebml_uint(0x54BB, v)),
+                gen_opt_copy(v.pixel_crop_left, |v| gen_ebml_uint(0x54CC, v)),
+                gen_opt_copy(v.pixel_crop_right, |v| gen_ebml_uint(0x54DD, v)),
+                gen_opt_copy(v.display_width, |v| gen_ebml_uint(0x54B0, v)),
+                gen_opt_copy(v.display_height, |v| gen_ebml_uint(0x54BA, v)),
+                gen_opt_copy(v.display_unit, |v| gen_ebml_uint(0x54B2, v)),
+                gen_opt_copy(v.aspect_ratio_type, |v| gen_ebml_uint(0x54B3, v)),
+                gen_opt(v.colour_space.as_ref(), |v| gen_ebml_binary(0x2EB524, v)),
+                gen_opt_copy(v.gamma_value, |v| gen_f64(0x2FB523, v)),
+                gen_opt_copy(v.frame_rate, |v| gen_f64(0x2383E3, v)),
+                gen_opt(v.colour.as_ref(), gen_track_entry_video_colour),
+                gen_opt(v.projection.as_ref(), |v| {
+                    gen_track_entry_video_projection(v)
+                }),
+            )),
+        )(input)
+    }
 }
 
 impl EbmlSize for Colour {
@@ -348,39 +325,35 @@ impl EbmlSize for Colour {
     }
 }
 
-// Clippy thinks this function is too complicated, but it doesn't really make sense to split it up
-#[allow(clippy::cognitive_complexity)]
-pub fn gen_track_entry_video_colour<'a>(
-    input: (&'a mut [u8], usize),
-    c: &Colour,
-) -> Result<(&'a mut [u8], usize), GenError> {
-    let capacity = c.capacity();
-    let byte_capacity = vint_size(capacity as u64);
+fn gen_track_entry_video_colour<'a>(
+    c: &'a Colour,
+) -> impl Fn((&'a mut [u8], usize)) -> Result<(&'a mut [u8], usize), GenError> {
+    move |input| {
+        let byte_capacity = vint_size(c.capacity() as u64);
 
-    gen_ebml_master!(
-        input,
-        0x55B0,
-        byte_capacity,
-        do_gen!(
-            gen_opt_copy!(c.matrix_coefficients, gen_ebml_uint!(0x55B1))
-                >> gen_opt_copy!(c.bits_per_channel, gen_ebml_uint!(0x55B2))
-                >> gen_opt_copy!(c.chroma_subsampling_horz, gen_ebml_uint!(0x55B3))
-                >> gen_opt_copy!(c.chroma_subsampling_vert, gen_ebml_uint!(0x55B4))
-                >> gen_opt_copy!(c.cb_subsampling_horz, gen_ebml_uint!(0x55B5))
-                >> gen_opt_copy!(c.cb_subsampling_vert, gen_ebml_uint!(0x55B6))
-                >> gen_opt_copy!(c.chroma_siting_horz, gen_ebml_uint!(0x55B7))
-                >> gen_opt_copy!(c.chroma_siting_vert, gen_ebml_uint!(0x55B8))
-                >> gen_opt_copy!(c.range, gen_ebml_uint!(0x55B9))
-                >> gen_opt_copy!(c.transfer_characteristics, gen_ebml_uint!(0x55BA))
-                >> gen_opt_copy!(c.primaries, gen_ebml_uint!(0x55BB))
-                >> gen_opt_copy!(c.max_cll, gen_ebml_uint!(0x55BC))
-                >> gen_opt_copy!(c.max_fall, gen_ebml_uint!(0x55BD))
-                >> gen_opt!(
-                    c.mastering_metadata,
-                    gen_call!(gen_track_entry_video_colour_mastering_metadata)
-                )
-        )
-    )
+        gen_ebml_master(
+            0x55B0,
+            byte_capacity,
+            tuple((
+                gen_opt_copy(c.matrix_coefficients, |v| gen_ebml_uint(0x55B1, v)),
+                gen_opt_copy(c.bits_per_channel, |v| gen_ebml_uint(0x55B2, v)),
+                gen_opt_copy(c.chroma_subsampling_horz, |v| gen_ebml_uint(0x55B3, v)),
+                gen_opt_copy(c.chroma_subsampling_vert, |v| gen_ebml_uint(0x55B4, v)),
+                gen_opt_copy(c.cb_subsampling_horz, |v| gen_ebml_uint(0x55B5, v)),
+                gen_opt_copy(c.cb_subsampling_vert, |v| gen_ebml_uint(0x55B6, v)),
+                gen_opt_copy(c.chroma_siting_horz, |v| gen_ebml_uint(0x55B7, v)),
+                gen_opt_copy(c.chroma_siting_vert, |v| gen_ebml_uint(0x55B8, v)),
+                gen_opt_copy(c.range, |v| gen_ebml_uint(0x55B9, v)),
+                gen_opt_copy(c.transfer_characteristics, |v| gen_ebml_uint(0x55BA, v)),
+                gen_opt_copy(c.primaries, |v| gen_ebml_uint(0x55BB, v)),
+                gen_opt_copy(c.max_cll, |v| gen_ebml_uint(0x55BC, v)),
+                gen_opt_copy(c.max_fall, |v| gen_ebml_uint(0x55BD, v)),
+                gen_opt(c.mastering_metadata.as_ref(), |v| {
+                    gen_track_entry_video_colour_mastering_metadata(v)
+                }),
+            )),
+        )(input)
+    }
 }
 
 impl EbmlSize for MasteringMetadata {
@@ -398,32 +371,29 @@ impl EbmlSize for MasteringMetadata {
     }
 }
 
-// Clippy thinks this function is too complicated, but it doesn't really make sense to split it up
-#[allow(clippy::cognitive_complexity)]
-pub fn gen_track_entry_video_colour_mastering_metadata<'a>(
-    input: (&'a mut [u8], usize),
-    m: &MasteringMetadata,
-) -> Result<(&'a mut [u8], usize), GenError> {
-    let capacity = m.capacity();
-    let byte_capacity = vint_size(capacity as u64);
+fn gen_track_entry_video_colour_mastering_metadata<'a>(
+    m: &'a MasteringMetadata,
+) -> impl Fn((&'a mut [u8], usize)) -> Result<(&'a mut [u8], usize), GenError> {
+    move |input| {
+        let byte_capacity = vint_size(m.capacity() as u64);
 
-    gen_ebml_master!(
-        input,
-        0x55D0,
-        byte_capacity,
-        do_gen!(
-            gen_opt_copy!(m.primary_r_chromaticity_x, gen_call!(gen_f64, 0x55D1))
-                >> gen_opt_copy!(m.primary_r_chromaticity_y, gen_call!(gen_f64, 0x55D2))
-                >> gen_opt_copy!(m.primary_g_chromaticity_x, gen_call!(gen_f64, 0x55D3))
-                >> gen_opt_copy!(m.primary_g_chromaticity_y, gen_call!(gen_f64, 0x55D4))
-                >> gen_opt_copy!(m.primary_b_chromaticity_x, gen_call!(gen_f64, 0x55D5))
-                >> gen_opt_copy!(m.primary_b_chromaticity_y, gen_call!(gen_f64, 0x55D6))
-                >> gen_opt_copy!(m.white_point_chromaticity_y, gen_call!(gen_f64, 0x55D7))
-                >> gen_opt_copy!(m.white_point_chromaticity_y, gen_call!(gen_f64, 0x55D8))
-                >> gen_opt_copy!(m.luminance_max, gen_call!(gen_f64, 0x55D9))
-                >> gen_opt_copy!(m.luminance_min, gen_call!(gen_f64, 0x55DA))
-        )
-    )
+        gen_ebml_master(
+            0x55D0,
+            byte_capacity,
+            tuple((
+                gen_opt_copy(m.primary_r_chromaticity_x, |v| gen_f64(0x55D1, v)),
+                gen_opt_copy(m.primary_r_chromaticity_y, |v| gen_f64(0x55D2, v)),
+                gen_opt_copy(m.primary_g_chromaticity_x, |v| gen_f64(0x55D3, v)),
+                gen_opt_copy(m.primary_g_chromaticity_y, |v| gen_f64(0x55D4, v)),
+                gen_opt_copy(m.primary_b_chromaticity_x, |v| gen_f64(0x55D5, v)),
+                gen_opt_copy(m.primary_b_chromaticity_y, |v| gen_f64(0x55D6, v)),
+                gen_opt_copy(m.white_point_chromaticity_y, |v| gen_f64(0x55D7, v)),
+                gen_opt_copy(m.white_point_chromaticity_y, |v| gen_f64(0x55D8, v)),
+                gen_opt_copy(m.luminance_max, |v| gen_f64(0x55D9, v)),
+                gen_opt_copy(m.luminance_min, |v| gen_f64(0x55DA, v)),
+            )),
+        )(input)
+    }
 }
 
 impl EbmlSize for Projection {
@@ -436,84 +406,27 @@ impl EbmlSize for Projection {
     }
 }
 
-pub fn gen_track_entry_video_projection<'a>(
-    input: (&'a mut [u8], usize),
-    p: &Projection,
-) -> Result<(&'a mut [u8], usize), GenError> {
-    let capacity = p.capacity();
-    let byte_capacity = vint_size(capacity as u64);
+fn gen_track_entry_video_projection<'a>(
+    p: &'a Projection,
+) -> impl Fn((&'a mut [u8], usize)) -> Result<(&'a mut [u8], usize), GenError> {
+    move |input| {
+        let byte_capacity = vint_size(p.capacity() as u64);
 
-    gen_ebml_master!(
-        input,
-        0x7670,
-        byte_capacity,
-        do_gen!(
-            gen_ebml_uint!(0x7671, p.projection_type)
-                >> gen_opt!(p.projection_private, gen_ebml_binary!(0x7672))
-                >> gen_call!(gen_f64, 0x7673, p.projection_pose_yaw)
-                >> gen_call!(gen_f64, 0x7674, p.projection_pose_pitch)
-                >> gen_call!(gen_f64, 0x7675, p.projection_pose_roll)
-        )
-    )
+        gen_ebml_master(
+            0x7670,
+            byte_capacity,
+            tuple((
+                gen_ebml_uint(0x7671, p.projection_type),
+                gen_opt(p.projection_private.as_ref(), |v| {
+                    gen_ebml_binary(0x7672, v)
+                }),
+                gen_f64(0x7673, p.projection_pose_yaw),
+                gen_f64(0x7674, p.projection_pose_pitch),
+                gen_f64(0x7675, p.projection_pose_roll),
+            )),
+        )(input)
+    }
 }
-
-#[macro_export]
-macro_rules! my_gen_many (
-    (($i:expr, $idx:expr), $l:expr, $f:ident) => (
-        $l.into_iter().fold(
-            Ok(($i,$idx)),
-            |r,v| {
-                match r {
-                    Err(e) => Err(e),
-                    Ok(x) => { $f(x, v) },
-                }
-            }
-        )
-    );
-    (($i:expr, $idx:expr), $l:expr, $f:ident!( $($args:tt)* )) => (
-        $l.into_iter().fold(
-            Ok(($i,$idx)),
-            |r,v| {
-                match r {
-                    Err(e) => Err(e),
-                    Ok(x) => {
-                      let (i, idx) = x;
-                      $f!((i, idx), $($args)*, v)
-                    },
-                }
-            }
-        )
-    );
-);
-
-#[macro_export]
-macro_rules! my_gen_many_ref (
-    (($i:expr, $idx:expr), $l:expr, $f:ident) => (
-        $l.into_iter().fold(
-            Ok(($i,$idx)),
-            |r,v| {
-                match r {
-                    Err(e) => Err(e),
-                    Ok(x) => { $f(x, *v) },
-                }
-            }
-        )
-    );
-    (($i:expr, $idx:expr), $l:expr, $f:ident!( $($args:tt)* )) => (
-        $l.into_iter().fold(
-            Ok(($i,$idx)),
-            |r,v| {
-                match r {
-                    Err(e) => Err(e),
-                    Ok(x) => {
-                      let (i, idx) = x;
-                      $f!((i, idx), $($args)*, *v)
-                    },
-                }
-            }
-        )
-    );
-);
 
 impl<'a> EbmlSize for Cluster<'a> {
     fn capacity(&self) -> usize {
@@ -525,29 +438,26 @@ impl<'a> EbmlSize for Cluster<'a> {
     }
 }
 
-// Clippy thinks this function is too complicated, but it doesn't really make sense to split it up
-#[allow(clippy::cognitive_complexity)]
-pub fn gen_cluster<'a>(
-    input: (&'a mut [u8], usize),
-    c: &Cluster,
-) -> Result<(&'a mut [u8], usize), GenError> {
-    let capacity = c.capacity();
-    let byte_capacity = vint_size(capacity as u64);
-    gen_ebml_master!(
-        input,
-        0x1F43B675,
-        byte_capacity,
-        do_gen!(
-            gen_ebml_uint!(0xE7, c.timecode)
-        >> gen_opt!( c.silent_tracks, gen_call!(gen_silent_tracks) )
-        >> gen_opt_copy!( c.position, gen_ebml_uint!(0xA7) )
-        >> gen_opt_copy!( c.prev_size, gen_ebml_uint!(0xAB) )
-        >> my_gen_many!( &c.simple_block, gen_ebml_binary!( 0xA3 ) )
-        // TODO: implement for BlockGroup
-        //>> my_gen_many!( &c.block_group, gen_block_group)
-        >> gen_opt!( c.encrypted_block, gen_ebml_binary!( 0xAF ) )
-        )
-    )
+pub(crate) fn gen_cluster<'a>(
+    c: &'a Cluster,
+) -> impl Fn((&'a mut [u8], usize)) -> Result<(&'a mut [u8], usize), GenError> {
+    move |input| {
+        let byte_capacity = vint_size(c.capacity() as u64);
+        gen_ebml_master(
+            0x1F43B675,
+            byte_capacity,
+            tuple((
+                gen_ebml_uint(0xE7, c.timecode),
+                gen_opt(c.silent_tracks.as_ref(), gen_silent_tracks),
+                gen_opt_copy(c.position, |v| gen_ebml_uint(0xA7, v)),
+                gen_opt_copy(c.prev_size, |v| gen_ebml_uint(0xAB, v)),
+                gen_many(&c.simple_block, |v| gen_ebml_binary(0xA3, v)),
+                // TODO: implement for BlockGroup
+                // gen_many(&c.block_group, gen_block_group)
+                gen_opt(c.encrypted_block.as_ref(), |v| gen_ebml_binary(0xAF, v)),
+            )),
+        )(input)
+    }
 }
 
 impl EbmlSize for SilentTracks {
@@ -556,51 +466,53 @@ impl EbmlSize for SilentTracks {
     }
 }
 
-pub fn gen_silent_tracks<'a>(
-    input: (&'a mut [u8], usize),
-    s: &SilentTracks,
-) -> Result<(&'a mut [u8], usize), GenError> {
-    let capacity = s.capacity();
-    let byte_capacity = vint_size(capacity as u64);
-    gen_ebml_master!(
-        input,
-        0x5854,
-        byte_capacity,
-        do_gen!(my_gen_many_ref!(&s.numbers, gen_ebml_uint!(0x58D7)))
-    )
+fn gen_silent_tracks<'a>(
+    s: &'a SilentTracks,
+) -> impl Fn((&'a mut [u8], usize)) -> Result<(&'a mut [u8], usize), GenError> {
+    move |input| {
+        let byte_capacity = vint_size(s.capacity() as u64);
+        gen_ebml_master(
+            0x5854,
+            byte_capacity,
+            gen_many(&s.numbers, |v| gen_ebml_uint(0x58D7, *v)),
+        )(input)
+    }
 }
 
-pub fn gen_simple_block_header<'a>(
-    input: (&'a mut [u8], usize),
-    s: &SimpleBlock,
-) -> Result<(&'a mut [u8], usize), GenError> {
-    let mut flags = 0u8;
+pub(crate) fn gen_simple_block_header<'a>(
+    s: &'a SimpleBlock,
+) -> impl Fn((&'a mut [u8], usize)) -> Result<(&'a mut [u8], usize), GenError> {
+    move |input| {
+        let mut flags = 0u8;
 
-    if s.keyframe {
-        flags |= 0b0001u8;
+        if s.keyframe {
+            flags |= 0b0001u8;
+        }
+
+        if s.invisible {
+            flags |= 0b00010000u8;
+        }
+
+        flags |= match s.lacing {
+            Lacing::None => 0u8,
+            Lacing::Xiph => 0b00100000u8,
+            Lacing::FixedSize => 0b01000000u8,
+            Lacing::EBML => 0b01100000u8,
+        };
+
+        if s.discardable {
+            flags |= 0b10000000u8;
+        }
+
+        set_be_u8(
+            tuple((gen_vint(s.track_number), |i| set_be_i16(i, s.timecode)))(input)?,
+            flags,
+        )
     }
-
-    if s.invisible {
-        flags |= 0b00010000u8;
-    }
-
-    flags |= match s.lacing {
-        Lacing::None => 0u8,
-        Lacing::Xiph => 0b00100000u8,
-        Lacing::FixedSize => 0b01000000u8,
-        Lacing::EBML => 0b01100000u8,
-    };
-
-    if s.discardable {
-        flags |= 0b10000000u8;
-    }
-
-    do_gen!(
-        input,
-        gen_call!(gen_vint, s.track_number) >> gen_be_i16!(s.timecode) >> gen_be_u8!(flags)
-    )
 }
-pub fn gen_laced_frames<'a>(
+
+#[allow(dead_code)]
+fn gen_laced_frames<'a>(
     input: (&'a mut [u8], usize),
     lacing: Lacing,
     frames: &[&[u8]],
@@ -613,7 +525,8 @@ pub fn gen_laced_frames<'a>(
     }
 }
 
-pub fn gen_xiph_laced_frames<'a>(
+#[allow(dead_code)]
+fn gen_xiph_laced_frames<'a>(
     _input: (&'a mut [u8], usize),
     frames: &[&[u8]],
 ) -> Result<(&'a mut [u8], usize), GenError> {
@@ -624,14 +537,16 @@ pub fn gen_xiph_laced_frames<'a>(
     Err(GenError::NotYetImplemented)
 }
 
-pub fn gen_ebml_laced_frames<'a>(
+#[allow(dead_code)]
+fn gen_ebml_laced_frames<'a>(
     _input: (&'a mut [u8], usize),
     _frames: &[&[u8]],
 ) -> Result<(&'a mut [u8], usize), GenError> {
     Err(GenError::NotYetImplemented)
 }
 
-pub fn gen_fixed_size_laced_frames<'a>(
+#[allow(dead_code)]
+fn gen_fixed_size_laced_frames<'a>(
     _input: (&'a mut [u8], usize),
     _frames: &[&[u8]],
 ) -> Result<(&'a mut [u8], usize), GenError> {
@@ -640,11 +555,13 @@ pub fn gen_fixed_size_laced_frames<'a>(
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use crate::elements::SegmentElement;
     use log::trace;
-    use nom::*;
+    use nom::HexDisplay;
     use quickcheck::quickcheck;
+
+    use crate::elements::SegmentElement;
+
+    use super::*;
 
     fn test_seek_head_serializer(seeks: Vec<(u64, Vec<u8>)>) -> bool {
         trace!("testing for {:?}", seeks);
@@ -682,7 +599,7 @@ mod tests {
         };
 
         let ser_res = {
-            let gen_res = gen_seek_head((&mut data[..], 0), &seek_head);
+            let gen_res = gen_seek_head(&seek_head)((&mut data[..], 0));
             trace!("gen_res: {:?}", gen_res);
             if let Err(e) = gen_res {
                 trace!("gen_res is error: {:?}", e);
