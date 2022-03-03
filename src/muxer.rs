@@ -2,7 +2,6 @@ use std::io::Write;
 use std::sync::Arc;
 
 use cookie_factory::GenError;
-use cookie_factory::{do_gen, gen_call};
 use log::error;
 
 use av_data::{packet::Packet, params::MediaKind, value::Value};
@@ -15,6 +14,7 @@ use crate::{
         Video,
     },
     serializer::{
+        cookie_utils::tuple,
         ebml::{gen_ebml_header, EbmlSize},
         elements::{
             gen_cluster, gen_info, gen_seek_head, gen_segment_header_unknown_size,
@@ -91,7 +91,7 @@ impl MkvMuxer {
                 origin = (buf).as_ptr() as usize;
             }
 
-            match gen_ebml_header((buf, 0), &self.header) {
+            match gen_ebml_header(&self.header)((buf, 0)) {
                 Err(GenError::BufferTooSmall(sz)) => {
                     needed = sz;
                 }
@@ -122,7 +122,7 @@ impl MkvMuxer {
                 origin = (buf).as_ptr() as usize;
             }
 
-            match gen_segment_header_unknown_size((buf, 0)) {
+            match gen_segment_header_unknown_size()((buf, 0)) {
                 Err(GenError::BufferTooSmall(sz)) => {
                     needed = sz;
                 }
@@ -153,7 +153,7 @@ impl MkvMuxer {
                 origin = (buf).as_ptr() as usize;
             }
 
-            match gen_seek_head((buf, 0), &self.seek_head) {
+            match gen_seek_head(&self.seek_head)((buf, 0)) {
                 Err(GenError::BufferTooSmall(sz)) => {
                     needed = sz;
                 }
@@ -184,7 +184,7 @@ impl MkvMuxer {
                     origin = (buf).as_ptr() as usize;
                 }
 
-                match gen_info((buf, 0), info) {
+                match gen_info(info)((buf, 0)) {
                     Err(GenError::BufferTooSmall(sz)) => {
                         needed = sz;
                     }
@@ -215,7 +215,7 @@ impl MkvMuxer {
                     origin = (buf).as_ptr() as usize;
                 }
 
-                match gen_tracks((buf, 0), tracks) {
+                match gen_tracks(tracks)((buf, 0)) {
                     Err(GenError::BufferTooSmall(sz)) => {
                         needed = sz;
                     }
@@ -313,7 +313,7 @@ impl Muxer for MkvMuxer {
                 origin = (&v).as_ptr() as usize;
             }
 
-            match gen_simple_block_header((&mut v, 0), &s) {
+            match gen_simple_block_header(&s)((&mut v, 0)) {
                 Err(GenError::BufferTooSmall(sz)) => {
                     needed = sz;
                 }
@@ -363,7 +363,7 @@ impl Muxer for MkvMuxer {
                         origin = (&buf).as_ptr() as usize;
                     }
 
-                    match gen_cluster((&mut buf, 0), &cluster) {
+                    match gen_cluster(&cluster)((&mut buf, 0)) {
                         Err(GenError::BufferTooSmall(sz)) => {
                             needed = sz;
                         }
@@ -415,7 +415,7 @@ impl Muxer for MkvMuxer {
                     origin = (&buf).as_ptr() as usize;
                 }
 
-                match gen_cluster((&mut buf, 0), &cluster) {
+                match gen_cluster(&cluster)((&mut buf, 0)) {
                     Err(GenError::BufferTooSmall(sz)) => {
                         needed = sz;
                     }
@@ -466,20 +466,20 @@ fn offset<'a>(original: &(&'a [u8], usize), subslice: &(&'a [u8], usize)) -> usi
     second + subslice.1 - first - original.1
 }
 
-pub fn gen_mkv_prefix<'a>(
+#[allow(dead_code)]
+fn gen_mkv_prefix<'a>(
     input: (&'a mut [u8], usize),
-    header: &EBMLHeader,
-    seek_head: &SeekHead,
-    info: &Info,
-    tracks: &Tracks,
+    header: &'a EBMLHeader,
+    seek_head: &'a SeekHead,
+    info: &'a Info,
+    tracks: &'a Tracks,
 ) -> ::std::result::Result<(&'a mut [u8], usize), GenError> {
-    do_gen!(
-        input,
-        gen_call!(gen_ebml_header, header)
-            >> gen_call!(gen_seek_head, seek_head)
-            >> gen_call!(gen_info, info)
-            >> gen_call!(gen_tracks, tracks)
-    )
+    tuple((
+        gen_ebml_header(header),
+        gen_seek_head(seek_head),
+        gen_info(info),
+        gen_tracks(tracks),
+    ))(input)
 }
 
 pub fn stream_to_track(s: &Stream) -> TrackEntry {
