@@ -252,19 +252,6 @@ pub fn ebml_binary_ref(id: u64) -> impl Fn(&[u8]) -> IResult<&[u8], &[u8], Error
     }
 }
 
-/*#[macro_export]
-macro_rules! ebml_master (
-  ($i: expr, $id:expr, $submac:ident!( $($args:tt)* )) => ({
-    use $crate::ebml::{vid, vint};
-    do_parse!($i,
-               verify!(vid, |val:&u64| *val == $id)
-      >> size: vint
-      >> data: flat_map!(take!(size as usize), $submac!($($args)*))
-      >> (data)
-    )
-  })
-);*/
-
 pub fn ebml_master<'a, G, O1>(
     id: u64,
     second: G,
@@ -277,19 +264,6 @@ where
             .and_then(|(i, (_, size))| map_parser(take(usize_error(i, size)?), second)(i))
     }
 }
-
-/*#[macro_export]
-macro_rules! eat_void (
-  ($i: expr, $submac:ident!( $($args:tt)* )) => ({
-    preceded!($i,
-      opt!($crate::ebml::skip_void),
-      $submac!($($args)*)
-    )
-  });
-  ($i: expr, $e:expr) => ({
-    eat_void!($i, call!($e))
-  });
-);*/
 
 pub fn eat_void<'a, G, O1>(second: G) -> impl Fn(&'a [u8]) -> IResult<&'a [u8], O1, Error<'a>>
 where
