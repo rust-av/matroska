@@ -209,7 +209,7 @@ pub fn parse_float_data(size: u64) -> impl Fn(&[u8]) -> IResult<&[u8], f64, Erro
     }
 }
 
-fn ebml_support<'a, G, H, O1>(
+fn compute_ebml_type<'a, G, H, O1>(
     id: u64,
     second: G,
 ) -> impl Fn(&'a [u8]) -> IResult<&'a [u8], O1, Error>
@@ -225,23 +225,23 @@ where
 }
 
 pub fn ebml_uint<'a>(id: u64) -> impl Fn(&'a [u8]) -> IResult<&'a [u8], u64, Error> {
-    ebml_support(id, parse_uint_data)
+    compute_ebml_type(id, parse_uint_data)
 }
 
 pub fn ebml_int<'a>(id: u64) -> impl Fn(&'a [u8]) -> IResult<&'a [u8], i64, Error> {
-    ebml_support(id, parse_int_data)
+    compute_ebml_type(id, parse_int_data)
 }
 
 pub fn ebml_float<'a>(id: u64) -> impl Fn(&'a [u8]) -> IResult<&'a [u8], f64, Error> {
-    ebml_support(id, parse_float_data)
+    compute_ebml_type(id, parse_float_data)
 }
 
 pub fn ebml_str<'a>(id: u64) -> impl Fn(&'a [u8]) -> IResult<&'a [u8], String, Error> {
-    ebml_support(id, parse_str_data)
+    compute_ebml_type(id, parse_str_data)
 }
 
 pub fn ebml_binary<'a>(id: u64) -> impl Fn(&'a [u8]) -> IResult<&'a [u8], Vec<u8>, Error> {
-    ebml_support(id, parse_binary_data)
+    compute_ebml_type(id, parse_binary_data)
 }
 
 pub fn ebml_binary_ref(id: u64) -> impl Fn(&[u8]) -> IResult<&[u8], &[u8], Error> {
