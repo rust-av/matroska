@@ -173,7 +173,6 @@ pub fn parse_int_data(size: u64) -> impl Fn(&[u8]) -> IResult<&[u8], i64, Error>
             val = (val << 8) | u64::from(*i);
         }
 
-        //FIXME: is that right?
         Ok((&input[size as usize..], val as i64))
     }
 }
