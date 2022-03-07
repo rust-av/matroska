@@ -179,9 +179,12 @@ pub fn parse_int_data(size: u64) -> impl Fn(&[u8]) -> IResult<&[u8], i64, Error>
 
 pub fn parse_str_data(size: u64) -> impl Fn(&[u8]) -> IResult<&[u8], String, Error> {
     move |input| {
-        map(take(usize_error(input, size)?), |data: &[u8]| {
-            String::from_utf8(data.to_owned()).unwrap_or_default()
-        })(input)
+        take(usize_error(input, size)?)(input).and_then(|(i, data)| {
+            match String::from_utf8(data.to_owned()) {
+                Ok(s) => Ok((i, s)),
+                Err(_) => return Err(Err::Error(custom_error(i, 104))),
+            }
+        })
     }
 }
 
