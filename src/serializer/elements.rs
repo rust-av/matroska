@@ -697,19 +697,18 @@ mod tests {
     use log::trace;
     use nom::*;
     use quickcheck::quickcheck;
-    use std::iter::repeat;
 
     fn test_seek_head_serializer(seeks: Vec<(u64, Vec<u8>)>) -> bool {
         trace!("testing for {:?}", seeks);
 
         let mut should_fail = false;
-        if seeks.len() == 0 {
+        if seeks.is_empty() {
             should_fail = true;
         }
 
         for &(_, ref id) in seeks.iter() {
             trace!("id: {}", id.to_hex(16));
-            if id.len() == 0 {
+            if id.is_empty() {
                 trace!("id is empty, returning");
                 return true;
                 //should_fail = true;
@@ -725,8 +724,7 @@ mod tests {
             .fold(0, |acc, &(_, ref v)| acc + 8 + v.len() + 100);
         trace!("defining capacity as {}", capacity);
 
-        let mut data = Vec::with_capacity(capacity);
-        data.extend(repeat(0).take(capacity));
+        let mut data = vec![0; capacity];
 
         let seek_head = SeekHead {
             positions: seeks
@@ -763,7 +761,7 @@ mod tests {
                 }
 
                 assert_eq!(seek_head, o);
-                return true;
+                true
             }
             e => {
                 if should_fail {

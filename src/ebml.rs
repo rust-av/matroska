@@ -323,8 +323,8 @@ mod tests {
     use log::trace;
     use nom::{HexDisplay, Offset};
 
-    const single_stream: &'static [u8] = include_bytes!("../assets/single_stream.mkv");
-    const webm: &'static [u8] = include_bytes!("../assets/big-buck-bunny_trailer.webm");
+    const single_stream: &[u8] = include_bytes!("../assets/single_stream.mkv");
+    const webm: &[u8] = include_bytes!("../assets/big-buck-bunny_trailer.webm");
 
     #[test]
     fn variable_integer() {
