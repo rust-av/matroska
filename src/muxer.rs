@@ -120,7 +120,6 @@ impl MkvMuxer {
                 origin = (buf).as_ptr() as usize;
             }
 
-            //match gen_segment_header((buf, 0), size as u64) {
             match gen_segment_header_unknown_size((buf, 0)) {
                 Err(GenError::BufferTooSmall(sz)) => {
                     needed = sz;
@@ -482,13 +481,6 @@ pub fn gen_mkv_prefix<'a>(
 }
 
 pub fn stream_to_track(s: &Stream) -> TrackEntry {
-    /*let track_type = match s.params.kind {
-      Some(MediaKind::Video(_)) => 0x1,
-      Some(MediaKind::Audio(_)) => 0x2,
-      _                         => 0,
-    };
-    */
-
     let codec_id = match s.params.codec_id.as_deref() {
         Some("opus") => String::from("A_OPUS"),
         Some("vorbis") => String::from("A_VORBIS"),
