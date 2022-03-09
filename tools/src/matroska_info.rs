@@ -1,9 +1,10 @@
-use circular::Buffer;
-use err_derive::Error;
-use nom::{Err, Offset};
 use std::env;
 use std::fs::File;
 use std::io::{self, Read};
+
+use circular::Buffer;
+use err_derive::Error;
+use nom::{Err, Offset};
 
 use matroska::ebml::ebml_header;
 use matroska::elements::{segment, segment_element, SegmentElement};
