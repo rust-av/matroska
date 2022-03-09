@@ -72,8 +72,6 @@ impl MkvDemuxer {
                 return Ok((input, ()));
             }
 
-            // println!("offset: {}", original_input.offset(input));
-
             let (i3, element) = segment_element(input)?;
 
             match element {
@@ -159,7 +157,6 @@ impl Demuxer for MkvDemuxer {
         if let Some(event) = self.queue.pop_front() {
             Ok((SeekFrom::Current(0), event))
         } else {
-            // println!("no more stored packet, parsing a new one");
             match segment_element(buf.data()) {
                 Ok((i, element)) => {
                     let seek = SeekFrom::Current(buf.data().offset(i) as i64);
@@ -173,9 +170,7 @@ impl Demuxer for MkvDemuxer {
                                 return Ok((seek, event));
                             }
                         }
-                        _el => {
-                            // println!("got element: {:#?}", el);
-                        }
+                        _el => {}
                     }
                     Ok((seek, Event::MoreDataNeeded(0)))
                 }
