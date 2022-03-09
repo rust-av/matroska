@@ -13,18 +13,6 @@ pub fn seek_size(s: &Seek) -> u8 {
     vint_size(u64::from(vint_size((s.id.len() + 10) as u64)))
 }
 
-/*
-pub fn gen_segment<'a>(input: (&'a mut [u8], usize),
-                       s: &SegmentElement)
-                       -> Result<(&'a mut [u8], usize), GenError> {
-    unimplemented!();
-    do_gen!(input,
-    gen_call!(gen_vid, 0x18538067) >>
-    gen_call!(gen_vint, 4)
-  )
-}
-*/
-
 pub fn gen_segment_header(
     input: (&mut [u8], usize),
     size: u64,
@@ -58,9 +46,7 @@ pub fn gen_seek<'a>(
         input,
         0x4DBB,
         vint_size(capacity),
-        gen_ebml_binary!(0x53AB, &s.id) >>
-    //gen_ebml_uint!(0x53AC, s.position, vint_size(s.position))
-    gen_ebml_uint!(0x53AC, s.position, 8)
+        gen_ebml_binary!(0x53AB, &s.id) >> gen_ebml_uint!(0x53AC, s.position, 8)
     )
 }
 
@@ -114,20 +100,19 @@ pub fn gen_info<'a>(
         0x1549A966,
         byte_capacity,
         do_gen!(
-            gen_opt!( i.segment_uid, gen_ebml_binary!(0x73A4) )
-        >> gen_opt!( i.segment_filename, gen_ebml_str!(0x7384) )
-        >> gen_opt!( i.prev_uid, gen_ebml_binary!(0x3CB923) )
-        >> gen_opt!( i.prev_filename, gen_ebml_str!(0x3C83AB) )
-        >> gen_opt!( i.next_uid, gen_ebml_binary!(0x3EB923) )
-        >> gen_opt!( i.next_filename, gen_ebml_str!(0x3E83BB) )
-        >> gen_opt!( i.segment_family, gen_ebml_binary!(0x4444) )
-        //>> gen_opt!( i.chapter_translate, gen_chapter_translate )
-        >> gen_ebml_uint!(0x2AD7B1, i.timecode_scale)
-        >> gen_opt!( i.duration, gen_call!(gen_f64_ref, 0x4489) )
-        >> gen_opt!( i.date_utc, gen_ebml_binary!(0x4461) )
-        >> gen_opt!( i.title, gen_ebml_str!(0x7BA9) )
-        >> gen_ebml_str!(0x4D80, i.muxing_app)
-        >> gen_ebml_str!(0x5741, i.writing_app)
+            gen_opt!(i.segment_uid, gen_ebml_binary!(0x73A4))
+                >> gen_opt!(i.segment_filename, gen_ebml_str!(0x7384))
+                >> gen_opt!(i.prev_uid, gen_ebml_binary!(0x3CB923))
+                >> gen_opt!(i.prev_filename, gen_ebml_str!(0x3C83AB))
+                >> gen_opt!(i.next_uid, gen_ebml_binary!(0x3EB923))
+                >> gen_opt!(i.next_filename, gen_ebml_str!(0x3E83BB))
+                >> gen_opt!(i.segment_family, gen_ebml_binary!(0x4444))
+                >> gen_ebml_uint!(0x2AD7B1, i.timecode_scale)
+                >> gen_opt!(i.duration, gen_call!(gen_f64_ref, 0x4489))
+                >> gen_opt!(i.date_utc, gen_ebml_binary!(0x4461))
+                >> gen_opt!(i.title, gen_ebml_str!(0x7BA9))
+                >> gen_ebml_str!(0x4D80, i.muxing_app)
+                >> gen_ebml_str!(0x5741, i.writing_app)
         )
     )
 }
@@ -636,13 +621,6 @@ pub fn gen_xiph_laced_frames<'a>(
         return Err(GenError::NotYetImplemented);
     }
 
-    /*
-    let sizes: Vec<usize> = frames.iter().map(|frame| frame.len()).collect();
-    do_gen!(input,
-      gen_be_u8!((frames.len() - 1) as u8) >>
-
-    )
-    */
     Err(GenError::NotYetImplemented)
 }
 
@@ -659,36 +637,6 @@ pub fn gen_fixed_size_laced_frames<'a>(
 ) -> Result<(&'a mut [u8], usize), GenError> {
     Err(GenError::NotYetImplemented)
 }
-
-/*
-impl<'a> EbmlSize for BlockGroup<'a> {
-  fn capacity(&self) -> usize {
-    self.timecode.size(0xE7) + self.silent_tracks.size(0x5854) + self.position.size(0xA7) +
-      self.prev_size.size(0xAB) + self.simple_block.size(0xA3) + self.block_group.size(0xA0) +
-      self.encrypted_block.size(0xAF)
-  }
-}
-
-pub fn gen_block_group<'a>(input: (&'a mut [u8], usize),
-                         b: &Blockgroup)
-                         -> Result<(&'a mut [u8], usize), GenError> {
-
-    let capacity = c.capacity();
-    let byte_capacity = vint_size(capacity as u64);
-    gen_ebml_master!(input,
-      0x1F43B675, byte_capacity,
-      do_gen!(
-           gen_ebml_uint!(0xE7, c.timecode)
-        >> gen_opt!( c.silent_tracks, gen_call!(gen_silent_tracks) )
-        >> gen_opt_copy!( c.position, gen_ebml_uint!(0xA7) )
-        >> gen_opt_copy!( c.prev_size, gen_ebml_uint!(0xAB) )
-        >> my_gen_many!( &c.simple_block, gen_ebml_binary!( 0xA3 ) )
-        >> my_gen_many!( &c.block_group, gen_block_group)
-        >> gen_opt!( &c.encrypted_block, gen_ebml_binary!( 0xAF ) )
-      )
-    )
-}
-*/
 
 #[cfg(test)]
 mod tests {
@@ -711,7 +659,6 @@ mod tests {
             if id.is_empty() {
                 trace!("id is empty, returning");
                 return true;
-                //should_fail = true;
             }
         }
 
@@ -741,10 +688,6 @@ mod tests {
                 trace!("gen_res is error: {:?}", e);
                 trace!("should fail: {:?}", should_fail);
                 return should_fail;
-                /*if should_fail {
-                  trace!("should fail");
-                  return true;
-                }*/
             }
         };
 
