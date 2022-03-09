@@ -9,11 +9,11 @@ name = "matroska_info"
 path = "src/matroska_info.rs"
 
 [dependencies]
-av-data = "0.2"
-av-format = "0.2"
+av-data = "0.3"
+av-format = "0.3"
 circular = "0.3"
 log = "0.4"
-matroska = { path=".." }
+matroska = { path = ".." }
 nom = "7.0"
 pretty_env_logger = "0.4"
 err-derive = "0.3.0"
