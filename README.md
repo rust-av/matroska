@@ -12,8 +12,8 @@
 - Supported formats
     - [ ] H.264
     - [ ] HEVC
-    - [ ] VP8
-    - [ ] AV1
+    - [x] VP8
+    - [x] AV1
     - [x] Opus
     - [x] VP9
     - [x] Vorbis
