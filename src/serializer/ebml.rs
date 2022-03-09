@@ -116,12 +116,6 @@ pub fn gen_int(mut input: (&mut [u8], usize), num: i64) -> Result<(&mut [u8], us
     Ok(input)
 }
 
-/*
-pub fn vid_size(id: u64) -> u8 {
-
-}
-*/
-
 pub fn gen_u64(
     input: (&mut [u8], usize),
     id: u64,
@@ -230,7 +224,6 @@ pub fn gen_f64_ref<'a>(
 macro_rules! gen_ebml_size (
   (($i:expr, $idx:expr), $expected_size:expr, $size:expr) => ({
     let v = vint_size($size);
-    //trace!("size: {}, vint_size: {}, expected_size: {}", $size, v, $expected_size);
 
     if v > $expected_size {
       Err(GenError::CustomError(0))
@@ -249,7 +242,6 @@ macro_rules! gen_ebml_master (
       >> ofs_len: gen_skip!($expected_size as usize)
       >> start:   do_gen!($($rest)*)
       >> end:     gen_at_offset!(ofs_len, gen_ebml_size!($expected_size, (end-start) as u64))
-      //>> end:     gen_dbg!(gen_at_offset!(ofs_len, gen_call!(gen_vint, (end-start) as u64)))
       )
   });
   (($i:expr, $idx:expr), $id:expr, $($rest:tt)*) => (
@@ -411,7 +403,6 @@ impl EbmlSize for EBMLHeader {
     }
 }
 
-//trace_macros!(true);
 // Clippy thinks this function is too complicated, but it doesn't really make sense to split it up
 #[allow(clippy::cognitive_complexity)]
 pub fn gen_ebml_header<'a>(
