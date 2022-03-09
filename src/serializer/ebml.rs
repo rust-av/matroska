@@ -527,6 +527,7 @@ mod tests {
     use crate::ebml::Error;
     use log::info;
     use nom::*;
+    use quickcheck::quickcheck;
 
     fn test_vint_serializer(i: u64) -> bool {
         info!("testing for {}", i);

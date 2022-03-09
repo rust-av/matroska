@@ -696,6 +696,7 @@ mod tests {
     use crate::elements::SegmentElement;
     use log::trace;
     use nom::*;
+    use quickcheck::quickcheck;
     use std::iter::repeat;
 
     fn test_seek_head_serializer(seeks: Vec<(u64, Vec<u8>)>) -> bool {

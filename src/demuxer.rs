@@ -1,12 +1,11 @@
 use crate::{
-    av_data::rational::Rational64,
     ebml::{self, custom_error, ebml_header, EBMLHeader},
     elements::{
         segment, segment_element, simple_block, Cluster, Info, SeekHead, SegmentElement,
         TrackEntry, Tracks,
     },
 };
-use av_data::{packet::Packet, params::*, timeinfo::TimeInfo};
+use av_data::{packet::Packet, params::*, rational::Rational64, timeinfo::TimeInfo};
 use av_format::{
     buffer::Buffered,
     common::GlobalInfo,
