@@ -51,12 +51,10 @@ fn run(filename: &str) -> Result<(), InfoError> {
     // we write into the `&mut[u8]` returned by `space()`
     let sz = file.read(b.space())?;
     b.fill(sz);
-    //eprintln!("write {:#?}", sz);
 
     let length = {
         let res = ebml_header(b.data());
         if let Ok((remaining, header)) = res {
-            //eprintln!("parsed header: {:#?}", h);
             println!("+ EBML head");
             println!("|+ EBML version: {}", header.version);
             println!("|+ EBML read version: {}", header.read_version);
@@ -81,7 +79,6 @@ fn run(filename: &str) -> Result<(), InfoError> {
     let length = {
         let res = segment(b.data());
         if let Ok((remaining, segment)) = res {
-            //eprintln!("parsed segment: {:#?}", h);
             println!("+ Segment, size {}", segment.1.unwrap_or(0));
 
             b.data().offset(remaining)
@@ -247,10 +244,6 @@ fn run(filename: &str) -> Result<(), InfoError> {
                         tracks = Some(t);
                     }
                 }
-                /*SegmentElement::Cluster(c) => {
-                    println!("|+ Cluster");
-                    eprintln!("got a cluster: {:#?}", c);
-                },*/
                 SegmentElement::Void(s) => {
                     println!("|+ EbmlVoid (size: {})", s);
                 }
@@ -260,7 +253,6 @@ fn run(filename: &str) -> Result<(), InfoError> {
             b.data().offset(i)
         };
         _consumed += offset;
-        //eprintln!("consumed {} bytes", length);
         b.consume(offset);
     }
 
@@ -276,15 +268,6 @@ fn run(filename: &str) -> Result<(), InfoError> {
         // refill the buffer
         let sz = file.read(b.space())?;
         b.fill(sz);
-
-        /*
-        eprintln!(
-            "refill: {} more bytes, available data: {} bytes, consumed: {} bytes",
-            sz,
-            b.available_data(),
-            consumed
-        );
-        */
 
         // if there's no more available data in the buffer after a write, that means we reached
         // the end of the file
@@ -322,7 +305,6 @@ fn run(filename: &str) -> Result<(), InfoError> {
                         "|+   Encrypted block: {:?} bytes",
                         c.encrypted_block.as_ref().map(|s| s.len())
                     );
-                    //eprintln!("got a cluster: {:#?}", c);
                 }
                 SegmentElement::Void(s) => {
                     println!("|+ EbmlVoid (size: {})", s);
@@ -342,7 +324,6 @@ fn run(filename: &str) -> Result<(), InfoError> {
             b.data().offset(i)
         };
         _consumed += offset;
-        //eprintln!("consumed {} bytes", length);
         b.consume(offset);
     }
 
