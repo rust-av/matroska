@@ -10,36 +10,6 @@ use nom::{
     Err, IResult, Needed, Parser,
 };
 
-/*
-struct Document {
-    header: Header,
-    body: Vec<Element>,
-}
-
-
-struct Header {}
-
-#[derive(Debug)]
-enum ElementData {
-    Signed(i64),
-    Unsigned(u64),
-    Float(f64),
-    PlainString(String),
-    UTF8String(String),
-    Date(u64),
-    Master(Vec<Element>),
-    Binary(Vec<u8>),
-    Unknown(u64),
-}
-
-#[derive(Debug)]
-pub struct Element {
-    id: u64,
-    size: u64,
-    data: ElementData,
-}
-*/
-
 #[derive(Debug, PartialEq)]
 pub struct Error<'a> {
     input: &'a [u8],
@@ -329,22 +299,12 @@ mod tests {
     #[test]
     fn variable_integer() {
         let val01 = [0b10000000];
-        //        let val01 = [0b01000000, 0b1];
 
         match vint(&val01) {
             Ok((_, v)) => assert!(0 == v),
             _ => panic!(),
         }
     }
-
-    /*
-    #[test]
-    fn header() {
-        trace!("{}", single_stream[..8].to_hex(8));
-        trace!("{:b} {:b}", single_stream[0], single_stream[1]);
-        trace!("{:#?}", parse_element(single_stream));
-        panic!();
-    }*/
 
     #[test]
     fn mkv_header() {
