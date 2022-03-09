@@ -978,8 +978,8 @@ mod tests {
     use nom::{HexDisplay, Offset};
     use std::cmp::min;
 
-    const mkv: &'static [u8] = include_bytes!("../assets/single_stream.mkv");
-    const webm: &'static [u8] = include_bytes!("../assets/big-buck-bunny_trailer.webm");
+    const mkv: &[u8] = include_bytes!("../assets/single_stream.mkv");
+    const webm: &[u8] = include_bytes!("../assets/big-buck-bunny_trailer.webm");
 
     #[test]
     fn mkv_segment_root() {

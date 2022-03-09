@@ -354,7 +354,7 @@ mod tests {
     use nom::Offset;
     use std::io::Cursor;
 
-    const webm: &'static [u8] = include_bytes!("../assets/bbb-vp9-opus.webm");
+    const webm: &[u8] = include_bytes!("../assets/bbb-vp9-opus.webm");
 
     #[test]
     fn parse_headers() {

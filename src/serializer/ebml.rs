@@ -544,7 +544,7 @@ mod tests {
         match parse_res {
             Ok((_rest, o)) => {
                 assert_eq!(i, o);
-                return true;
+                true
             }
             e => panic!("{}", format!("parse error: {:?}", e)),
         }
@@ -581,7 +581,7 @@ mod tests {
             Ok((_rest, o)) => {
                 info!("id={:08b}, parsed={:08b}", id, o);
                 assert_eq!(id, o);
-                return true;
+                true
             }
             e => panic!("{}", format!("parse error: {:?}", e)),
         }
@@ -610,7 +610,7 @@ mod tests {
         match parse_res {
             Ok((_rest, o)) => {
                 assert_eq!(num, o);
-                return true;
+                true
             }
             e => panic!("{}", format!("parse error: {:?}", e)),
         }
@@ -648,7 +648,7 @@ mod tests {
         match parse_res {
           Ok((_rest, o)) => {
             assert_eq!(num as u64, o);
-            return true;
+            true
           },
           e => panic!("{}", format!("parse error: {:?}", e)),
         }
@@ -663,7 +663,7 @@ mod tests {
           read_version: read_version as u64,
           max_id_length: max_id_length as u64,
           max_size_length: max_size_length as u64,
-          doc_type: doc_type,
+          doc_type,
           doc_type_version: doc_type_version as u64,
           doc_type_read_version: doc_type_read_version as u64
         };
@@ -687,7 +687,7 @@ mod tests {
         match parse_res {
           Ok((_rest, h)) => {
             assert_eq!(header, h);
-            return true;
+            true
           },
           e => panic!("{}", format!("parse error: {:?}", e)),
         }
