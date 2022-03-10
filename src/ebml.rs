@@ -289,9 +289,10 @@ pub fn ebml_header(input: &[u8]) -> IResult<&[u8], EBMLHeader, Error> {
 #[cfg(test)]
 #[allow(non_upper_case_globals)]
 mod tests {
-    use super::*;
     use log::trace;
     use nom::{HexDisplay, Offset};
+
+    use super::*;
 
     const single_stream: &[u8] = include_bytes!("../assets/single_stream.mkv");
     const webm: &[u8] = include_bytes!("../assets/big-buck-bunny_trailer.webm");

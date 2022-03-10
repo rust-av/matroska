@@ -1,9 +1,12 @@
-use av_data::{packet::Packet, params::MediaKind, value::Value};
-use av_format::{common::GlobalInfo, error::*, muxer::*, stream::Stream};
-use cookie_factory::{do_gen, gen_call};
-use log::error;
 use std::io::Write;
 use std::sync::Arc;
+
+use cookie_factory::GenError;
+use cookie_factory::{do_gen, gen_call};
+use log::error;
+
+use av_data::{packet::Packet, params::MediaKind, value::Value};
+use av_format::{common::GlobalInfo, error::*, muxer::*, stream::Stream};
 
 use crate::{
     ebml::EBMLHeader,
@@ -19,7 +22,6 @@ use crate::{
         },
     },
 };
-use cookie_factory::GenError;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct MkvMuxer {

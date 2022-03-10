@@ -1,10 +1,8 @@
-use crate::{
-    ebml::{self, custom_error, ebml_header, EBMLHeader},
-    elements::{
-        segment, segment_element, simple_block, Cluster, Info, SeekHead, SegmentElement,
-        TrackEntry, Tracks,
-    },
-};
+use std::{collections::VecDeque, io::SeekFrom};
+
+use log::{debug, error, trace};
+use nom::{self, Err, IResult, Needed, Offset};
+
 use av_data::{packet::Packet, params::*, rational::Rational64, timeinfo::TimeInfo};
 use av_format::{
     buffer::Buffered,
@@ -13,9 +11,14 @@ use av_format::{
     error::*,
     stream::Stream,
 };
-use log::{debug, error, trace};
-use nom::{self, Err, IResult, Needed, Offset};
-use std::{collections::VecDeque, io::SeekFrom};
+
+use crate::{
+    ebml::{self, custom_error, ebml_header, EBMLHeader},
+    elements::{
+        segment, segment_element, simple_block, Cluster, Info, SeekHead, SegmentElement,
+        TrackEntry, Tracks,
+    },
+};
 
 #[derive(Debug, Clone, Default)]
 pub struct MkvDemuxer {
@@ -341,11 +344,14 @@ pub const MKV_DESC: &dyn Descriptor = &Des {
 #[cfg(test)]
 #[allow(non_upper_case_globals)]
 mod tests {
-    use super::*;
-    use av_format::{buffer::*, demuxer::Context};
+    use std::io::Cursor;
+
     use log::info;
     use nom::Offset;
-    use std::io::Cursor;
+
+    use av_format::{buffer::*, demuxer::Context};
+
+    use super::*;
 
     const webm: &[u8] = include_bytes!("../assets/bbb-vp9-opus.webm");
 

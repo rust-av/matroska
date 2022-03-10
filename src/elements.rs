@@ -1,8 +1,3 @@
-use crate::ebml::{
-    eat_void, ebml_binary, ebml_binary_ref, ebml_float, ebml_int, ebml_master, ebml_str, ebml_uint,
-    usize_error, vid, vint, Error,
-};
-use crate::permutation::matroska_permutation;
 use nom::{
     branch::permutation,
     bytes::streaming::take,
@@ -12,6 +7,12 @@ use nom::{
     sequence::{pair, tuple},
     IResult,
 };
+
+use crate::ebml::{
+    eat_void, ebml_binary, ebml_binary_ref, ebml_float, ebml_int, ebml_master, ebml_str, ebml_uint,
+    usize_error, vid, vint, Error,
+};
+use crate::permutation::matroska_permutation;
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum SegmentElement<'a> {
@@ -969,10 +970,12 @@ pub struct Tags {}
 #[cfg(test)]
 #[allow(non_upper_case_globals)]
 mod tests {
-    use super::*;
+    use std::cmp::min;
+
     use log::debug;
     use nom::{HexDisplay, Offset};
-    use std::cmp::min;
+
+    use super::*;
 
     const mkv: &[u8] = include_bytes!("../assets/single_stream.mkv");
     const webm: &[u8] = include_bytes!("../assets/big-buck-bunny_trailer.webm");
