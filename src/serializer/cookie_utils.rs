@@ -19,13 +19,13 @@ where
     }
 }
 
-pub(crate) fn gen_opt<'a, T, G, H>(
+pub(crate) fn gen_opt<'a, 'b, T, G: 'a, H>(
     val: Option<&'a T>,
     f: G,
-) -> impl Fn((&'a mut [u8], usize)) -> Result<(&'a mut [u8], usize), GenError>
+) -> impl Fn((&'b mut [u8], usize)) -> Result<(&'b mut [u8], usize), GenError> + 'a
 where
     G: Fn(&'a T) -> H,
-    H: Fn((&'a mut [u8], usize)) -> Result<(&'a mut [u8], usize), GenError>,
+    H: Fn((&'b mut [u8], usize)) -> Result<(&'b mut [u8], usize), GenError> + 'a,
 {
     move |input| {
         if let Some(val) = val {
@@ -36,13 +36,13 @@ where
     }
 }
 
-pub(crate) fn gen_opt_copy<'a, T: Copy, G, H>(
+pub(crate) fn gen_opt_copy<'a, 'b, T: Copy + 'a, G: 'a, H>(
     val: Option<T>,
     f: G,
-) -> impl Fn((&'a mut [u8], usize)) -> Result<(&'a mut [u8], usize), GenError>
+) -> impl Fn((&'b mut [u8], usize)) -> Result<(&'b mut [u8], usize), GenError> + 'a
 where
     G: Fn(T) -> H,
-    H: Fn((&'a mut [u8], usize)) -> Result<(&'a mut [u8], usize), GenError>,
+    H: Fn((&'b mut [u8], usize)) -> Result<(&'b mut [u8], usize), GenError> + 'a,
 {
     move |input| {
         if let Some(val) = val {
@@ -53,13 +53,13 @@ where
     }
 }
 
-pub(crate) fn gen_many<'a, T: IntoIterator + Copy, G, H>(
+pub(crate) fn gen_many<'a, 'b, T: IntoIterator + Copy + 'a, G: 'a, H>(
     list: T,
     f: G,
-) -> impl Fn((&'a mut [u8], usize)) -> Result<(&'a mut [u8], usize), GenError>
+) -> impl Fn((&'b mut [u8], usize)) -> Result<(&'b mut [u8], usize), GenError> + 'a
 where
     G: Fn(<T as IntoIterator>::Item) -> H,
-    H: Fn((&'a mut [u8], usize)) -> Result<(&'a mut [u8], usize), GenError>,
+    H: Fn((&'b mut [u8], usize)) -> Result<(&'b mut [u8], usize), GenError> + 'a,
 {
     move |input| {
         list.into_iter().fold(Ok(input), |r, v| match r {

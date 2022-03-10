@@ -172,13 +172,13 @@ pub(crate) fn gen_ebml_size(
     }
 }
 
-pub(crate) fn gen_ebml_master<'a, G>(
+pub(crate) fn gen_ebml_master<'a, 'b, G>(
     id: u64,
     expected_size: u8,
     f: G,
-) -> impl Fn((&'a mut [u8], usize)) -> Result<(&'a mut [u8], usize), GenError>
+) -> impl Fn((&'b mut [u8], usize)) -> Result<(&'b mut [u8], usize), GenError> + 'a
 where
-    G: Fn((&'a mut [u8], usize)) -> Result<(&'a mut [u8], usize), GenError>,
+    G: Fn((&'b mut [u8], usize)) -> Result<(&'b mut [u8], usize), GenError> + 'a,
 {
     move |input| {
         let (buf, ofs_len) = gen_vid(id)(input)?;
@@ -227,8 +227,8 @@ pub(crate) fn gen_ebml_int(
 
 pub(crate) fn gen_ebml_str<'a, 'b>(
     id: u64,
-    s: &'b str,
-) -> impl Fn((&'a mut [u8], usize)) -> Result<(&'a mut [u8], usize), GenError> + 'b {
+    s: &'a str,
+) -> impl Fn((&'b mut [u8], usize)) -> Result<(&'b mut [u8], usize), GenError> + 'a {
     move |input| {
         let v = vint_size(s.len() as u64);
 
@@ -239,10 +239,10 @@ pub(crate) fn gen_ebml_str<'a, 'b>(
     }
 }
 
-pub(crate) fn gen_ebml_binary<'a>(
+pub(crate) fn gen_ebml_binary<'a, 'b>(
     id: u64,
     s: &'a [u8],
-) -> impl Fn((&'a mut [u8], usize)) -> Result<(&'a mut [u8], usize), GenError> {
+) -> impl Fn((&'b mut [u8], usize)) -> Result<(&'b mut [u8], usize), GenError> + 'a {
     move |input| {
         let v = vint_size(s.len() as u64);
 
@@ -265,9 +265,9 @@ impl EbmlSize for EBMLHeader {
     }
 }
 
-pub(crate) fn gen_ebml_header<'a>(
+pub(crate) fn gen_ebml_header<'a, 'b>(
     h: &'a EBMLHeader,
-) -> impl Fn((&'a mut [u8], usize)) -> Result<(&'a mut [u8], usize), GenError> {
+) -> impl Fn((&'b mut [u8], usize)) -> Result<(&'b mut [u8], usize), GenError> + 'a {
     move |input| {
         gen_ebml_master(
             0x1A45DFA3,
