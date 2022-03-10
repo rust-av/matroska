@@ -83,9 +83,9 @@ pub(crate) fn gen_skip(
 }
 
 #[inline]
-pub(crate) fn gen_slice<'a>(
-    v: &'a [u8],
-) -> impl Fn((&'a mut [u8], usize)) -> Result<(&'a mut [u8], usize), GenError> {
+pub(crate) fn gen_slice<'a, 'b>(
+    v: &'b [u8],
+) -> impl Fn((&'a mut [u8], usize)) -> Result<(&'a mut [u8], usize), GenError> + 'b {
     move |input| legacy_wrap(slice(v), input)
 }
 
