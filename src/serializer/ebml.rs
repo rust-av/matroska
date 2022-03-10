@@ -157,13 +157,6 @@ pub(crate) fn gen_f64(
     move |input| gen_type(id, 8, num, set_be_f64)(input)
 }
 
-pub(crate) fn gen_f64_ref<'a>(
-    id: u64,
-    num: &'a f64,
-) -> impl Fn((&'a mut [u8], usize)) -> Result<(&'a mut [u8], usize), GenError> {
-    move |input| gen_type(id, 8, *num, set_be_f64)(input)
-}
-
 pub(crate) fn gen_ebml_size(
     expected_size: u8,
     size: usize,

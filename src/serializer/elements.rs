@@ -9,7 +9,7 @@ use crate::{
     serializer::cookie_utils::{gen_many, gen_opt, gen_opt_copy, set_be_i16, tuple},
     serializer::ebml::{
         gen_ebml_binary, gen_ebml_int, gen_ebml_master, gen_ebml_str, gen_ebml_uint,
-        gen_ebml_uint_l, gen_f64, gen_f64_ref, gen_vid, gen_vint, vint_size, EbmlSize,
+        gen_ebml_uint_l, gen_f64, gen_vid, gen_vint, vint_size, EbmlSize,
     },
 };
 
@@ -86,7 +86,7 @@ pub(crate) fn gen_info<'a>(
                 gen_opt(i.next_filename.as_ref(), |v| gen_ebml_str(0x3E83BB, v)),
                 gen_opt(i.segment_family.as_ref(), |v| gen_ebml_binary(0x4444, v)),
                 gen_ebml_uint(0x2AD7B1, i.timecode_scale),
-                gen_opt(i.duration.as_ref(), |v| gen_f64_ref(0x4489, v)),
+                gen_opt(i.duration.as_ref(), |v| gen_f64(0x4489, *v)),
                 gen_opt(i.date_utc.as_ref(), |v| gen_ebml_binary(0x4461, v)),
                 gen_opt(i.title.as_ref(), |v| gen_ebml_str(0x7BA9, v)),
                 gen_ebml_str(0x4D80, &i.muxing_app),
