@@ -225,10 +225,10 @@ pub(crate) fn gen_ebml_int(
     }
 }
 
-pub(crate) fn gen_ebml_str<'a>(
+pub(crate) fn gen_ebml_str<'a, 'b>(
     id: u64,
-    s: &'a str,
-) -> impl Fn((&'a mut [u8], usize)) -> Result<(&'a mut [u8], usize), GenError> {
+    s: &'b str,
+) -> impl Fn((&'a mut [u8], usize)) -> Result<(&'a mut [u8], usize), GenError> + 'b {
     move |input| {
         let v = vint_size(s.len() as u64);
 
