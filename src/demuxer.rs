@@ -228,11 +228,9 @@ fn track_entry_audio_kind(t: &TrackEntry) -> Option<MediaKind> {
         } else {
             unimplemented!("Convert matroska map to rust-av map")
         };
-        // Allow for consistency reasons
-        #[allow(clippy::redundant_field_names)]
         let a = AudioInfo {
             rate: rate as usize,
-            map: map,
+            map,
             format: None,
         };
         Some(MediaKind::Audio(a))
