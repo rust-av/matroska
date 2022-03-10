@@ -1,32 +1,29 @@
-#[macro_use]
-extern crate log;
-
-use av_format::{buffer::AccReader, demuxer::Event, muxer};
-
-use av_format::demuxer::Context as DemuxerCtx;
-use matroska::{demuxer::MkvDemuxer, muxer::MkvMuxer};
+use std::path::PathBuf;
 use std::{fs::File, sync::Arc};
 
-// Command line interface
-use std::path::PathBuf;
-use structopt::StructOpt;
+use clap::{Parser, StructOpt};
+use log::{debug, error};
+
+use av_format::demuxer::Context as DemuxerCtx;
+use av_format::{buffer::AccReader, demuxer::Event, muxer};
+use matroska::{demuxer::MkvDemuxer, muxer::MkvMuxer};
 
 #[derive(StructOpt, Debug)]
 #[structopt(name = "matroska remux")]
 /// Simple Audio Video Encoding tool
 struct Opt {
     /// Input file
-    #[structopt(short = "i", parse(from_os_str))]
+    #[structopt(short = 'i', parse(from_os_str))]
     input: PathBuf,
     /// Output file
-    #[structopt(short = "o", parse(from_os_str))]
+    #[structopt(short = 'o', parse(from_os_str))]
     output: PathBuf,
 }
 
 fn main() {
     pretty_env_logger::init();
 
-    let opt = Opt::from_args();
+    let opt = Opt::parse();
 
     let file = std::fs::File::open(opt.input).unwrap();
 
