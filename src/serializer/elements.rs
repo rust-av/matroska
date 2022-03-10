@@ -24,9 +24,9 @@ impl EbmlSize for Seek {
     }
 }
 
-fn gen_seek<'a>(
+fn gen_seek<'a, 'b>(
     s: &'a Seek,
-) -> impl Fn((&'a mut [u8], usize)) -> Result<(&'a mut [u8], usize), GenError> {
+) -> impl Fn((&'b mut [u8], usize)) -> Result<(&'b mut [u8], usize), GenError> + 'a {
     move |input| {
         gen_ebml_master(
             0x4DBB,
@@ -47,9 +47,9 @@ impl EbmlSize for SeekHead {
     }
 }
 
-pub(crate) fn gen_seek_head<'a>(
+pub(crate) fn gen_seek_head<'a, 'b>(
     s: &'a SeekHead,
-) -> impl Fn((&'a mut [u8], usize)) -> Result<(&'a mut [u8], usize), GenError> {
+) -> impl Fn((&'b mut [u8], usize)) -> Result<(&'b mut [u8], usize), GenError> + 'a {
     move |input| {
         let byte_capacity = vint_size(s.capacity() as u64);
         gen_ebml_master(0x114D9B74, byte_capacity, gen_many(&s.positions, gen_seek))(input)
@@ -69,9 +69,9 @@ impl EbmlSize for Info {
     }
 }
 
-pub(crate) fn gen_info<'a>(
+pub(crate) fn gen_info<'a, 'b>(
     i: &'a Info,
-) -> impl Fn((&'a mut [u8], usize)) -> Result<(&'a mut [u8], usize), GenError> {
+) -> impl Fn((&'b mut [u8], usize)) -> Result<(&'b mut [u8], usize), GenError> + 'a {
     move |input| {
         let byte_capacity = vint_size(i.capacity() as u64);
         gen_ebml_master(
@@ -104,9 +104,9 @@ impl EbmlSize for Tracks {
     }
 }
 
-pub(crate) fn gen_tracks<'a>(
+pub(crate) fn gen_tracks<'a, 'b>(
     t: &'a Tracks,
-) -> impl Fn((&'a mut [u8], usize)) -> Result<(&'a mut [u8], usize), GenError> {
+) -> impl Fn((&'b mut [u8], usize)) -> Result<(&'b mut [u8], usize), GenError> + 'a {
     move |input| {
         let byte_capacity = vint_size(t.capacity() as u64);
         gen_ebml_master(
@@ -157,9 +157,9 @@ impl EbmlSize for TrackEntry {
     }
 }
 
-fn gen_track_entry<'a>(
+fn gen_track_entry<'a, 'b>(
     t: &'a TrackEntry,
-) -> impl Fn((&'a mut [u8], usize)) -> Result<(&'a mut [u8], usize), GenError> {
+) -> impl Fn((&'b mut [u8], usize)) -> Result<(&'b mut [u8], usize), GenError> + 'a {
     move |input| {
         let capacity = t.capacity();
 
@@ -224,9 +224,9 @@ impl EbmlSize for Audio {
     }
 }
 
-fn gen_track_entry_audio<'a>(
+fn gen_track_entry_audio<'a, 'b>(
     a: &'a Audio,
-) -> impl Fn((&'a mut [u8], usize)) -> Result<(&'a mut [u8], usize), GenError> {
+) -> impl Fn((&'b mut [u8], usize)) -> Result<(&'b mut [u8], usize), GenError> + 'a {
     move |input| {
         let byte_capacity = vint_size(a.capacity() as u64);
 
@@ -269,9 +269,9 @@ impl EbmlSize for Video {
     }
 }
 
-fn gen_track_entry_video<'a>(
+fn gen_track_entry_video<'a, 'b>(
     v: &'a Video,
-) -> impl Fn((&'a mut [u8], usize)) -> Result<(&'a mut [u8], usize), GenError> {
+) -> impl Fn((&'b mut [u8], usize)) -> Result<(&'b mut [u8], usize), GenError> + 'a {
     move |input| {
         let byte_capacity = vint_size(v.capacity() as u64);
 
@@ -325,9 +325,9 @@ impl EbmlSize for Colour {
     }
 }
 
-fn gen_track_entry_video_colour<'a>(
+fn gen_track_entry_video_colour<'a, 'b>(
     c: &'a Colour,
-) -> impl Fn((&'a mut [u8], usize)) -> Result<(&'a mut [u8], usize), GenError> {
+) -> impl Fn((&'b mut [u8], usize)) -> Result<(&'b mut [u8], usize), GenError> + 'a {
     move |input| {
         let byte_capacity = vint_size(c.capacity() as u64);
 
@@ -371,9 +371,9 @@ impl EbmlSize for MasteringMetadata {
     }
 }
 
-fn gen_track_entry_video_colour_mastering_metadata<'a>(
+fn gen_track_entry_video_colour_mastering_metadata<'a, 'b>(
     m: &'a MasteringMetadata,
-) -> impl Fn((&'a mut [u8], usize)) -> Result<(&'a mut [u8], usize), GenError> {
+) -> impl Fn((&'b mut [u8], usize)) -> Result<(&'b mut [u8], usize), GenError> + 'a {
     move |input| {
         let byte_capacity = vint_size(m.capacity() as u64);
 
@@ -406,9 +406,9 @@ impl EbmlSize for Projection {
     }
 }
 
-fn gen_track_entry_video_projection<'a>(
+fn gen_track_entry_video_projection<'a, 'b>(
     p: &'a Projection,
-) -> impl Fn((&'a mut [u8], usize)) -> Result<(&'a mut [u8], usize), GenError> {
+) -> impl Fn((&'b mut [u8], usize)) -> Result<(&'b mut [u8], usize), GenError> + 'a {
     move |input| {
         let byte_capacity = vint_size(p.capacity() as u64);
 
@@ -438,9 +438,9 @@ impl<'a> EbmlSize for Cluster<'a> {
     }
 }
 
-pub(crate) fn gen_cluster<'a>(
+pub(crate) fn gen_cluster<'a, 'b>(
     c: &'a Cluster,
-) -> impl Fn((&'a mut [u8], usize)) -> Result<(&'a mut [u8], usize), GenError> {
+) -> impl Fn((&'b mut [u8], usize)) -> Result<(&'b mut [u8], usize), GenError> + 'a {
     move |input| {
         let byte_capacity = vint_size(c.capacity() as u64);
         gen_ebml_master(
@@ -466,9 +466,9 @@ impl EbmlSize for SilentTracks {
     }
 }
 
-fn gen_silent_tracks<'a>(
+fn gen_silent_tracks<'a, 'b>(
     s: &'a SilentTracks,
-) -> impl Fn((&'a mut [u8], usize)) -> Result<(&'a mut [u8], usize), GenError> {
+) -> impl Fn((&'b mut [u8], usize)) -> Result<(&'b mut [u8], usize), GenError> + 'a {
     move |input| {
         let byte_capacity = vint_size(s.capacity() as u64);
         gen_ebml_master(
@@ -479,9 +479,9 @@ fn gen_silent_tracks<'a>(
     }
 }
 
-pub(crate) fn gen_simple_block_header<'a>(
+pub(crate) fn gen_simple_block_header<'a, 'b>(
     s: &'a SimpleBlock,
-) -> impl Fn((&'a mut [u8], usize)) -> Result<(&'a mut [u8], usize), GenError> {
+) -> impl Fn((&'b mut [u8], usize)) -> Result<(&'b mut [u8], usize), GenError> + 'a {
     move |input| {
         let mut flags = 0u8;
 

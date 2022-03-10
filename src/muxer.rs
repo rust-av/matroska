@@ -467,13 +467,13 @@ fn offset<'a>(original: &(&'a [u8], usize), subslice: &(&'a [u8], usize)) -> usi
 }
 
 #[allow(dead_code)]
-fn gen_mkv_prefix<'a>(
-    input: (&'a mut [u8], usize),
-    header: &'a EBMLHeader,
-    seek_head: &'a SeekHead,
-    info: &'a Info,
-    tracks: &'a Tracks,
-) -> ::std::result::Result<(&'a mut [u8], usize), GenError> {
+fn gen_mkv_prefix<'b>(
+    input: (&'b mut [u8], usize),
+    header: &EBMLHeader,
+    seek_head: &SeekHead,
+    info: &Info,
+    tracks: &Tracks,
+) -> std::result::Result<(&'b mut [u8], usize), GenError> {
     tuple((
         gen_ebml_header(header),
         gen_seek_head(seek_head),
