@@ -34,8 +34,6 @@ pub(crate) fn gen_vint(
     move |mut input| {
         let needed_bytes = vint_size(num);
 
-        assert!(num < (1u64 << 56) - 1);
-
         let num = num | 1u64 << (needed_bytes * 7);
 
         let mut i = needed_bytes - 1;
@@ -373,11 +371,13 @@ mod tests {
     use cookie_factory::gen::set_be_u64;
     use log::info;
     use nom::{HexDisplay, IResult};
-    use quickcheck::quickcheck;
+    use quickcheck::{quickcheck, TestResult};
 
     use crate::ebml::Error;
 
     use super::*;
+
+    const ALLOWED_ID_VALUES: u64 = (1u64 << 56) - 1;
 
     fn gen_u64(
         id: u64,
@@ -415,8 +415,11 @@ mod tests {
     }
 
     quickcheck! {
-      fn test_vint(i: u64) -> bool {
-        test_vint_serializer(i)
+      fn test_vint(i: u64) -> TestResult {
+        if i < ALLOWED_ID_VALUES  {
+          return TestResult::from_bool(test_vint_serializer(i));
+        }
+        TestResult::discard()
       }
     }
 
