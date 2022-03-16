@@ -563,11 +563,13 @@ mod tests {
 
     use super::*;
 
+    const ALLOWED_SEEK_POSITIONS: u64 = (1u64 << 56) - 1;
+
     impl Arbitrary for Seek {
-        fn arbitrary<G: Gen>(g: &mut G) -> Seek {
+        fn arbitrary(g: &mut Gen) -> Seek {
             Seek {
                 id: Vec::<u8>::arbitrary(g),
-                position: u64::arbitrary(g),
+                position: u64::arbitrary(g).min(ALLOWED_SEEK_POSITIONS - 1),
             }
         }
     }
