@@ -557,13 +557,22 @@ fn gen_fixed_size_laced_frames<'a>(
 mod tests {
     use log::trace;
     use nom::HexDisplay;
-    use quickcheck::quickcheck;
+    use quickcheck::{quickcheck, Arbitrary, Gen};
 
     use crate::elements::SegmentElement;
 
     use super::*;
 
-    fn test_seek_head_serializer(seeks: Vec<(u64, Vec<u8>)>) -> bool {
+    impl Arbitrary for Seek {
+        fn arbitrary<G: Gen>(g: &mut G) -> Seek {
+            Seek {
+                id: Vec::<u8>::arbitrary(g),
+                position: u64::arbitrary(g),
+            }
+        }
+    }
+
+    fn test_seek_head_serializer(seeks: Vec<Seek>) -> bool {
         trace!("testing for {:?}", seeks);
 
         let mut should_fail = false;
@@ -571,9 +580,9 @@ mod tests {
             should_fail = true;
         }
 
-        for &(_, ref id) in seeks.iter() {
-            trace!("id: {}", id.to_hex(16));
-            if id.is_empty() {
+        for seek in seeks.iter() {
+            trace!("id: {}", seek.id.to_hex(16));
+            if seek.id.is_empty() {
                 trace!("id is empty, returning");
                 return true;
             }
@@ -585,17 +594,13 @@ mod tests {
 
         let capacity = seeks
             .iter()
-            .fold(0, |acc, &(_, ref v)| acc + 8 + v.len() + 100);
+            .fold(0, |acc, seek| acc + 8 + seek.id.len() + 100);
         trace!("defining capacity as {}", capacity);
 
         let mut data = vec![0; capacity];
 
         let seek_head = SeekHead {
-            positions: seeks
-                .iter()
-                .cloned()
-                .map(|(position, id)| Seek { id, position })
-                .collect(),
+            positions: seeks.to_owned(),
         };
 
         let ser_res = {
@@ -634,7 +639,7 @@ mod tests {
     }
 
     quickcheck! {
-      fn test_seek_head(seeks: Vec<(u64, Vec<u8>)>) -> bool {
+      fn test_seek_head(seeks: Vec<Seek>) -> bool {
         test_seek_head_serializer(seeks)
       }
     }
