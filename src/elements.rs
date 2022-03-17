@@ -402,6 +402,32 @@ pub fn tracks(input: &[u8]) -> IResult<&[u8], SegmentElement, Error> {
     })(input)
 }
 
+pub(crate) enum TrackType {
+    Video,
+    Audio,
+    Other,
+}
+
+impl From<u64> for TrackType {
+    fn from(val: u64) -> Self {
+        match val {
+            0x1 => Self::Video,
+            0x2 => Self::Audio,
+            _ => Self::Other,
+        }
+    }
+}
+
+impl From<TrackType> for u64 {
+    fn from(val: TrackType) -> Self {
+        match val {
+            TrackType::Video => 0x1,
+            TrackType::Audio => 0x2,
+            TrackType::Other => 0,
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Default)]
 pub struct TrackEntry {
     pub track_number: u64,
