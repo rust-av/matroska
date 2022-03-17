@@ -330,10 +330,7 @@ impl Descriptor for Des {
         &self.d
     }
     fn probe(&self, data: &[u8]) -> u8 {
-        match ebml_header(&data[..100]) {
-            Ok(_) => 100,
-            _ => 0,
-        }
+        ebml_header(&data[..100]).map(|_| 100).unwrap_or(0)
     }
 }
 
