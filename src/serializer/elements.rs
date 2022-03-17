@@ -557,19 +557,17 @@ fn gen_fixed_size_laced_frames<'a>(
 mod tests {
     use log::trace;
     use nom::HexDisplay;
-    use quickcheck::{quickcheck, Arbitrary, Gen};
+    use quickcheck::{quickcheck, Arbitrary, Gen, TestResult};
 
     use crate::elements::SegmentElement;
 
     use super::*;
 
-    const ALLOWED_SEEK_POSITIONS: u64 = (1u64 << 56) - 1;
-
     impl Arbitrary for Seek {
         fn arbitrary(g: &mut Gen) -> Seek {
             Seek {
                 id: Vec::<u8>::arbitrary(g),
-                position: u64::arbitrary(g).min(ALLOWED_SEEK_POSITIONS - 1),
+                position: u64::arbitrary(g),
             }
         }
     }
@@ -577,21 +575,12 @@ mod tests {
     fn test_seek_head_serializer(seeks: Vec<Seek>) -> bool {
         trace!("testing for {:?}", seeks);
 
-        let mut should_fail = false;
-        if seeks.is_empty() {
-            should_fail = true;
-        }
-
         for seek in seeks.iter() {
             trace!("id: {}", seek.id.to_hex(16));
             if seek.id.is_empty() {
                 trace!("id is empty, returning");
                 return true;
             }
-        }
-
-        if should_fail {
-            trace!("the parser should fail");
         }
 
         let capacity = seeks
@@ -610,8 +599,8 @@ mod tests {
             trace!("gen_res: {:?}", gen_res);
             if let Err(e) = gen_res {
                 trace!("gen_res is error: {:?}", e);
-                trace!("should fail: {:?}", should_fail);
-                return should_fail;
+                // Do not fail if quickcheck generated data is too large
+                return true;
             }
         };
 
@@ -620,29 +609,22 @@ mod tests {
         let parse_res = crate::elements::segment_element(&data[..]);
         trace!("parse_res: {:?}", parse_res);
         match parse_res {
-            Ok((_rest, SegmentElement::SeekHead(o))) => {
-                if should_fail {
-                    trace!("parser should have failed on input for {:?}", seek_head);
-                    trace!("{}", (&data[..]).to_hex(16));
-                    return false;
-                }
-
+            Ok((_, SegmentElement::SeekHead(o))) => {
                 assert_eq!(seek_head, o);
                 true
             }
             e => {
-                if should_fail {
-                    return true;
-                }
-
                 panic!("{}", format!("parse error: {:?} for input: {:?}", e, seeks))
             }
         }
     }
 
     quickcheck! {
-      fn test_seek_head(seeks: Vec<Seek>) -> bool {
-        test_seek_head_serializer(seeks)
+      fn test_seek_head(seeks: Vec<Seek>) -> TestResult {
+        if seeks.is_empty() {
+            return TestResult::discard();
+        }
+        TestResult::from_bool(test_seek_head_serializer(seeks))
       }
     }
 }

@@ -379,15 +379,13 @@ impl EbmlSize for Vec<u64> {
 #[cfg(test)]
 mod tests {
     use cookie_factory::gen::set_be_u64;
-    use log::info;
+    use log::{info, trace};
     use nom::{HexDisplay, IResult};
-    use quickcheck::{quickcheck, TestResult};
+    use quickcheck::quickcheck;
 
     use crate::ebml::Error;
 
     use super::*;
-
-    const ALLOWED_ID_VALUES: u64 = (1u64 << 56) - 1;
 
     fn gen_u64(
         id: u64,
@@ -409,6 +407,11 @@ mod tests {
         let mut data = [0u8; 10];
         {
             let gen_res = gen_vint(i)((&mut data[..], 0));
+            if let Err(e) = gen_res {
+                trace!("gen_res is error: {:?}", e);
+                // Do not fail if quickcheck generated data is too large
+                return true;
+            }
             info!("gen_res: {:?}", gen_res);
         }
         info!("{}", (&data[..]).to_hex(16));
@@ -425,11 +428,8 @@ mod tests {
     }
 
     quickcheck! {
-      fn test_vint(i: u64) -> TestResult {
-        if i < ALLOWED_ID_VALUES  {
-          return TestResult::from_bool(test_vint_serializer(i));
-        }
-        TestResult::discard()
+      fn test_vint(i: u64) -> bool {
+        test_vint_serializer(i)
       }
     }
 
@@ -550,7 +550,7 @@ mod tests {
         {
           let gen_res = gen_ebml_header(&header)((&mut data[..], 0));
           info!("gen_res: {:?}", gen_res);
-          // do not fail if quickcheck generated data that is too large
+          // Do not fail if quickcheck generated data is too large
           match gen_res {
             Err(GenError::BufferTooSmall(_)) => return true,
             Err(_) => return false,
