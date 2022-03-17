@@ -80,40 +80,42 @@ impl MkvDemuxer {
             match element {
                 SegmentElement::SeekHead(s) => {
                     trace!("got seek head: {:#?}", s);
-                    if self.seek_head.is_some() {
-                        return Err(Err::Error(custom_error(input, 1)));
+                    self.seek_head = if self.seek_head.is_none() {
+                        Some(s)
                     } else {
-                        self.seek_head = Some(s);
-                    }
+                        return Err(Err::Error(custom_error(input, 1)));
+                    };
                 }
                 SegmentElement::Info(i) => {
                     trace!("got info: {:#?}", i);
-                    if self.info.is_some() {
-                        return Err(Err::Error(custom_error(input, 1)));
+                    self.info = if self.info.is_none() {
+                        Some(i)
                     } else {
-                        self.info = Some(i);
-                    }
+                        return Err(Err::Error(custom_error(input, 1)));
+                    };
                 }
                 SegmentElement::Tracks(t) => {
                     trace!("got tracks: {:#?}", t);
-                    if self.tracks.is_some() {
-                        return Err(Err::Error(custom_error(input, 1)));
-                    } else {
-                        let mut t = t;
-
+                    self.tracks = if self.tracks.is_none() {
                         // Only keep tracks we're interested in
                         if let Some(params) = &self.params {
                             if let Some(track_numbers) = &params.track_numbers {
+                                let mut t = t;
                                 t.tracks = t
                                     .tracks
                                     .into_iter()
                                     .filter(|tr| track_numbers.contains(&tr.track_number))
                                     .collect();
+                                Some(t)
+                            } else {
+                                None
                             }
-                        };
-
-                        self.tracks = Some(t);
-                    }
+                        } else {
+                            None
+                        }
+                    } else {
+                        return Err(Err::Error(custom_error(input, 1)));
+                    };
                 }
                 el => {
                     debug!("got element: {:#?}", el);
