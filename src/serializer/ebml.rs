@@ -7,7 +7,13 @@ use crate::serializer::cookie_utils::{
     gen_at_offset, gen_skip, gen_slice, set_be_f64, set_be_i8, tuple,
 };
 
-pub(crate) fn vint_size(i: u64) -> u8 {
+const ALLOWED_ID_VALUES: u64 = (1u64 << 56) - 1;
+
+pub(crate) fn vint_size(i: u64) -> Result<u8, GenError> {
+    if i >= ALLOWED_ID_VALUES {
+        return Err(GenError::CustomError(0));
+    }
+
     let mut val = 1;
 
     loop {
@@ -17,7 +23,7 @@ pub(crate) fn vint_size(i: u64) -> u8 {
 
         val += 1;
     }
-    val
+    Ok(val)
 }
 
 pub(crate) fn log2(i: u64) -> u32 {
@@ -32,7 +38,7 @@ pub(crate) fn gen_vint(
     num: u64,
 ) -> impl Fn((&mut [u8], usize)) -> Result<(&mut [u8], usize), GenError> {
     move |mut input| {
-        let needed_bytes = vint_size(num);
+        let needed_bytes = vint_size(num)?;
 
         let num = num | 1u64 << (needed_bytes * 7);
 
@@ -85,7 +91,7 @@ pub(crate) fn gen_uint(
     num: u64,
 ) -> impl Fn((&mut [u8], usize)) -> Result<(&mut [u8], usize), GenError> {
     move |mut input| {
-        let needed_bytes = vint_size(num);
+        let needed_bytes = vint_size(num)?;
 
         let mut i = needed_bytes - 1;
         loop {
@@ -111,7 +117,7 @@ pub(crate) fn gen_int(
     num: i64,
 ) -> impl Fn((&mut [u8], usize)) -> Result<(&mut [u8], usize), GenError> {
     move |mut input| {
-        let needed_bytes = vint_size(num as u64);
+        let needed_bytes = vint_size(num as u64)?;
 
         let mut i = needed_bytes - 1;
         loop {
@@ -160,7 +166,7 @@ pub(crate) fn gen_ebml_size(
     size: usize,
 ) -> impl Fn((&mut [u8], usize)) -> Result<(&mut [u8], usize), GenError> {
     move |input| {
-        let v = vint_size(size as u64);
+        let v = vint_size(size as u64)?;
 
         if v > expected_size {
             Err(GenError::CustomError(0))
@@ -186,13 +192,17 @@ where
     }
 }
 
-pub(crate) fn gen_ebml_uint_l(
+pub(crate) fn gen_ebml_uint_l<G>(
     id: u64,
     num: u64,
-    expected_size: u8,
-) -> impl Fn((&mut [u8], usize)) -> Result<(&mut [u8], usize), GenError> {
+    expected_size: G,
+) -> impl Fn((&mut [u8], usize)) -> Result<(&mut [u8], usize), GenError>
+where
+    G: Fn() -> Result<u8, GenError>,
+{
     move |input| {
-        let needed_bytes = vint_size(expected_size as u64);
+        let expected_size = expected_size()?;
+        let needed_bytes = vint_size(expected_size as u64)?;
 
         let (buf, ofs_len) = gen_vid(id)(input)?;
         let (buf, start) = gen_skip(needed_bytes as usize)((buf, ofs_len))?;
@@ -205,7 +215,7 @@ pub(crate) fn gen_ebml_uint(
     id: u64,
     num: u64,
 ) -> impl Fn((&mut [u8], usize)) -> Result<(&mut [u8], usize), GenError> {
-    gen_ebml_uint_l(id, num, vint_size(num))
+    gen_ebml_uint_l(id, num, move || vint_size(num))
 }
 
 pub(crate) fn gen_ebml_int(
@@ -213,8 +223,8 @@ pub(crate) fn gen_ebml_int(
     num: i64,
 ) -> impl Fn((&mut [u8], usize)) -> Result<(&mut [u8], usize), GenError> {
     move |input| {
-        let expected_size = vint_size(num as u64);
-        let needed_bytes = vint_size(expected_size as u64);
+        let expected_size = vint_size(num as u64)?;
+        let needed_bytes = vint_size(expected_size as u64)?;
 
         let (buf, ofs_len) = gen_vid(id)(input)?;
         let (buf, start) = gen_skip(needed_bytes as usize)((buf, ofs_len))?;
@@ -228,7 +238,7 @@ pub(crate) fn gen_ebml_str<'a, 'b>(
     s: &'a str,
 ) -> impl Fn((&'b mut [u8], usize)) -> Result<(&'b mut [u8], usize), GenError> + 'a {
     move |input| {
-        let v = vint_size(s.len() as u64);
+        let v = vint_size(s.len() as u64)?;
 
         let (buf, ofs_len) = gen_vid(id)(input)?;
         let (buf, start) = gen_skip(v as usize)((buf, ofs_len))?;
@@ -242,7 +252,7 @@ pub(crate) fn gen_ebml_binary<'a, 'b>(
     s: &'a [u8],
 ) -> impl Fn((&'b mut [u8], usize)) -> Result<(&'b mut [u8], usize), GenError> + 'a {
     move |input| {
-        let v = vint_size(s.len() as u64);
+        let v = vint_size(s.len() as u64)?;
 
         let (buf, ofs_len) = gen_vid(id)(input)?;
         let (buf, start) = gen_skip(v as usize)((buf, ofs_len))?;
@@ -269,15 +279,15 @@ pub(crate) fn gen_ebml_header<'a, 'b>(
     move |input| {
         gen_ebml_master(
             0x1A45DFA3,
-            vint_size(h.capacity() as u64),
+            vint_size(h.capacity() as u64)?,
             tuple((
-                gen_ebml_uint_l(0x4286, h.version, 1),
-                gen_ebml_uint_l(0x42F7, h.read_version, 1),
-                gen_ebml_uint_l(0x42F2, h.max_id_length, 1),
-                gen_ebml_uint_l(0x42F3, h.max_size_length, 1),
+                gen_ebml_uint_l(0x4286, h.version, || Ok(1)),
+                gen_ebml_uint_l(0x42F7, h.read_version, || Ok(1)),
+                gen_ebml_uint_l(0x42F2, h.max_id_length, || Ok(1)),
+                gen_ebml_uint_l(0x42F3, h.max_size_length, || Ok(1)),
                 gen_ebml_str(0x4282, &h.doc_type),
-                gen_ebml_uint_l(0x4287, h.doc_type_version, 1),
-                gen_ebml_uint_l(0x4285, h.doc_type_read_version, 1),
+                gen_ebml_uint_l(0x4287, h.doc_type_version, || Ok(1)),
+                gen_ebml_uint_l(0x4285, h.doc_type_read_version, || Ok(1)),
             )),
         )(input)
     }
@@ -289,7 +299,7 @@ pub trait EbmlSize {
     fn size(&self, id: u64) -> usize {
         let id_size = vid_size(id);
         let self_size = self.capacity();
-        let size_tag_size = vint_size(self_size as u64);
+        let size_tag_size = vint_size(self_size as u64).unwrap_or(0);
 
         id_size as usize + size_tag_size as usize + self_size as usize
     }
@@ -297,13 +307,13 @@ pub trait EbmlSize {
 
 impl EbmlSize for u64 {
     fn capacity(&self) -> usize {
-        vint_size(*self) as usize
+        vint_size(*self).unwrap_or(0) as usize
     }
 }
 
 impl EbmlSize for i64 {
     fn capacity(&self) -> usize {
-        vint_size(*self as u64) as usize
+        vint_size(*self as u64).unwrap_or(0) as usize
     }
 }
 
@@ -327,7 +337,7 @@ impl<T: EbmlSize> EbmlSize for Option<T> {
             Some(_) => {
                 let id_size = vid_size(id);
                 let self_size = self.capacity();
-                let size_tag_size = vint_size(self_size as u64);
+                let size_tag_size = vint_size(self_size as u64).unwrap_or(0);
 
                 id_size as usize + size_tag_size as usize + self_size as usize
             }
