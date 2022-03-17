@@ -100,21 +100,17 @@ impl MkvDemuxer {
                     trace!("got tracks: {:#?}", t);
                     self.tracks = if self.tracks.is_none() {
                         // Only keep tracks we're interested in
-                        if let Some(params) = &self.params {
-                            if let Some(track_numbers) = &params.track_numbers {
+                        self.params.as_ref().and_then(|params| {
+                            params.track_numbers.as_ref().map(|track_numbers| {
                                 let mut t = t;
                                 t.tracks = t
                                     .tracks
                                     .into_iter()
                                     .filter(|tr| track_numbers.contains(&tr.track_number))
                                     .collect();
-                                Some(t)
-                            } else {
-                                None
-                            }
-                        } else {
-                            None
-                        }
+                                t
+                            })
+                        })
                     } else {
                         return Err(Err::Error(custom_error(input, 1)));
                     };
@@ -167,17 +163,13 @@ impl Demuxer for MkvDemuxer {
             match segment_element(buf.data()) {
                 Ok((i, element)) => {
                     let seek = SeekFrom::Current(buf.data().offset(i) as i64);
-                    match element {
-                        SegmentElement::Cluster(c) => {
-                            //self.clusters.push(c);
-                            debug!("got cluster element at timecode: {}", c.timecode);
-                            let mut packets = c.generate_packets(self.tracks.as_ref().unwrap());
-                            self.queue.extend(packets.drain(..));
-                            if let Some(event) = self.queue.pop_front() {
-                                return Ok((seek, event));
-                            }
+                    if let SegmentElement::Cluster(c) = element {
+                        debug!("got cluster element at timecode: {}", c.timecode);
+                        let mut packets = c.generate_packets(self.tracks.as_ref().unwrap());
+                        self.queue.extend(packets.drain(..));
+                        if let Some(event) = self.queue.pop_front() {
+                            return Ok((seek, event));
                         }
-                        _el => {}
                     }
                     Ok((seek, Event::MoreDataNeeded(0)))
                 }
@@ -216,11 +208,9 @@ fn track_entry_video_kind(video: &Video) -> Option<MediaKind> {
 }
 
 fn track_entry_audio_kind(audio: &Audio) -> Option<MediaKind> {
-    let rate = if let Some(r) = audio.output_sampling_frequency {
-        r
-    } else {
-        audio.sampling_frequency
-    };
+    let rate = audio
+        .output_sampling_frequency
+        .unwrap_or(audio.sampling_frequency);
     // TODO: complete it
     let map = if audio.channel_positions.is_none() {
         Some(ChannelMap::default_map(audio.channels as usize))
@@ -238,20 +228,8 @@ fn track_entry_audio_kind(audio: &Audio) -> Option<MediaKind> {
 fn track_entry_media_kind(t: &TrackEntry) -> Option<MediaKind> {
     // TODO: Use an enum for the track type
     match t.track_type {
-        0x1 => {
-            if let Some(ref video) = t.video {
-                track_entry_video_kind(video)
-            } else {
-                None
-            }
-        }
-        0x2 => {
-            if let Some(ref audio) = t.audio {
-                track_entry_audio_kind(audio)
-            } else {
-                None
-            }
-        }
+        0x1 => t.video.as_ref().and_then(track_entry_video_kind),
+        0x2 => t.audio.as_ref().and_then(track_entry_audio_kind),
         _ => None,
     }
 }
@@ -259,14 +237,13 @@ fn track_entry_media_kind(t: &TrackEntry) -> Option<MediaKind> {
 pub fn track_to_stream(info: &Info, t: &TrackEntry) -> Stream {
     let num = t
         .track_timecode_scale
-        .map(|ts| {
+        .map_or(info.timecode_scale as i64, |ts| {
             if ts != 0. {
                 (ts * info.timecode_scale as f64) as i64
             } else {
                 info.timecode_scale as i64
             }
-        })
-        .unwrap_or(info.timecode_scale as i64);
+        });
 
     Stream {
         id: t.track_uid as isize,
@@ -333,7 +310,7 @@ impl Descriptor for Des {
         &self.d
     }
     fn probe(&self, data: &[u8]) -> u8 {
-        ebml_header(&data[..100]).map(|_| 100).unwrap_or(0)
+        ebml_header(&data[..100]).map_or(0, |_| 100)
     }
 }
 
