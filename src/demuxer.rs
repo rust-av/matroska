@@ -3,7 +3,9 @@ use std::{collections::VecDeque, io::SeekFrom};
 use log::{debug, error, trace};
 use nom::{self, Err, IResult, Needed, Offset};
 
-use av_data::{packet::Packet, params::*, rational::Rational64, timeinfo::TimeInfo};
+use av_data::{
+    audiosample::ChannelMap, packet::Packet, params::*, rational::Rational64, timeinfo::TimeInfo,
+};
 use av_format::{
     buffer::Buffered,
     common::GlobalInfo,
@@ -15,7 +17,7 @@ use av_format::{
 use crate::{
     ebml::{self, custom_error, ebml_header, EBMLHeader},
     elements::{
-        segment, segment_element, simple_block, Cluster, Info, SeekHead, SegmentElement,
+        segment, segment_element, simple_block, Audio, Cluster, Info, SeekHead, SegmentElement,
         TrackEntry, Tracks,
     },
 };
@@ -218,37 +220,37 @@ fn track_entry_video_kind(t: &TrackEntry) -> Option<MediaKind> {
     }
 }
 
-fn track_entry_audio_kind(t: &TrackEntry) -> Option<MediaKind> {
-    use av_data::audiosample::*;
-    // TODO: Validate that a track::video exists for track::type video before.
-    if let Some(ref audio) = t.audio {
-        let rate = if let Some(r) = audio.output_sampling_frequency {
-            r
-        } else {
-            audio.sampling_frequency
-        };
-        // TODO: complete it
-        let map = if audio.channel_positions.is_none() {
-            Some(ChannelMap::default_map(audio.channels as usize))
-        } else {
-            unimplemented!("Convert matroska map to rust-av map")
-        };
-        let a = AudioInfo {
-            rate: rate as usize,
-            map,
-            format: None,
-        };
-        Some(MediaKind::Audio(a))
+fn track_entry_audio_kind(audio: &Audio) -> Option<MediaKind> {
+    let rate = if let Some(r) = audio.output_sampling_frequency {
+        r
     } else {
-        None
-    }
+        audio.sampling_frequency
+    };
+    // TODO: complete it
+    let map = if audio.channel_positions.is_none() {
+        Some(ChannelMap::default_map(audio.channels as usize))
+    } else {
+        unimplemented!("Convert matroska map to rust-av map")
+    };
+    let a = AudioInfo {
+        rate: rate as usize,
+        map,
+        format: None,
+    };
+    Some(MediaKind::Audio(a))
 }
 
 fn track_entry_media_kind(t: &TrackEntry) -> Option<MediaKind> {
     // TODO: Use an enum for the track type
     match t.track_type {
         0x1 => track_entry_video_kind(t),
-        0x2 => track_entry_audio_kind(t),
+        0x2 => {
+            if let Some(ref audio) = t.audio {
+                track_entry_audio_kind(audio)
+            } else {
+                None
+            }
+        }
         _ => None,
     }
 }
