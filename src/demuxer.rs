@@ -18,7 +18,7 @@ use crate::{
     ebml::{self, custom_error, ebml_header, EBMLHeader},
     elements::{
         segment, segment_element, simple_block, Audio, Cluster, Info, SeekHead, SegmentElement,
-        TrackEntry, Tracks, Video,
+        TrackEntry, TrackType, Tracks, Video,
     },
 };
 
@@ -36,22 +36,6 @@ pub struct MkvDemuxer {
 #[derive(Debug, Clone, Default)]
 pub struct DemuxerParams {
     pub track_numbers: Option<Vec<u64>>,
-}
-
-enum TrackType {
-    Video,
-    Audio,
-    Other,
-}
-
-impl From<u64> for TrackType {
-    fn from(val: u64) -> Self {
-        match val {
-            0x1 => Self::Video,
-            0x2 => Self::Audio,
-            _ => Self::Other,
-        }
-    }
 }
 
 impl MkvDemuxer {

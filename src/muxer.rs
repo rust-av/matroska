@@ -10,8 +10,8 @@ use av_format::{common::GlobalInfo, error::*, muxer::*, stream::Stream};
 use crate::{
     ebml::EBMLHeader,
     elements::{
-        Audio, Cluster, Colour, Info, Lacing, Seek, SeekHead, SimpleBlock, TrackEntry, Tracks,
-        Video,
+        Audio, Cluster, Colour, Info, Lacing, Seek, SeekHead, SimpleBlock, TrackEntry, TrackType,
+        Tracks, Video,
     },
     serializer::{
         cookie_utils::tuple,
@@ -507,7 +507,7 @@ pub fn stream_to_track(s: &Stream) -> TrackEntry {
 
     match s.params.kind {
         Some(MediaKind::Video(ref v)) => {
-            t.track_type = 0x1;
+            t.track_type = TrackType::Video.into();
             t.video = Some(Video {
                 pixel_width: v.width as u64,
                 pixel_height: v.height as u64,
@@ -530,7 +530,7 @@ pub fn stream_to_track(s: &Stream) -> TrackEntry {
             });
         }
         Some(MediaKind::Audio(ref a)) => {
-            t.track_type = 0x2;
+            t.track_type = TrackType::Audio.into();
             t.audio = Some(Audio {
                 sampling_frequency: a.rate as f64,
                 channels: 1,
