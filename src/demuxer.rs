@@ -38,6 +38,22 @@ pub struct DemuxerParams {
     pub track_numbers: Option<Vec<u64>>,
 }
 
+enum TrackType {
+    Video,
+    Audio,
+    Other,
+}
+
+impl From<u64> for TrackType {
+    fn from(val: u64) -> Self {
+        match val {
+            0x1 => Self::Video,
+            0x2 => Self::Audio,
+            _ => Self::Other,
+        }
+    }
+}
+
 impl MkvDemuxer {
     pub fn new() -> MkvDemuxer {
         MkvDemuxer {
@@ -226,11 +242,10 @@ fn track_entry_audio_kind(audio: &Audio) -> Option<MediaKind> {
 }
 
 fn track_entry_media_kind(t: &TrackEntry) -> Option<MediaKind> {
-    // TODO: Use an enum for the track type
-    match t.track_type {
-        0x1 => t.video.as_ref().and_then(track_entry_video_kind),
-        0x2 => t.audio.as_ref().and_then(track_entry_audio_kind),
-        _ => None,
+    match t.track_type.into() {
+        TrackType::Video => t.video.as_ref().and_then(track_entry_video_kind),
+        TrackType::Audio => t.audio.as_ref().and_then(track_entry_audio_kind),
+        TrackType::Other => None,
     }
 }
 
