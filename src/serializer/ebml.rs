@@ -409,8 +409,9 @@ mod tests {
             let gen_res = gen_vint(i)((&mut data[..], 0));
             if let Err(e) = gen_res {
                 trace!("gen_res is error: {:?}", e);
+                trace!("Large id value: {:?}", i);
                 // Do not fail if quickcheck generated data is too large
-                return true;
+                return i >= ALLOWED_ID_VALUES;
             }
             info!("gen_res: {:?}", gen_res);
         }
