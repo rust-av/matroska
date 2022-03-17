@@ -18,7 +18,7 @@ use crate::{
     ebml::{self, custom_error, ebml_header, EBMLHeader},
     elements::{
         segment, segment_element, simple_block, Audio, Cluster, Info, SeekHead, SegmentElement,
-        TrackEntry, Tracks,
+        TrackEntry, Tracks, Video,
     },
 };
 
@@ -205,19 +205,14 @@ fn track_entry_codec_id(t: &TrackEntry) -> Option<String> {
     }
 }
 
-fn track_entry_video_kind(t: &TrackEntry) -> Option<MediaKind> {
-    // TODO: Validate that a track::video exists for track::type video before.
-    if let Some(ref video) = t.video {
-        let v = VideoInfo {
-            width: video.pixel_width as usize,
-            height: video.pixel_height as usize,
-            // TODO parse Colour and/or CodecPrivate to extract the format
-            format: None,
-        };
-        Some(MediaKind::Video(v))
-    } else {
-        None
-    }
+fn track_entry_video_kind(video: &Video) -> Option<MediaKind> {
+    let v = VideoInfo {
+        width: video.pixel_width as usize,
+        height: video.pixel_height as usize,
+        // TODO parse Colour and/or CodecPrivate to extract the format
+        format: None,
+    };
+    Some(MediaKind::Video(v))
 }
 
 fn track_entry_audio_kind(audio: &Audio) -> Option<MediaKind> {
@@ -243,7 +238,13 @@ fn track_entry_audio_kind(audio: &Audio) -> Option<MediaKind> {
 fn track_entry_media_kind(t: &TrackEntry) -> Option<MediaKind> {
     // TODO: Use an enum for the track type
     match t.track_type {
-        0x1 => track_entry_video_kind(t),
+        0x1 => {
+            if let Some(ref video) = t.video {
+                track_entry_video_kind(video)
+            } else {
+                None
+            }
+        }
         0x2 => {
             if let Some(ref audio) = t.audio {
                 track_entry_audio_kind(audio)
