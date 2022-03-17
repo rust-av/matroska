@@ -334,9 +334,11 @@ impl Muxer for MkvMuxer {
         self.blocks.push(v);
         self.blocks_len += len;
 
-        if self.timecode.is_none() {
-            self.timecode = Some(pkt.t.pts.or(pkt.t.dts).unwrap_or(0) as u64);
-        }
+        self.timecode = if self.timecode.is_none() {
+            Some(pkt.t.pts.or(pkt.t.dts).unwrap_or(0) as u64)
+        } else {
+            return Err(Error::InvalidData);
+        };
 
         if pkt.is_key || self.blocks_len >= 5242880 {
             {
@@ -441,15 +443,14 @@ impl Muxer for MkvMuxer {
             tracks: info.streams.iter().map(stream_to_track).collect(),
         });
 
-        let info = Info {
+        self.info = Some(Info {
             muxing_app: String::from("rust-av"),
             writing_app: String::from("rust-av"),
             duration: info.duration.map(|d| d as f64),
             timecode_scale: 1000000,
             ..Default::default()
-        };
+        });
 
-        self.info = Some(info);
         Ok(())
     }
 
