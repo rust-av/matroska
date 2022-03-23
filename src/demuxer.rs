@@ -99,21 +99,23 @@ impl MkvDemuxer {
                 SegmentElement::Tracks(t) => {
                     trace!("got tracks: {:#?}", t);
                     self.tracks = if self.tracks.is_none() {
+                        let mut t = t;
+
                         // Only keep tracks we're interested in
-                        self.params.as_ref().and_then(|params| {
-                            params.track_numbers.as_ref().map(|track_numbers| {
-                                let mut t = t;
+                        if let Some(params) = &self.params {
+                            if let Some(track_numbers) = &params.track_numbers {
                                 t.tracks = t
                                     .tracks
                                     .into_iter()
                                     .filter(|tr| track_numbers.contains(&tr.track_number))
                                     .collect();
-                                t
-                            })
-                        })
+                            }
+                        };
+
+                        Some(t)
                     } else {
                         return Err(Err::Error(custom_error(input, 1)));
-                    };
+                    }
                 }
                 el => {
                     debug!("got element: {:#?}", el);
