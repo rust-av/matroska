@@ -379,15 +379,14 @@ mod tests {
             Box::new(MkvDemuxer::new()),
             Box::new(AccReader::new(Cursor::new(webm))),
         );
-        info!("read headers: {:?}", context.read_headers().unwrap());
-        info!("streams: {:?}", context.info.streams);
-        info!("event: {:?}", context.read_event().unwrap());
-        info!("event: {:?}", context.read_event().unwrap());
-        info!("event: {:?}", context.read_event().unwrap());
-        info!("event: {:?}", context.read_event().unwrap());
-        info!("event: {:?}", context.read_event().unwrap());
-        info!("event: {:?}", context.read_event().unwrap());
-        info!("event: {:?}", context.read_event().unwrap());
-        info!("event: {:?}", context.read_event().unwrap());
+        context.read_headers().unwrap();
+        context.read_event().unwrap();
+        context.read_event().unwrap();
+        context.read_event().unwrap();
+        context.read_event().unwrap();
+        context.read_event().unwrap();
+        context.read_event().unwrap();
+        context.read_event().unwrap();
+        context.read_event().unwrap();
     }
 }
