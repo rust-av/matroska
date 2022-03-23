@@ -40,7 +40,7 @@ where
     move |input| {
         pair(vint, opt(ebml_binary(0xBF)))(input).and_then(|(i, (size, crc))| {
             take(usize_error(i, size - if crc.is_some() { 6 } else { 0 })?)(i)
-                .and_then(|(_, data)| second(data))
+                .and_then(|(i, data)| second(data).map(|(_, val)| (i, val)))
         })
     }
 }
