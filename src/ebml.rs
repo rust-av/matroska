@@ -166,6 +166,10 @@ pub fn parse_binary_data(size: u64) -> impl Fn(&[u8]) -> IResult<&[u8], Vec<u8>,
     }
 }
 
+pub fn parse_binary_data_ref(size: u64) -> impl Fn(&[u8]) -> IResult<&[u8], &[u8], Error> {
+    move |input| map(take(usize_error(input, size)?), |data| data)(input)
+}
+
 //FIXME: handle default values
 //FIXME: is that really following IEEE_754-1985 ?
 pub fn parse_float_data(size: u64) -> impl Fn(&[u8]) -> IResult<&[u8], f64, Error> {
@@ -217,11 +221,8 @@ pub fn ebml_binary<'a>(id: u64) -> impl Fn(&'a [u8]) -> IResult<&'a [u8], Vec<u8
     compute_ebml_type(id, parse_binary_data)
 }
 
-pub fn ebml_binary_ref(id: u64) -> impl Fn(&[u8]) -> IResult<&[u8], &[u8], Error> {
-    move |i| {
-        pair(verify(vid, |val| *val == id), vint)(i)
-            .and_then(|(i, (_, size))| take(usize_error(i, size)?)(i))
-    }
+pub fn ebml_binary_ref<'a>(id: u64) -> impl Fn(&'a [u8]) -> IResult<&'a [u8], &'a [u8], Error> {
+    compute_ebml_type(id, parse_binary_data_ref)
 }
 
 pub fn ebml_master<'a, G, O1>(
