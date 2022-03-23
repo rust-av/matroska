@@ -45,14 +45,14 @@ macro_rules! succ (
   (40, $submac:ident ! ($($rest:tt)*)) => ($submac!(41, $($rest)*));
 );
 
-pub(crate) trait Permutation<I, O, E> {
-    fn permutation(&mut self, input: I) -> IResult<I, O, E>;
+pub(crate) trait Permutation<'a, O, E> {
+    fn permutation(&mut self, input: &'a [u8]) -> IResult<&'a [u8], O, E>;
 }
 
-pub(crate) fn matroska_permutation<I: Clone, O, E: ParseError<I>, List: Permutation<I, O, E>>(
+pub(crate) fn matroska_permutation<'a, O, E: ParseError<&'a [u8]>, List: Permutation<'a, O, E>>(
     mut l: List,
-) -> impl FnMut(I) -> IResult<I, O, E> {
-    move |i: I| l.permutation(i)
+) -> impl FnMut(&'a [u8]) -> IResult<&'a [u8], O, E> {
+    move |i| l.permutation(i)
 }
 
 macro_rules! permutation_trait(
@@ -77,30 +77,50 @@ macro_rules! permutation_trait(
 
 macro_rules! permutation_trait_impl(
   ($($name:ident $ty:ident $item:ident),+) => (
-    impl<
-      Input: Clone, $($ty),+ , Error: ParseError<Input>,
-      $($name: Parser<Input, $ty, Error>),+
-    > Permutation<Input, ( $($ty),+ ), Error> for ( $($name),+ ) {
+    impl<'a,
+      $($ty),+ , Error: std::fmt::Debug + ParseError<&'a[u8]>,
+      $($name: Parser<&'a [u8], $ty, Error>),+
+    > Permutation<'a, ( $(Option<$ty>),+ ), Error> for ( $($name),+ ) {
 
-      fn permutation(&mut self, mut input: Input) -> IResult<Input, ( $($ty),+ ), Error> {
+      fn permutation(&mut self, mut input: &'a [u8]) -> IResult<&'a [u8], ( $(Option<$ty>),+ ), Error> {
+        let i_ = input.clone();
+
         let mut res = ($(Option::<$ty>::None),+);
 
-        loop {
+        // Sum of the permutation errors obtained applying each parser
+        let permutation_error = loop {
           let mut err: Option<Error> = None;
+
+          // Skip void elements
+          let void_res = crate::ebml::skip_void(input);
+          if let Ok((i,_)) = void_res {
+            input = i;
+            continue;
+          }
+
           permutation_trait_inner!(0, self, input, res, err, $($name)+);
 
           // If we reach here, every iterator has either been applied before,
           // or errored on the remaining input
-          if let Some(err) = err {
-            // There are remaining parsers, and all errored on the remaining input
-            return Err(Err::Error(Error::append(input, ErrorKind::Permutation, err)));
-          }
+          // Interrupt the loop because all parsers have been applied
+          break err.map(|err| Error::append(input, ErrorKind::Permutation, err));
+        };
 
-          // All parsers were applied
-          match res {
-            ($(Some($item)),+) => return Ok((input, ($($item),+))),
-            _ => unreachable!(),
-          }
+        // All parsers were applied
+        if let Some(unwrapped_res) = {
+            Some((
+              $(
+                 values!($ty, res),
+              )*
+            ))
+        } {
+            Ok((input, unwrapped_res))
+        } else if let Some(e) = permutation_error {
+            Err(Err::Error(e))
+        } else {
+            Err(Err::Error({
+                nom::error::make_error(i_, nom::error::ErrorKind::Permutation)
+            }))
         }
       }
     }
@@ -128,6 +148,50 @@ macro_rules! permutation_trait_inner(
     succ!($it, permutation_trait_inner!($self, $input, $res, $err, $($id)*));
   );
   ($it:tt, $self:expr, $input:ident, $res:expr, $err:expr,) => ();
+);
+
+macro_rules! values (
+  (A, $tup:expr) => ($tup.0);
+  (B, $tup:expr) => ($tup.1);
+  (C, $tup:expr) => ($tup.2);
+  (D, $tup:expr) => ($tup.3);
+  (E, $tup:expr) => ($tup.4);
+  (F, $tup:expr) => ($tup.5);
+  (G, $tup:expr) => ($tup.6);
+  (H, $tup:expr) => ($tup.7);
+  (I, $tup:expr) => ($tup.8);
+  (J, $tup:expr) => ($tup.9);
+  (K, $tup:expr) => ($tup.10);
+  (L, $tup:expr) => ($tup.11);
+  (M, $tup:expr) => ($tup.12);
+  (N, $tup:expr) => ($tup.13);
+  (O, $tup:expr) => ($tup.14);
+  (P, $tup:expr) => ($tup.15);
+  (Q, $tup:expr) => ($tup.16);
+  (R, $tup:expr) => ($tup.17);
+  (S, $tup:expr) => ($tup.18);
+  (T, $tup:expr) => ($tup.19);
+  (U, $tup:expr) => ($tup.20);
+  (V, $tup:expr) => ($tup.21);
+  (W, $tup:expr) => ($tup.22);
+  (X, $tup:expr) => ($tup.23);
+  (Y, $tup:expr) => ($tup.24);
+  (Z, $tup:expr) => ($tup.25);
+  (AA, $tup:expr) => ($tup.26);
+  (AB, $tup:expr) => ($tup.27);
+  (AC, $tup:expr) => ($tup.28);
+  (AD, $tup:expr) => ($tup.29);
+  (AE, $tup:expr) => ($tup.30);
+  (AF, $tup:expr) => ($tup.31);
+  (AG, $tup:expr) => ($tup.32);
+  (AH, $tup:expr) => ($tup.33);
+  (AI, $tup:expr) => ($tup.34);
+  (AJ, $tup:expr) => ($tup.35);
+  (AK, $tup:expr) => ($tup.36);
+  (AL, $tup:expr) => ($tup.37);
+  (AM, $tup:expr) => ($tup.38);
+  (AN, $tup:expr) => ($tup.39);
+  (AO, $tup:expr) => ($tup.40);
 );
 
 permutation_trait!(
