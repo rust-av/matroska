@@ -2,13 +2,14 @@ use std::convert::TryFrom;
 
 use log::trace;
 use nom::{
-    branch::permutation,
     bytes::streaming::take,
     combinator::{complete, flat_map, map, map_parser, opt, verify},
     number::streaming::{be_f32, be_f64},
     sequence::{pair, preceded},
     Err, IResult, Needed, Parser,
 };
+
+use crate::permutation::matroska_permutation;
 
 #[derive(Debug, PartialEq)]
 pub struct Error<'a> {
@@ -264,24 +265,23 @@ pub struct EBMLHeader {
 pub fn ebml_header(input: &[u8]) -> IResult<&[u8], EBMLHeader, Error> {
     ebml_master(0x1A45DFA3, |i| {
         map(
-            permutation((
-                ebml_uint(0x4286), // version
-                ebml_uint(0x42F7), // read_version
-                ebml_uint(0x42F2), // max id length
-                ebml_uint(0x42F3), // max size length
-                ebml_str(0x4282),  // doctype
-                ebml_uint(0x4287), // doctype version
-                ebml_uint(0x4285), // doctype_read version
-                opt(complete(skip_void)),
+            matroska_permutation((
+                complete(ebml_uint(0x4286)), // version
+                complete(ebml_uint(0x42F7)), // read_version
+                complete(ebml_uint(0x42F2)), // max id length
+                complete(ebml_uint(0x42F3)), // max size length
+                complete(ebml_str(0x4282)),  // doctype
+                complete(ebml_uint(0x4287)), // doctype version
+                complete(ebml_uint(0x4285)), // doctype_read version
             )),
             |t| EBMLHeader {
-                version: t.0,
-                read_version: t.1,
-                max_id_length: t.2,
-                max_size_length: t.3,
-                doc_type: t.4,
-                doc_type_version: t.5,
-                doc_type_read_version: t.6,
+                version: t.0.unwrap(),
+                read_version: t.1.unwrap(),
+                max_id_length: t.2.unwrap(),
+                max_size_length: t.3.unwrap(),
+                doc_type: t.4.unwrap(),
+                doc_type_version: t.5.unwrap(),
+                doc_type_read_version: t.6.unwrap(),
             },
         )(i)
     })(input)
