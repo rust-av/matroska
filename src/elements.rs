@@ -9,7 +9,7 @@ use nom::{
 
 use crate::ebml::{
     eat_void, ebml_binary, ebml_binary_ref, ebml_float, ebml_int, ebml_master, ebml_str, ebml_uint,
-    usize_error, vid, vint, Error,
+    usize_error, value_error, vid, vint, Error,
 };
 use crate::permutation::matroska_permutation;
 
@@ -87,17 +87,20 @@ pub struct Seek {
 
 //https://datatracker.ietf.org/doc/html/draft-lhomme-cellar-matroska-03#section-7.3.4
 pub fn seek(input: &[u8]) -> IResult<&[u8], Seek, Error> {
-    ebml_master(0x4DBB, |i| {
-        map(
-            matroska_permutation((
-                complete(ebml_binary(0x53AB)), // SeekID
-                complete(ebml_uint(0x53AC)),   // SeekPosition
-            )),
-            |t| Seek {
-                id: t.0.unwrap(),
-                position: t.1.unwrap(),
-            },
-        )(i)
+    ebml_master(0x4DBB, |inp| {
+        matroska_permutation((
+            complete(ebml_binary(0x53AB)), // SeekID
+            complete(ebml_uint(0x53AC)),   // SeekPosition
+        ))(inp)
+        .and_then(|(i, t)| {
+            Ok((
+                i,
+                Seek {
+                    id: value_error(inp, t.0)?,
+                    position: value_error(inp, t.1)?,
+                },
+            ))
+        })
     })(input)
 }
 
@@ -121,24 +124,25 @@ pub struct Info {
 
 //https://datatracker.ietf.org/doc/html/draft-lhomme-cellar-matroska-03#section-7.3.8
 pub fn info(input: &[u8]) -> IResult<&[u8], SegmentElement, Error> {
-    map(
-        matroska_permutation((
-            complete(ebml_binary(0x73A4)),   // SegmentUID
-            complete(ebml_str(0x7384)),      // SegmentFIlename FIXME SHOULD BE UTF-8 not str
-            complete(ebml_binary(0x3CB923)), // PrevUID
-            complete(ebml_str(0x3C83AB)),    // PrevFilename FIXME SHOULD BE UTF-8 not str
-            complete(ebml_binary(0x3EB923)), // NextUID
-            complete(ebml_str(0x3E83BB)),    // NextFilename FIXME SHOULD BE UTF-8 not str
-            complete(ebml_binary(0x4444)),   // SegmentFamily
-            complete(chapter_translate),     //
-            complete(ebml_uint(0x2AD7B1)),   // TimecodeScale
-            complete(ebml_float(0x4489)),    // Duration: FIXME should be float
-            complete(ebml_binary(0x4461)),   // DateUTC FIXME: should be date
-            complete(ebml_str(0x7BA9)),      // Title FIXME SHOULD BE UTF-8 not str
-            complete(ebml_str(0x4D80)),      // MuxingApp FIXME SHOULD BE UTF-8 not str
-            complete(ebml_str(0x5741)),      // WritingApp FIXME SHOULD BE UTF-8 not str
-        )),
-        |t| {
+    matroska_permutation((
+        complete(ebml_binary(0x73A4)),   // SegmentUID
+        complete(ebml_str(0x7384)),      // SegmentFIlename FIXME SHOULD BE UTF-8 not str
+        complete(ebml_binary(0x3CB923)), // PrevUID
+        complete(ebml_str(0x3C83AB)),    // PrevFilename FIXME SHOULD BE UTF-8 not str
+        complete(ebml_binary(0x3EB923)), // NextUID
+        complete(ebml_str(0x3E83BB)),    // NextFilename FIXME SHOULD BE UTF-8 not str
+        complete(ebml_binary(0x4444)),   // SegmentFamily
+        complete(chapter_translate),     //
+        complete(ebml_uint(0x2AD7B1)),   // TimecodeScale
+        complete(ebml_float(0x4489)),    // Duration: FIXME should be float
+        complete(ebml_binary(0x4461)),   // DateUTC FIXME: should be date
+        complete(ebml_str(0x7BA9)),      // Title FIXME SHOULD BE UTF-8 not str
+        complete(ebml_str(0x4D80)),      // MuxingApp FIXME SHOULD BE UTF-8 not str
+        complete(ebml_str(0x5741)),      // WritingApp FIXME SHOULD BE UTF-8 not str
+    ))(input)
+    .and_then(|(i, t)| {
+        Ok((
+            i,
             SegmentElement::Info(Info {
                 segment_uid: t.0,
                 segment_filename: t.1,
@@ -148,15 +152,15 @@ pub fn info(input: &[u8]) -> IResult<&[u8], SegmentElement, Error> {
                 next_filename: t.5,
                 segment_family: t.6,
                 chapter_translate: t.7,
-                timecode_scale: t.8.unwrap(),
+                timecode_scale: value_error(input, t.8)?,
                 duration: t.9,
                 date_utc: t.10,
                 title: t.11,
-                muxing_app: t.12.unwrap(),
-                writing_app: t.13.unwrap(),
-            })
-        },
-    )(input)
+                muxing_app: value_error(input, t.12)?,
+                writing_app: value_error(input, t.13)?,
+            }),
+        ))
+    })
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -180,28 +184,29 @@ pub struct Cluster<'a> {
 }
 
 pub fn cluster(input: &[u8]) -> IResult<&[u8], SegmentElement, Error> {
-    map(
-        matroska_permutation((
-            complete(ebml_uint(0xE7)),
-            complete(silent_tracks),
-            complete(ebml_uint(0xA7)),
-            complete(ebml_uint(0xAB)),
-            many0(complete(ebml_binary_ref(0xA3))),
-            many0(complete(block_group)),
-            complete(ebml_binary_ref(0xAF)),
-        )),
-        |t| {
+    matroska_permutation((
+        complete(ebml_uint(0xE7)),
+        complete(silent_tracks),
+        complete(ebml_uint(0xA7)),
+        complete(ebml_uint(0xAB)),
+        many0(complete(ebml_binary_ref(0xA3))),
+        many0(complete(block_group)),
+        complete(ebml_binary_ref(0xAF)),
+    ))(input)
+    .and_then(|(i, t)| {
+        Ok((
+            i,
             SegmentElement::Cluster(Cluster {
-                timecode: t.0.unwrap(),
+                timecode: value_error(input, t.0)?,
                 silent_tracks: t.1,
                 position: t.2,
                 prev_size: t.3,
-                simple_block: t.4.unwrap(),
-                block_group: t.5.unwrap(),
+                simple_block: value_error(input, t.4)?,
+                block_group: value_error(input, t.5)?,
                 encrypted_block: t.6,
-            })
-        },
-    )(input)
+            }),
+        ))
+    })
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -233,35 +238,38 @@ pub struct BlockGroup<'a> {
 
 //https://datatracker.ietf.org/doc/html/draft-lhomme-cellar-matroska-03#section-7.3.16
 pub fn block_group(input: &[u8]) -> IResult<&[u8], BlockGroup, Error> {
-    ebml_master(0x5854, |i| {
-        map(
-            matroska_permutation((
-                complete(ebml_binary_ref(0xA1)),
-                complete(ebml_binary(0xA2)),
-                complete(block_additions),
-                complete(ebml_uint(0x9B)),
-                complete(ebml_uint(0xFA)),
-                complete(ebml_uint(0xFB)),
-                complete(ebml_int(0xFD)),
-                complete(ebml_binary(0xA4)),
-                complete(ebml_int(0x75A2)),
-                complete(slices),
-                complete(reference_frame),
-            )),
-            |t| BlockGroup {
-                block: t.0.unwrap(),
-                block_virtual: t.1,
-                block_additions: t.2,
-                block_duration: t.3,
-                reference_priority: t.4.unwrap(),
-                reference_block: t.5,
-                reference_virtual: t.6,
-                codec_state: t.7,
-                discard_padding: t.8,
-                slices: t.9,
-                reference_frame: t.10,
-            },
-        )(i)
+    ebml_master(0x5854, |inp| {
+        matroska_permutation((
+            complete(ebml_binary_ref(0xA1)),
+            complete(ebml_binary(0xA2)),
+            complete(block_additions),
+            complete(ebml_uint(0x9B)),
+            complete(ebml_uint(0xFA)),
+            complete(ebml_uint(0xFB)),
+            complete(ebml_int(0xFD)),
+            complete(ebml_binary(0xA4)),
+            complete(ebml_int(0x75A2)),
+            complete(slices),
+            complete(reference_frame),
+        ))(inp)
+        .and_then(|(i, t)| {
+            Ok((
+                i,
+                BlockGroup {
+                    block: value_error(inp, t.0)?,
+                    block_virtual: t.1,
+                    block_additions: t.2,
+                    block_duration: t.3,
+                    reference_priority: value_error(inp, t.4)?,
+                    reference_block: t.5,
+                    reference_virtual: t.6,
+                    codec_state: t.7,
+                    discard_padding: t.8,
+                    slices: t.9,
+                    reference_frame: t.10,
+                },
+            ))
+        })
     })(input)
 }
 
@@ -472,90 +480,93 @@ pub struct TrackEntry {
 }
 
 pub fn track_entry(input: &[u8]) -> IResult<&[u8], TrackEntry, Error> {
-    ebml_master(0xAE, |i| {
-        map(
-            matroska_permutation((
-                complete(ebml_uint(0xD7)),
-                complete(ebml_uint(0x73C5)),
-                complete(ebml_uint(0x83)),
-                complete(ebml_uint(0xB9)),
-                complete(ebml_uint(0x88)),
-                complete(ebml_uint(0x55AA)),
-                complete(ebml_uint(0x9C)),
-                complete(ebml_uint(0x6DE7)),
-                complete(ebml_uint(0x6DF8)),
-                complete(ebml_uint(0x23E383)),
-                complete(ebml_uint(0x234E7A)),
-                complete(ebml_float(0x23314F)),
-                complete(ebml_int(0x537F)),
-                complete(ebml_uint(0x55EE)),
-                complete(ebml_str(0x536E)),
-                complete(ebml_str(0x22B59C)),
-                complete(ebml_str(0x22B59D)),
-                complete(ebml_str(0x86)),
-                complete(ebml_binary(0x63A2)),
-                complete(ebml_str(0x258688)),
-                complete(ebml_uint(0x7446)),
-                complete(ebml_str(0x3A9697)),
-                complete(ebml_str(0x3B4040)),
-                complete(ebml_str(0x26B240)),
-                complete(ebml_uint(0xAA)),
-                complete(ebml_uint(0x6FAB)),
-                complete(ebml_uint(0x56AA)),
-                complete(ebml_uint(0x56BB)),
-                many0(complete(track_translate)),
-                complete(video),
-                complete(audio),
-                complete(track_operation),
-                complete(ebml_uint(0xC0)),
-                complete(ebml_binary(0xC1)),
-                complete(ebml_uint(0xC6)),
-                complete(ebml_uint(0xC7)),
-                complete(ebml_binary(0xC4)),
-                complete(content_encodings),
-            )),
-            |t| TrackEntry {
-                track_number: t.0.unwrap(),
-                track_uid: t.1.unwrap(),
-                track_type: t.2.unwrap(),
-                flag_enabled: t.3,
-                flag_default: t.4,
-                flag_forced: t.5,
-                flag_lacing: t.6,
-                min_cache: t.7,
-                max_cache: t.8,
-                default_duration: t.9,
-                default_decoded_field_duration: t.10,
-                track_timecode_scale: t.11,
-                track_offset: t.12,
-                max_block_addition_id: t.13,
-                name: t.14,
-                language: t.15,
-                language_ietf: t.16,
-                codec_id: t.17.unwrap(),
-                codec_private: t.18,
-                codec_name: t.19,
-                attachment_link: t.20,
-                codec_settings: t.21,
-                codec_info_url: t.22,
-                codec_download_url: t.23,
-                codec_decode_all: t.24,
-                track_overlay: t.25,
-                codec_delay: t.26,
-                seek_pre_roll: t.27,
-                track_translate: t.28.unwrap(),
-                video: t.29,
-                audio: t.30,
-                track_operation: t.31,
-                trick_track_uid: t.32,
-                trick_track_segment_uid: t.33,
-                trick_track_flag: t.34,
-                trick_master_track_uid: t.35,
-                trick_master_track_segment_uid: t.36,
-                content_encodings: t.37,
-                stream_index: 0,
-            },
-        )(i)
+    ebml_master(0xAE, |inp| {
+        matroska_permutation((
+            complete(ebml_uint(0xD7)),
+            complete(ebml_uint(0x73C5)),
+            complete(ebml_uint(0x83)),
+            complete(ebml_uint(0xB9)),
+            complete(ebml_uint(0x88)),
+            complete(ebml_uint(0x55AA)),
+            complete(ebml_uint(0x9C)),
+            complete(ebml_uint(0x6DE7)),
+            complete(ebml_uint(0x6DF8)),
+            complete(ebml_uint(0x23E383)),
+            complete(ebml_uint(0x234E7A)),
+            complete(ebml_float(0x23314F)),
+            complete(ebml_int(0x537F)),
+            complete(ebml_uint(0x55EE)),
+            complete(ebml_str(0x536E)),
+            complete(ebml_str(0x22B59C)),
+            complete(ebml_str(0x22B59D)),
+            complete(ebml_str(0x86)),
+            complete(ebml_binary(0x63A2)),
+            complete(ebml_str(0x258688)),
+            complete(ebml_uint(0x7446)),
+            complete(ebml_str(0x3A9697)),
+            complete(ebml_str(0x3B4040)),
+            complete(ebml_str(0x26B240)),
+            complete(ebml_uint(0xAA)),
+            complete(ebml_uint(0x6FAB)),
+            complete(ebml_uint(0x56AA)),
+            complete(ebml_uint(0x56BB)),
+            many0(complete(track_translate)),
+            complete(video),
+            complete(audio),
+            complete(track_operation),
+            complete(ebml_uint(0xC0)),
+            complete(ebml_binary(0xC1)),
+            complete(ebml_uint(0xC6)),
+            complete(ebml_uint(0xC7)),
+            complete(ebml_binary(0xC4)),
+            complete(content_encodings),
+        ))(inp)
+        .and_then(|(i, t)| {
+            Ok((
+                i,
+                TrackEntry {
+                    track_number: value_error(inp, t.0)?,
+                    track_uid: value_error(inp, t.1)?,
+                    track_type: value_error(inp, t.2)?,
+                    flag_enabled: t.3,
+                    flag_default: t.4,
+                    flag_forced: t.5,
+                    flag_lacing: t.6,
+                    min_cache: t.7,
+                    max_cache: t.8,
+                    default_duration: t.9,
+                    default_decoded_field_duration: t.10,
+                    track_timecode_scale: t.11,
+                    track_offset: t.12,
+                    max_block_addition_id: t.13,
+                    name: t.14,
+                    language: t.15,
+                    language_ietf: t.16,
+                    codec_id: value_error(inp, t.17)?,
+                    codec_private: t.18,
+                    codec_name: t.19,
+                    attachment_link: t.20,
+                    codec_settings: t.21,
+                    codec_info_url: t.22,
+                    codec_download_url: t.23,
+                    codec_decode_all: t.24,
+                    track_overlay: t.25,
+                    codec_delay: t.26,
+                    seek_pre_roll: t.27,
+                    track_translate: value_error(inp, t.28)?,
+                    video: t.29,
+                    audio: t.30,
+                    track_operation: t.31,
+                    trick_track_uid: t.32,
+                    trick_track_segment_uid: t.33,
+                    trick_track_flag: t.34,
+                    trick_master_track_uid: t.35,
+                    trick_master_track_segment_uid: t.36,
+                    content_encodings: t.37,
+                    stream_index: 0,
+                },
+            ))
+        })
     })(input)
 }
 
@@ -567,19 +578,22 @@ pub struct TrackTranslate {
 }
 
 pub fn track_translate(input: &[u8]) -> IResult<&[u8], TrackTranslate, Error> {
-    ebml_master(0x6624, |i| {
-        map(
-            matroska_permutation((
-                many1(complete(ebml_uint(0x66FC))),
-                complete(ebml_uint(0x66BF)),
-                complete(ebml_uint(0x66A5)),
-            )),
-            |t| TrackTranslate {
-                edition_uid: t.0.unwrap(),
-                codec: t.1.unwrap(),
-                track_id: t.2.unwrap(),
-            },
-        )(i)
+    ebml_master(0x6624, |inp| {
+        matroska_permutation((
+            many1(complete(ebml_uint(0x66FC))),
+            complete(ebml_uint(0x66BF)),
+            complete(ebml_uint(0x66A5)),
+        ))(inp)
+        .and_then(|(i, t)| {
+            Ok((
+                i,
+                TrackTranslate {
+                    edition_uid: value_error(inp, t.0)?,
+                    codec: value_error(inp, t.1)?,
+                    track_id: value_error(inp, t.2)?,
+                },
+            ))
+        })
     })(input)
 }
 
@@ -621,14 +635,18 @@ pub struct TrackPlane {
 }
 
 pub fn track_plane(input: &[u8]) -> IResult<&[u8], TrackPlane, Error> {
-    ebml_master(0xE4, |i| {
-        map(
-            matroska_permutation((complete(ebml_uint(0xE5)), complete(ebml_uint(0xE6)))),
-            |t| TrackPlane {
-                uid: t.0.unwrap(),
-                plane_type: t.1.unwrap(),
+    ebml_master(0xE4, |inp| {
+        matroska_permutation((complete(ebml_uint(0xE5)), complete(ebml_uint(0xE6))))(inp).and_then(
+            |(i, t)| {
+                Ok((
+                    i,
+                    TrackPlane {
+                        uid: value_error(inp, t.0)?,
+                        plane_type: value_error(inp, t.1)?,
+                    },
+                ))
             },
-        )(i)
+        )
     })(input)
 }
 
@@ -668,23 +686,26 @@ pub struct ContentEncoding {
 }
 
 pub fn content_encoding(input: &[u8]) -> IResult<&[u8], ContentEncoding, Error> {
-    ebml_master(0x6240, |i| {
-        map(
-            matroska_permutation((
-                complete(ebml_uint(0x5031)),
-                complete(ebml_uint(0x5032)),
-                complete(ebml_uint(0x5033)),
-                complete(content_compression),
-                complete(content_encryption),
-            )),
-            |t| ContentEncoding {
-                order: t.0.unwrap(),
-                scope: t.1.unwrap(),
-                encoding_type: t.2.unwrap(),
-                compression: t.3,
-                encryption: t.4,
-            },
-        )(i)
+    ebml_master(0x6240, |inp| {
+        matroska_permutation((
+            complete(ebml_uint(0x5031)),
+            complete(ebml_uint(0x5032)),
+            complete(ebml_uint(0x5033)),
+            complete(content_compression),
+            complete(content_encryption),
+        ))(inp)
+        .and_then(|(i, t)| {
+            Ok((
+                i,
+                ContentEncoding {
+                    order: value_error(inp, t.0)?,
+                    scope: value_error(inp, t.1)?,
+                    encoding_type: value_error(inp, t.2)?,
+                    compression: t.3,
+                    encryption: t.4,
+                },
+            ))
+        })
     })(input)
 }
 
@@ -695,14 +716,17 @@ pub struct ContentCompression {
 }
 
 pub fn content_compression(input: &[u8]) -> IResult<&[u8], ContentCompression, Error> {
-    ebml_master(0x5034, |i| {
-        map(
-            matroska_permutation((complete(ebml_uint(0x4254)), complete(ebml_uint(0x4255)))),
-            |t| ContentCompression {
-                algo: t.0.unwrap(),
-                settings: t.1,
-            },
-        )(i)
+    ebml_master(0x5034, |inp| {
+        matroska_permutation((complete(ebml_uint(0x4254)), complete(ebml_uint(0x4255))))(inp)
+            .and_then(|(i, t)| {
+                Ok((
+                    i,
+                    ContentCompression {
+                        algo: value_error(inp, t.0)?,
+                        settings: t.1,
+                    },
+                ))
+            })
     })(input)
 }
 
@@ -749,23 +773,26 @@ pub struct Audio {
 }
 
 pub fn audio(input: &[u8]) -> IResult<&[u8], Audio, Error> {
-    ebml_master(0xE1, |i| {
-        map(
-            matroska_permutation((
-                complete(ebml_float(0xB5)),
-                complete(ebml_float(0x78B5)),
-                ebml_uint(0x9F),
-                complete(ebml_binary(0x7D7B)),
-                complete(ebml_uint(0x6264)),
-            )),
-            |t| Audio {
-                sampling_frequency: t.0.unwrap(),
-                output_sampling_frequency: t.1,
-                channels: t.2.unwrap(),
-                channel_positions: t.3,
-                bit_depth: t.4,
-            },
-        )(i)
+    ebml_master(0xE1, |inp| {
+        matroska_permutation((
+            complete(ebml_float(0xB5)),
+            complete(ebml_float(0x78B5)),
+            ebml_uint(0x9F),
+            complete(ebml_binary(0x7D7B)),
+            complete(ebml_uint(0x6264)),
+        ))(inp)
+        .and_then(|(i, t)| {
+            Ok((
+                i,
+                Audio {
+                    sampling_frequency: value_error(inp, t.0)?,
+                    output_sampling_frequency: t.1,
+                    channels: value_error(inp, t.2)?,
+                    channel_positions: t.3,
+                    bit_depth: t.4,
+                },
+            ))
+        })
     })(input)
 }
 
@@ -794,53 +821,56 @@ pub struct Video {
 }
 
 pub fn video(input: &[u8]) -> IResult<&[u8], Video, Error> {
-    ebml_master(0xE0, |i| {
-        map(
-            matroska_permutation((
-                complete(ebml_uint(0x9A)),
-                complete(ebml_uint(0x9D)),
-                complete(ebml_uint(0x53B8)),
-                complete(ebml_uint(0x53C0)),
-                complete(ebml_uint(0x53B9)),
-                complete(ebml_uint(0xB0)),
-                complete(ebml_uint(0xBA)),
-                complete(ebml_uint(0x54AA)),
-                complete(ebml_uint(0x54BB)),
-                complete(ebml_uint(0x54CC)),
-                complete(ebml_uint(0x54DD)),
-                complete(ebml_uint(0x54B0)),
-                complete(ebml_uint(0x54BA)),
-                complete(ebml_uint(0x54B2)),
-                complete(ebml_uint(0x54B3)),
-                complete(ebml_binary(0x2EB524)),
-                complete(ebml_float(0x2FB523)),
-                complete(ebml_float(0x2383E3)),
-                complete(colour),
-                complete(projection),
-            )),
-            |t| Video {
-                flag_interlaced: t.0,
-                field_order: t.1,
-                stereo_mode: t.2,
-                alpha_mode: t.3,
-                old_stereo_mode: t.4,
-                pixel_width: t.5.unwrap(),
-                pixel_height: t.6.unwrap(),
-                pixel_crop_bottom: t.7,
-                pixel_crop_top: t.8,
-                pixel_crop_left: t.9,
-                pixel_crop_right: t.10,
-                display_width: t.11,
-                display_height: t.12,
-                display_unit: t.13,
-                aspect_ratio_type: t.14,
-                colour_space: t.15,
-                gamma_value: t.16,
-                frame_rate: t.17,
-                colour: t.18,
-                projection: t.19,
-            },
-        )(i)
+    ebml_master(0xE0, |inp| {
+        matroska_permutation((
+            complete(ebml_uint(0x9A)),
+            complete(ebml_uint(0x9D)),
+            complete(ebml_uint(0x53B8)),
+            complete(ebml_uint(0x53C0)),
+            complete(ebml_uint(0x53B9)),
+            complete(ebml_uint(0xB0)),
+            complete(ebml_uint(0xBA)),
+            complete(ebml_uint(0x54AA)),
+            complete(ebml_uint(0x54BB)),
+            complete(ebml_uint(0x54CC)),
+            complete(ebml_uint(0x54DD)),
+            complete(ebml_uint(0x54B0)),
+            complete(ebml_uint(0x54BA)),
+            complete(ebml_uint(0x54B2)),
+            complete(ebml_uint(0x54B3)),
+            complete(ebml_binary(0x2EB524)),
+            complete(ebml_float(0x2FB523)),
+            complete(ebml_float(0x2383E3)),
+            complete(colour),
+            complete(projection),
+        ))(inp)
+        .and_then(|(i, t)| {
+            Ok((
+                i,
+                Video {
+                    flag_interlaced: t.0,
+                    field_order: t.1,
+                    stereo_mode: t.2,
+                    alpha_mode: t.3,
+                    old_stereo_mode: t.4,
+                    pixel_width: value_error(inp, t.5)?,
+                    pixel_height: value_error(inp, t.6)?,
+                    pixel_crop_bottom: t.7,
+                    pixel_crop_top: t.8,
+                    pixel_crop_left: t.9,
+                    pixel_crop_right: t.10,
+                    display_width: t.11,
+                    display_height: t.12,
+                    display_unit: t.13,
+                    aspect_ratio_type: t.14,
+                    colour_space: t.15,
+                    gamma_value: t.16,
+                    frame_rate: t.17,
+                    colour: t.18,
+                    projection: t.19,
+                },
+            ))
+        })
     })(input)
 }
 
@@ -956,23 +986,26 @@ pub struct Projection {
 }
 
 pub fn projection(input: &[u8]) -> IResult<&[u8], Projection, Error> {
-    ebml_master(0x7670, |i| {
-        map(
-            matroska_permutation((
-                complete(ebml_uint(0x7671)),
-                complete(ebml_binary(0x7672)),
-                complete(ebml_float(0x7673)),
-                complete(ebml_float(0x7674)),
-                complete(ebml_float(0x7675)),
-            )),
-            |t| Projection {
-                projection_type: t.0.unwrap(),
-                projection_private: t.1,
-                projection_pose_yaw: t.2.unwrap(),
-                projection_pose_pitch: t.3.unwrap(),
-                projection_pose_roll: t.4.unwrap(),
-            },
-        )(i)
+    ebml_master(0x7670, |inp| {
+        matroska_permutation((
+            complete(ebml_uint(0x7671)),
+            complete(ebml_binary(0x7672)),
+            complete(ebml_float(0x7673)),
+            complete(ebml_float(0x7674)),
+            complete(ebml_float(0x7675)),
+        ))(inp)
+        .and_then(|(i, t)| {
+            Ok((
+                i,
+                Projection {
+                    projection_type: value_error(inp, t.0)?,
+                    projection_private: t.1,
+                    projection_pose_yaw: value_error(inp, t.2)?,
+                    projection_pose_pitch: value_error(inp, t.3)?,
+                    projection_pose_roll: value_error(inp, t.4)?,
+                },
+            ))
+        })
     })(input)
 }
 
