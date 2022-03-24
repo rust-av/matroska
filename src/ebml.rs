@@ -50,6 +50,13 @@ pub(crate) fn usize_error(input: &[u8], size: u64) -> Result<usize, nom::Err<Err
     })
 }
 
+pub(crate) fn value_error<T>(input: &[u8], value: Option<T>) -> Result<T, nom::Err<Error>> {
+    value.ok_or_else(|| {
+        log::error!("Not possible to get the requested value");
+        nom::Err::Error(custom_error(input, 1))
+    })
+}
+
 pub fn vint(input: &[u8]) -> IResult<&[u8], u64, Error> {
     if input.is_empty() {
         return Err(Err::Incomplete(Needed::new(1)));
@@ -264,26 +271,29 @@ pub struct EBMLHeader {
 
 pub fn ebml_header(input: &[u8]) -> IResult<&[u8], EBMLHeader, Error> {
     ebml_master(0x1A45DFA3, |i| {
-        map(
-            matroska_permutation((
-                complete(ebml_uint(0x4286)), // version
-                complete(ebml_uint(0x42F7)), // read_version
-                complete(ebml_uint(0x42F2)), // max id length
-                complete(ebml_uint(0x42F3)), // max size length
-                complete(ebml_str(0x4282)),  // doctype
-                complete(ebml_uint(0x4287)), // doctype version
-                complete(ebml_uint(0x4285)), // doctype_read version
-            )),
-            |t| EBMLHeader {
-                version: t.0.unwrap(),
-                read_version: t.1.unwrap(),
-                max_id_length: t.2.unwrap(),
-                max_size_length: t.3.unwrap(),
-                doc_type: t.4.unwrap(),
-                doc_type_version: t.5.unwrap(),
-                doc_type_read_version: t.6.unwrap(),
-            },
-        )(i)
+        matroska_permutation((
+            complete(ebml_uint(0x4286)), // version
+            complete(ebml_uint(0x42F7)), // read_version
+            complete(ebml_uint(0x42F2)), // max id length
+            complete(ebml_uint(0x42F3)), // max size length
+            complete(ebml_str(0x4282)),  // doctype
+            complete(ebml_uint(0x4287)), // doctype version
+            complete(ebml_uint(0x4285)), // doctype_read version
+        ))(i)
+        .and_then(|(i, t)| {
+            Ok((
+                i,
+                EBMLHeader {
+                    version: value_error(input, t.0)?,
+                    read_version: value_error(input, t.1)?,
+                    max_id_length: value_error(input, t.2)?,
+                    max_size_length: value_error(input, t.3)?,
+                    doc_type: value_error(input, t.4)?,
+                    doc_type_version: value_error(input, t.5)?,
+                    doc_type_read_version: value_error(input, t.6)?,
+                },
+            ))
+        })
     })(input)
 }
 
