@@ -10,7 +10,7 @@ path = "src/matroska_info.rs"
 
 [dependencies]
 av-data = "0.3"
-av-format = "0.3"
+av-format = "0.4"
 circular = "0.3"
 log = "0.4"
 matroska = { path = ".." }
