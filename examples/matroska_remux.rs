@@ -2,7 +2,7 @@ use std::io::{Cursor, Write};
 use std::path::PathBuf;
 use std::{fs::File, sync::Arc};
 
-use clap::{Parser, StructOpt};
+use clap::Parser;
 use log::{debug, error};
 
 use av_format::demuxer::Context as DemuxerCtx;
@@ -13,22 +13,22 @@ use av_format::{
 };
 use matroska::{demuxer::MkvDemuxer, muxer::MkvMuxer};
 
-#[derive(StructOpt, Debug)]
-#[structopt(name = "matroska remux")]
+#[derive(Parser, Debug)]
+#[clap(name = "matroska remux")]
 /// Simple Audio Video Encoding tool
-struct Opt {
+struct Opts {
     /// Input file
-    #[structopt(short = 'i', parse(from_os_str))]
+    #[clap(short, value_parser)]
     input: PathBuf,
     /// Output file
-    #[structopt(short = 'o', parse(from_os_str))]
+    #[clap(short, value_parser)]
     output: PathBuf,
 }
 
 fn main() {
     pretty_env_logger::init();
 
-    let opt = Opt::parse();
+    let opt = Opts::parse();
 
     let file = std::fs::File::open(opt.input).unwrap();
 
