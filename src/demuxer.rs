@@ -128,7 +128,7 @@ impl MkvDemuxer {
 }
 
 impl Demuxer for MkvDemuxer {
-    fn read_headers(&mut self, buf: &Box<dyn Buffered>, info: &mut GlobalInfo) -> Result<SeekFrom> {
+    fn read_headers(&mut self, buf: &mut dyn Buffered, info: &mut GlobalInfo) -> Result<SeekFrom> {
         match self.parse_until_tracks(buf.data()) {
             Ok((i, _)) => {
                 info.duration = self
@@ -158,7 +158,7 @@ impl Demuxer for MkvDemuxer {
         }
     }
 
-    fn read_event(&mut self, buf: &Box<dyn Buffered>) -> Result<(SeekFrom, Event)> {
+    fn read_event(&mut self, buf: &mut dyn Buffered) -> Result<(SeekFrom, Event)> {
         if let Some(event) = self.queue.pop_front() {
             Ok((SeekFrom::Current(0), event))
         } else {
@@ -304,8 +304,10 @@ struct Des {
 }
 
 impl Descriptor for Des {
-    fn create(&self) -> Box<dyn Demuxer> {
-        Box::new(MkvDemuxer::new())
+    type OutputDemuxer = MkvDemuxer;
+
+    fn create(&self) -> Self::OutputDemuxer {
+        MkvDemuxer::new()
     }
     fn describe(&self) -> &Descr {
         &self.d
@@ -315,7 +317,7 @@ impl Descriptor for Des {
     }
 }
 
-pub const MKV_DESC: &dyn Descriptor = &Des {
+pub const MKV_DESC: &dyn Descriptor<OutputDemuxer = MkvDemuxer> = &Des {
     d: Descr {
         name: "matroska",
         demuxer: "mkv",
@@ -375,10 +377,7 @@ mod tests {
 
     #[test]
     fn context() {
-        let mut context = Context::new(
-            Box::new(MkvDemuxer::new()),
-            Box::new(AccReader::new(Cursor::new(webm))),
-        );
+        let mut context = Context::new(MkvDemuxer::new(), AccReader::new(Cursor::new(webm)));
 
         println!("{:?}", context.read_headers().unwrap());
 
