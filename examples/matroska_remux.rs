@@ -1,6 +1,7 @@
+use std::fs::File;
 use std::io::{Cursor, Write};
 use std::path::PathBuf;
-use std::{fs::File, sync::Arc};
+use std::sync::Arc;
 
 use clap::Parser;
 use log::{debug, error};
@@ -11,6 +12,7 @@ use av_format::{
     demuxer::Event,
     muxer::{self, Writer},
 };
+
 use matroska::{demuxer::MkvDemuxer, muxer::MkvMuxer};
 
 #[derive(Parser, Debug)]
