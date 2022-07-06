@@ -594,17 +594,13 @@ mod tests {
             positions: seeks.to_owned(),
         };
 
-        let ser_res = {
-            let gen_res = gen_seek_head(&seek_head)((&mut data[..], 0));
-            trace!("gen_res: {:?}", gen_res);
-            if let Err(e) = gen_res {
-                trace!("gen_res is error: {:?}", e);
-                // Do not fail if quickcheck generated data is too large
-                return true;
-            }
-        };
-
-        trace!("ser_res: {:?}", ser_res);
+        let gen_res = gen_seek_head(&seek_head)((&mut data[..], 0));
+        trace!("gen_res: {:?}", gen_res);
+        if let Err(e) = gen_res {
+            trace!("gen_res is error: {:?}", e);
+            // Do not fail if quickcheck generated data is too large
+            return true;
+        }
 
         let parse_res = crate::elements::segment_element(&data[..]);
         trace!("parse_res: {:?}", parse_res);
