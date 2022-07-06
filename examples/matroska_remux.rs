@@ -1,3 +1,4 @@
+use std::io::{Cursor, Write};
 use std::path::PathBuf;
 use std::{fs::File, sync::Arc};
 
@@ -5,7 +6,11 @@ use clap::{Parser, StructOpt};
 use log::{debug, error};
 
 use av_format::demuxer::Context as DemuxerCtx;
-use av_format::{buffer::AccReader, demuxer::Event, muxer};
+use av_format::{
+    buffer::AccReader,
+    demuxer::Event,
+    muxer::{self, Writer},
+};
 use matroska::{demuxer::MkvDemuxer, muxer::MkvMuxer};
 
 #[derive(StructOpt, Debug)]
@@ -27,18 +32,17 @@ fn main() {
 
     let file = std::fs::File::open(opt.input).unwrap();
 
-    let acc = AccReader::new(file);
-
-    let mut demuxer = DemuxerCtx::new(Box::new(MkvDemuxer::new()), Box::new(acc));
+    let mut demuxer = DemuxerCtx::new(MkvDemuxer::new(), AccReader::new(file));
 
     debug!("read headers: {:?}", demuxer.read_headers().unwrap());
     debug!("global info: {:#?}", demuxer.info);
 
-    let mux = Box::new(MkvMuxer::matroska());
+    let mut output = File::create(opt.output).unwrap();
 
-    let output = File::create(opt.output).unwrap();
-
-    let mut muxer = muxer::Context::new(mux, Box::new(output));
+    let mut muxer = muxer::Context::new(
+        MkvMuxer::matroska(),
+        Writer::from_seekable(Cursor::new(Vec::new())),
+    );
     muxer.configure().unwrap();
     muxer.set_global_info(demuxer.info.clone()).unwrap();
     muxer.write_header().unwrap();
@@ -70,4 +74,8 @@ fn main() {
             }
         }
     }
+
+    output
+        .write_all(&muxer.writer().seekable_object().unwrap().into_inner())
+        .unwrap();
 }
