@@ -9,7 +9,7 @@ name = "matroska_info"
 path = "src/matroska_info.rs"
 
 [dependencies]
-av-data = "0.3"
+av-data = "0.4"
 av-format = "0.3"
 circular = "0.3"
 log = "0.4"
