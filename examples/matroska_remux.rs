@@ -1,5 +1,5 @@
 use std::fs::File;
-use std::io::{Cursor, Write};
+use std::io::Write;
 use std::path::PathBuf;
 use std::sync::Arc;
 
@@ -41,10 +41,7 @@ fn main() {
 
     let mut output = File::create(opt.output).unwrap();
 
-    let mut muxer = muxer::Context::new(
-        MkvMuxer::matroska(),
-        Writer::from_seekable(Cursor::new(Vec::new())),
-    );
+    let mut muxer = muxer::Context::new(MkvMuxer::matroska(), Writer::new(Vec::new()));
     muxer.configure().unwrap();
     muxer.set_global_info(demuxer.info.clone()).unwrap();
     muxer.write_header().unwrap();
@@ -77,7 +74,5 @@ fn main() {
         }
     }
 
-    output
-        .write_all(&muxer.writer().seekable_object().unwrap().into_inner())
-        .unwrap();
+    output.write_all(&muxer.writer().as_ref().0).unwrap();
 }

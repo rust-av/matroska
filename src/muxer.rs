@@ -240,10 +240,7 @@ impl Muxer for MkvMuxer {
         Ok(())
     }
 
-    fn write_header<WO: WriteOwned, WS: WriteSeek>(
-        &mut self,
-        out: &mut Writer<WO, WS>,
-    ) -> Result<()> {
+    fn write_header<W: Write>(&mut self, out: &mut Writer<W>) -> Result<()> {
         let mut buf = Vec::new();
         let mut ebml_header = Vec::new();
         self.write_ebml_header(&mut ebml_header)?;
@@ -294,11 +291,7 @@ impl Muxer for MkvMuxer {
         Ok(())
     }
 
-    fn write_packet<WO: WriteOwned, WS: WriteSeek>(
-        &mut self,
-        out: &mut Writer<WO, WS>,
-        pkt: Arc<Packet>,
-    ) -> Result<()> {
+    fn write_packet<W: Write>(&mut self, out: &mut Writer<W>, pkt: Arc<Packet>) -> Result<()> {
         let mut v = Vec::with_capacity(16);
 
         let s = SimpleBlock {
@@ -397,10 +390,7 @@ impl Muxer for MkvMuxer {
         Ok(())
     }
 
-    fn write_trailer<WO: WriteOwned, WS: WriteSeek>(
-        &mut self,
-        out: &mut Writer<WO, WS>,
-    ) -> Result<()> {
+    fn write_trailer<W: Write>(&mut self, out: &mut Writer<W>) -> Result<()> {
         let nb = self.blocks.len();
 
         if nb > 0 {
