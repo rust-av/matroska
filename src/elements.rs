@@ -67,7 +67,7 @@ pub fn segment_element(input: &[u8]) -> IResult<&[u8], SegmentElement, Error> {
     })
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SeekHead {
     pub positions: Vec<Seek>,
 }
@@ -79,7 +79,7 @@ pub fn seek_head(input: &[u8]) -> IResult<&[u8], SegmentElement, Error> {
     })(input)
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Seek {
     pub id: Vec<u8>,
     pub position: u64,
@@ -163,7 +163,7 @@ pub fn info(input: &[u8]) -> IResult<&[u8], SegmentElement, Error> {
     })
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ChapterTranslate {}
 
 //https://datatracker.ietf.org/doc/html/draft-lhomme-cellar-matroska-03#section-7.3.16
@@ -172,7 +172,7 @@ pub fn chapter_translate(input: &[u8]) -> IResult<&[u8], ChapterTranslate, Error
 }
 
 //https://datatracker.ietf.org/doc/html/draft-lhomme-cellar-matroska-03#section-7.3.26
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Cluster<'a> {
     pub timecode: u64,
     pub silent_tracks: Option<SilentTracks>,
@@ -209,7 +209,7 @@ pub fn cluster(input: &[u8]) -> IResult<&[u8], SegmentElement, Error> {
     })
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SilentTracks {
     pub numbers: Vec<u64>,
 }
@@ -221,7 +221,7 @@ pub fn silent_tracks(input: &[u8]) -> IResult<&[u8], SilentTracks, Error> {
     })(input)
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct BlockGroup<'a> {
     pub block: &'a [u8],
     pub block_virtual: Option<Vec<u8>>,
@@ -273,7 +273,7 @@ pub fn block_group(input: &[u8]) -> IResult<&[u8], BlockGroup, Error> {
     })(input)
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct BlockAdditions {}
 
 //https://datatracker.ietf.org/doc/html/draft-lhomme-cellar-matroska-03#section-7.3.16
@@ -281,7 +281,7 @@ pub fn block_additions(input: &[u8]) -> IResult<&[u8], BlockAdditions, Error> {
     ebml_master(0x75A1, |i| Ok((i, BlockAdditions {})))(input)
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Slices {}
 
 //https://datatracker.ietf.org/doc/html/draft-lhomme-cellar-matroska-03#section-7.3.46
@@ -289,7 +289,7 @@ pub fn slices(input: &[u8]) -> IResult<&[u8], Slices, Error> {
     ebml_master(0x8E, |i| Ok((i, Slices {})))(input)
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ReferenceFrame {}
 
 //https://datatracker.ietf.org/doc/html/draft-lhomme-cellar-matroska-03#section-7.3.53
@@ -297,7 +297,7 @@ pub fn reference_frame(input: &[u8]) -> IResult<&[u8], ReferenceFrame, Error> {
     ebml_master(0xC8, |i| Ok((i, ReferenceFrame {})))(input)
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Block {
     pub track_number: u64,
     pub timecode: i16,
@@ -317,7 +317,7 @@ pub fn block(input: &[u8]) -> IResult<&[u8], Block, Error> {
     )(input)
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct BlockFlags {
     pub keyframe: bool,
     pub invisible: bool,
@@ -325,7 +325,7 @@ pub struct BlockFlags {
     pub discardable: bool,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SimpleBlock {
     pub track_number: u64,
     pub timecode: i16,
@@ -367,7 +367,7 @@ pub fn simple_block(input: &[u8]) -> IResult<&[u8], SimpleBlock, Error> {
     )(input)
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SimpleBlockFlags {
     pub keyframe: bool,
     pub invisible: bool,
@@ -375,7 +375,7 @@ pub struct SimpleBlockFlags {
     pub discardable: bool,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Lacing {
     None,
     Xiph,
@@ -383,7 +383,7 @@ pub enum Lacing {
     FixedSize,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct LacedData {
     pub frame_count: u8,
 }
@@ -570,7 +570,7 @@ pub fn track_entry(input: &[u8]) -> IResult<&[u8], TrackEntry, Error> {
     })(input)
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct TrackTranslate {
     pub edition_uid: Vec<u64>,
     pub codec: u64,
@@ -597,7 +597,7 @@ pub fn track_translate(input: &[u8]) -> IResult<&[u8], TrackTranslate, Error> {
     })(input)
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct TrackOperation {
     pub combine_planes: Option<TrackCombinePlanes>,
     pub join_blocks: Option<TrackJoinBlocks>,
@@ -615,7 +615,7 @@ pub fn track_operation(input: &[u8]) -> IResult<&[u8], TrackOperation, Error> {
     })(input)
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct TrackCombinePlanes {
     pub track_planes: Vec<TrackPlane>,
 }
@@ -628,7 +628,7 @@ pub fn track_combine_planes(input: &[u8]) -> IResult<&[u8], TrackCombinePlanes, 
     })(input)
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct TrackPlane {
     pub uid: u64,
     pub plane_type: u64,
@@ -650,7 +650,7 @@ pub fn track_plane(input: &[u8]) -> IResult<&[u8], TrackPlane, Error> {
     })(input)
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct TrackJoinBlocks {
     pub uid: Vec<u64>,
 }
@@ -663,7 +663,7 @@ pub fn track_join_blocks(input: &[u8]) -> IResult<&[u8], TrackJoinBlocks, Error>
     })(input)
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ContentEncodings {
     pub content_encoding: Vec<ContentEncoding>,
 }
@@ -676,7 +676,7 @@ pub fn content_encodings(input: &[u8]) -> IResult<&[u8], ContentEncodings, Error
     })(input)
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ContentEncoding {
     order: u64,
     scope: u64,
@@ -709,7 +709,7 @@ pub fn content_encoding(input: &[u8]) -> IResult<&[u8], ContentEncoding, Error> 
     })(input)
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ContentCompression {
     algo: u64,
     settings: Option<u64>,
@@ -730,7 +730,7 @@ pub fn content_compression(input: &[u8]) -> IResult<&[u8], ContentCompression, E
     })(input)
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ContentEncryption {
     enc_algo: Option<u64>,
     enc_key_id: Option<Vec<u8>>,
@@ -1009,7 +1009,7 @@ pub fn projection(input: &[u8]) -> IResult<&[u8], Projection, Error> {
     })(input)
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Chapters {}
 
 //https://datatracker.ietf.org/doc/html/draft-lhomme-cellar-matroska-03#section-7.3.199
@@ -1017,13 +1017,13 @@ pub fn chapters(input: &[u8]) -> IResult<&[u8], SegmentElement, Error> {
     ebml_master(0x45B9, |i| Ok((i, SegmentElement::Chapters(Chapters {}))))(input)
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Cues {}
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Attachments {}
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Tags {}
 
 #[cfg(test)]

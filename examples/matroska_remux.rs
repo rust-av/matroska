@@ -74,5 +74,5 @@ fn main() {
         }
     }
 
-    output.write_all(&muxer.writer().as_ref().0).unwrap();
+    output.write_all(muxer.writer().as_ref().0).unwrap();
 }

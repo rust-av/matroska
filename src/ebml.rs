@@ -11,13 +11,13 @@ use nom::{
 
 use crate::permutation::matroska_permutation;
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct Error<'a> {
     input: &'a [u8],
     kind: ErrorKind,
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum ErrorKind {
     Nom(nom::error::ErrorKind),
     Custom(u8),
@@ -258,7 +258,7 @@ pub fn skip_void(input: &[u8]) -> IResult<&[u8], &[u8], Error> {
         .and_then(|(i, (_, size))| take(usize_error(input, size)?)(i))
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct EBMLHeader {
     pub version: u64,
     pub read_version: u64,
