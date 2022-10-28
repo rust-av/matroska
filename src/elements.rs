@@ -238,7 +238,7 @@ pub struct BlockGroup<'a> {
 
 //https://datatracker.ietf.org/doc/html/draft-lhomme-cellar-matroska-03#section-7.3.16
 pub fn block_group(input: &[u8]) -> IResult<&[u8], BlockGroup, Error> {
-    ebml_master(0x5854, |inp| {
+    ebml_master(0xA0, |inp| {
         matroska_permutation((
             complete(ebml_binary_ref(0xA1)),
             complete(ebml_binary(0xA2)),
