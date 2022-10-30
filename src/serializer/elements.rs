@@ -430,11 +430,9 @@ fn gen_track_entry_video_projection<'a, 'b>(
 
 impl<'a> EbmlSize for Cluster<'a> {
     fn capacity(&self) -> usize {
-        self.timecode.size(0xE7) + self.silent_tracks.size(0x5854) + self.position.size(0xA7) +
-      self.prev_size.size(0xAB) + self.simple_block.size(0xA3) +
-      // TODO: implement for BlockGroup
-      // self.block_group.size(0xA0) +
-      self.encrypted_block.size(0xAF)
+        /*self.timecode.size(0xE7) + self.silent_tracks.size(0x5854) + self.position.size(0xA7) +
+      self.prev_size.size(0xAB) + self.block.size(0xA0) +
+      self.encrypted_block.size(0xAF)*/unimplemented!()
     }
 }
 
@@ -443,7 +441,7 @@ pub(crate) fn gen_cluster<'a, 'b>(
 ) -> impl Fn((&'b mut [u8], usize)) -> Result<(&'b mut [u8], usize), GenError> + 'a {
     move |input| {
         let byte_capacity = vint_size(c.capacity() as u64)?;
-        gen_ebml_master(
+        /*gen_ebml_master(
             0x1F43B675,
             byte_capacity,
             tuple((
@@ -451,12 +449,10 @@ pub(crate) fn gen_cluster<'a, 'b>(
                 gen_opt(c.silent_tracks.as_ref(), gen_silent_tracks),
                 gen_opt_copy(c.position, |v| gen_ebml_uint(0xA7, v)),
                 gen_opt_copy(c.prev_size, |v| gen_ebml_uint(0xAB, v)),
-                gen_many(&c.simple_block, |v| gen_ebml_binary(0xA3, v)),
-                // TODO: implement for BlockGroup
-                // gen_many(&c.block_group, gen_block_group)
+                gen_many(&c.block, |v| gen_block_group),
                 gen_opt(c.encrypted_block.as_ref(), |v| gen_ebml_binary(0xAF, v)),
             )),
-        )(input)
+        )(input)*/unimplemented!()
     }
 }
 

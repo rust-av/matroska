@@ -4,6 +4,7 @@ use nom::{
     multi::{many0, many1},
     number::streaming::{be_i16, be_u8},
     sequence::{pair, tuple},
+    branch::alt,
     IResult,
 };
 
@@ -178,8 +179,7 @@ pub struct Cluster<'a> {
     pub silent_tracks: Option<SilentTracks>,
     pub position: Option<u64>,
     pub prev_size: Option<u64>,
-    pub simple_block: Vec<&'a [u8]>,
-    pub block_group: Vec<BlockGroup<'a>>,
+    pub block: Vec<BlockGroup<'a>>,
     pub encrypted_block: Option<&'a [u8]>,
 }
 
@@ -189,7 +189,6 @@ pub fn cluster(input: &[u8]) -> IResult<&[u8], SegmentElement, Error> {
         complete(silent_tracks),
         complete(ebml_uint(0xA7)),
         complete(ebml_uint(0xAB)),
-        many0(complete(ebml_binary_ref(0xA3))),
         many0(complete(block_group)),
         complete(ebml_binary_ref(0xAF)),
     ))(input)
@@ -201,9 +200,8 @@ pub fn cluster(input: &[u8]) -> IResult<&[u8], SegmentElement, Error> {
                 silent_tracks: t.1,
                 position: t.2,
                 prev_size: t.3,
-                simple_block: value_error(input, t.4)?,
-                block_group: value_error(input, t.5)?,
-                encrypted_block: t.6,
+                block: value_error(input, t.4)?,
+                encrypted_block: t.5,
             }),
         ))
     })
@@ -238,7 +236,20 @@ pub struct BlockGroup<'a> {
 
 //https://datatracker.ietf.org/doc/html/draft-lhomme-cellar-matroska-03#section-7.3.16
 pub fn block_group(input: &[u8]) -> IResult<&[u8], BlockGroup, Error> {
-    ebml_master(0x5854, |inp| {
+    alt((map(complete(ebml_binary_ref(0xA3)), |block| BlockGroup{
+        block,
+        block_virtual: None,
+        block_additions: None,
+        block_duration: None,
+        reference_priority: 0,
+        reference_block: None,
+        reference_virtual: None,
+        codec_state: None,
+        discard_padding: None,
+        slices: None,
+        reference_frame: None
+    }),
+    ebml_master(0xA0, |inp| {
         matroska_permutation((
             complete(ebml_binary_ref(0xA1)),
             complete(ebml_binary(0xA2)),
@@ -260,7 +271,7 @@ pub fn block_group(input: &[u8]) -> IResult<&[u8], BlockGroup, Error> {
                     block_virtual: t.1,
                     block_additions: t.2,
                     block_duration: t.3,
-                    reference_priority: value_error(inp, t.4)?,
+                    reference_priority: value_error(inp, t.4).unwrap_or(0),
                     reference_block: t.5,
                     reference_virtual: t.6,
                     codec_state: t.7,
@@ -270,7 +281,7 @@ pub fn block_group(input: &[u8]) -> IResult<&[u8], BlockGroup, Error> {
                 },
             ))
         })
-    })(input)
+    })))(input)
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
