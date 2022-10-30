@@ -260,7 +260,7 @@ pub fn block_group(input: &[u8]) -> IResult<&[u8], BlockGroup, Error> {
                     block_virtual: t.1,
                     block_additions: t.2,
                     block_duration: t.3,
-                    reference_priority: value_error(inp, t.4)?,
+                    reference_priority: value_error(inp, t.4).unwrap_or(0),
                     reference_block: t.5,
                     reference_virtual: t.6,
                     codec_state: t.7,
