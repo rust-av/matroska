@@ -10,7 +10,7 @@ use av_format::{common::GlobalInfo, error::*, muxer::*, stream::Stream};
 use crate::{
     ebml::EBMLHeader,
     elements::{
-        Audio, Cluster, Colour, Info, Lacing, Seek, SeekHead, SimpleBlock, TrackEntry, TrackType,
+        Audio, Cluster, BlockGroup, Colour, Info, Lacing, Seek, SeekHead, SimpleBlock, TrackEntry, TrackType,
         Tracks, Video,
     },
     serializer::{
@@ -349,8 +349,19 @@ impl Muxer for MkvMuxer {
                     silent_tracks: None,
                     position: None,
                     prev_size: None,
-                    simple_block: simple_blocks,
-                    block_group: Vec::new(),
+                    block: simple_blocks.iter().map(|block| BlockGroup{
+                        block,
+                        block_virtual: None,
+                        block_additions: None,
+                        block_duration: None,
+                        reference_priority: 0,
+                        reference_block: None,
+                        reference_virtual: None,
+                        codec_state: None,
+                        discard_padding: None,
+                        slices: None,
+                        reference_frame: None
+                    }).collect(),
                     encrypted_block: None,
                 };
 
@@ -401,8 +412,19 @@ impl Muxer for MkvMuxer {
                 silent_tracks: None,
                 position: None,
                 prev_size: None,
-                simple_block: simple_blocks,
-                block_group: Vec::new(),
+                block: simple_blocks.iter().map(|block| BlockGroup{
+                    block,
+                    block_virtual: None,
+                    block_additions: None,
+                    block_duration: None,
+                    reference_priority: 0,
+                    reference_block: None,
+                    reference_virtual: None,
+                    codec_state: None,
+                    discard_padding: None,
+                    slices: None,
+                    reference_frame: None
+                }).collect(),
                 encrypted_block: None,
             };
 

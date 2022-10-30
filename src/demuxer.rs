@@ -269,8 +269,8 @@ impl<'a> Cluster<'a> {
     pub fn generate_packets(&self, tracks: &Tracks) -> Vec<Event> {
         let mut v = Vec::new();
 
-        for block_data in self.simple_block.iter() {
-            if let Ok((i, block)) = simple_block(block_data) {
+        for block_data in self.block.iter() {
+            if let Ok((i, block)) = simple_block(block_data.block) {
                 debug!("parsing simple block: {:?}", block);
                 if let Some(index) = tracks.lookup(block.track_number) {
                     let packet = Packet {
