@@ -415,7 +415,7 @@ mod tests {
             }
             info!("gen_res: {:?}", gen_res);
         }
-        info!("{}", (&data[..]).to_hex(16));
+        info!("{}", (data[..]).to_hex(16));
 
         let parse_res = crate::ebml::vint(&data[..]);
         info!("parse_res: {:?}", parse_res);
@@ -451,7 +451,7 @@ mod tests {
             let gen_res = gen_vid(id)((&mut data[..], 0));
             info!("gen_res: {:?}", gen_res);
         }
-        info!("{}", (&data[..]).to_hex(16));
+        info!("{}", (data[..]).to_hex(16));
 
         let parse_res = crate::ebml::vid(&data[..]);
         info!("parse_res: {:?}", parse_res);
@@ -481,7 +481,7 @@ mod tests {
             let gen_res = gen_u64(id, num)((&mut data[..], 0));
             info!("gen_res: {:?}", gen_res);
         }
-        info!("{}", (&data[..]).to_hex(16));
+        info!("{}", (data[..]).to_hex(16));
 
         let parse_res: IResult<&[u8], u64, Error> = crate::ebml::ebml_uint(id)(&data[..]);
         info!("parse_res: {:?}", parse_res);
@@ -519,7 +519,7 @@ mod tests {
           let gen_res = gen_u8(id, num)((&mut data[..], 0));
           info!("gen_res: {:?}", gen_res);
         }
-        info!("{}", (&data[..]).to_hex(16));
+        info!("{}", (data[..]).to_hex(16));
 
         let parse_res: IResult<&[u8], u64, Error> = crate::ebml::ebml_uint(id)(&data[..]);
         info!("parse_res: {:?}", parse_res);
@@ -559,7 +559,7 @@ mod tests {
           }
         }
 
-        info!("{}", (&data[..]).to_hex(16));
+        info!("{}", (data[..]).to_hex(16));
         let parse_res = crate::ebml::ebml_header(&data[..]);
         info!("parse_res: {:?}", parse_res);
         match parse_res {

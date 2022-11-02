@@ -303,14 +303,14 @@ impl Muxer for MkvMuxer {
             discardable: false,
         };
 
-        let mut origin = (&v).as_ptr() as usize;
+        let mut origin = (v).as_ptr() as usize;
         let mut needed = 0usize;
         let offset;
         loop {
             if needed > 0 {
                 let len = needed + v.len();
                 v.resize(len, 0);
-                origin = (&v).as_ptr() as usize;
+                origin = (v).as_ptr() as usize;
             }
 
             match gen_simple_block_header(&s)((&mut v, 0)) {
@@ -355,14 +355,14 @@ impl Muxer for MkvMuxer {
                 };
 
                 let mut buf: Vec<u8> = vec![0; cluster.size(0x1F43B675)];
-                let mut origin = (&buf).as_ptr() as usize;
+                let mut origin = (buf).as_ptr() as usize;
                 let mut needed = 0usize;
                 let offset;
                 loop {
                     if needed > 0 {
                         let len = needed + buf.len();
                         buf.resize(len, 0);
-                        origin = (&buf).as_ptr() as usize;
+                        origin = (buf).as_ptr() as usize;
                     }
 
                     match gen_cluster(&cluster)((&mut buf, 0)) {
@@ -407,14 +407,14 @@ impl Muxer for MkvMuxer {
             };
 
             let mut buf: Vec<u8> = vec![0; cluster.size(0x1F43B675)];
-            let mut origin = (&buf).as_ptr() as usize;
+            let mut origin = (buf).as_ptr() as usize;
             let mut needed = 0usize;
             let offset;
             loop {
                 if needed > 0 {
                     let len = needed + buf.len();
                     buf.resize(len, 0);
-                    origin = (&buf).as_ptr() as usize;
+                    origin = (buf).as_ptr() as usize;
                 }
 
                 match gen_cluster(&cluster)((&mut buf, 0)) {

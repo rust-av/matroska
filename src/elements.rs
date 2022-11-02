@@ -1045,7 +1045,7 @@ mod tests {
         debug!("{:?}", res);
 
         if let Ok((i, _)) = res {
-            debug!("consumed {} bytes after header", (&mkv[47..]).offset(i));
+            debug!("consumed {} bytes after header", (mkv[47..]).offset(i));
         } else {
             panic!("res: {:?}", res);
         }
@@ -1081,7 +1081,7 @@ mod tests {
                         "[{}] {:#?}:\n{}",
                         index,
                         e,
-                        (&mkv[index..max_index]).to_hex(16)
+                        (mkv[index..max_index]).to_hex(16)
                     );
                     break;
                 }
@@ -1095,7 +1095,7 @@ mod tests {
         debug!("{:?}", res);
 
         if let Ok((i, _)) = res {
-            debug!("consumed {} bytes after header", (&webm[40..]).offset(i));
+            debug!("consumed {} bytes after header", (webm[40..]).offset(i));
         } else {
             panic!("res: {:?}", res);
         }
@@ -1131,7 +1131,7 @@ mod tests {
                         "[{}] {:#?}:\n{}",
                         index,
                         e,
-                        (&webm[index..max_index]).to_hex(16)
+                        (webm[index..max_index]).to_hex(16)
                     );
                     break;
                 }

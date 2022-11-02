@@ -104,11 +104,8 @@ impl MkvDemuxer {
                         // Only keep tracks we're interested in
                         if let Some(params) = &self.params {
                             if let Some(track_numbers) = &params.track_numbers {
-                                t.tracks = t
-                                    .tracks
-                                    .into_iter()
-                                    .filter(|tr| track_numbers.contains(&tr.track_number))
-                                    .collect();
+                                t.tracks
+                                    .retain(|tr| track_numbers.contains(&tr.track_number));
                             }
                         };
 
