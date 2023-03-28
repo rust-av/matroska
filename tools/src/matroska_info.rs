@@ -178,8 +178,11 @@ fn run(filename: &str) -> Result<(), InfoError> {
                         format_uid(i.segment_uid.as_ref().unwrap_or(&Vec::new()))
                     );
                     println!("| + Timestamp scale: {}", i.timecode_scale);
-                    let d = Duration::from_secs_f64(i.duration.map_or(0.0, |f| f / 1000.0));
-                    println!("| + Duration: {}", format_duration(d));
+                    if let Some(f) = i.duration {
+                        let nanos = f * i.timecode_scale as f64;
+                        let d = Duration::from_nanos(nanos.round() as u64);
+                        println!("| + Duration: {}", format_duration(d));
+                    }
                     println!("| + Multiplexing application: {}", i.muxing_app);
                     println!("| + Writing application: {}", i.writing_app);
                     if info.is_some() {
