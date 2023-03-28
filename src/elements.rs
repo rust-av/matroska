@@ -1073,7 +1073,7 @@ mod tests {
                         }
                     };
 
-                    index = new_index as usize;
+                    index = new_index;
                 }
                 e => {
                     let max_index = min(mkv.len(), index + 200);
@@ -1123,7 +1123,7 @@ mod tests {
                         }
                     };
 
-                    index = new_index as usize;
+                    index = new_index;
                 }
                 e => {
                     let max_index = min(webm.len(), index + 200);
