@@ -1,6 +1,7 @@
 use std::env;
 use std::fs::File;
 use std::io::{self, Read};
+use std::time::Duration;
 
 use circular::Buffer;
 use err_derive::Error;
@@ -177,7 +178,8 @@ fn run(filename: &str) -> Result<(), InfoError> {
                         format_uid(i.segment_uid.as_ref().unwrap_or(&Vec::new()))
                     );
                     println!("| + Timestamp scale: {}", i.timecode_scale);
-                    println!("| + Duration: {}s", i.duration.unwrap_or(0f64) / 1000f64);
+                    let d = Duration::from_secs_f64(i.duration.map_or(0.0, |f| f / 1000.0));
+                    println!("| + Duration: {}", format_duration(d));
                     println!("| + Multiplexing application: {}", i.muxing_app);
                     println!("| + Writing application: {}", i.writing_app);
                     if info.is_some() {
@@ -337,4 +339,11 @@ fn format_uid(uid: &Vec<u8>) -> String {
         .map(|b| format!("{b:#x}"))
         .collect::<Vec<_>>()
         .join(" ")
+}
+
+fn format_duration(dur: Duration) -> String {
+    let hrs = dur.as_secs() / 3600;
+    let mins = (dur.as_secs() % 3600) / 60;
+    let secs = dur.as_secs_f64() % 60.0;
+    format!("{hrs:02}:{mins:02}:{secs:02.9}")
 }
