@@ -59,8 +59,8 @@ fn run(filename: &str) -> Result<(), InfoError> {
             println!("+ EBML head");
             println!("|+ EBML version: {}", header.version);
             println!("|+ EBML read version: {}", header.read_version);
-            println!("|+ EBML maximum ID length: {}", header.max_id_length);
-            println!("|+ EBML maximum size length: {}", header.max_size_length);
+            println!("|+ Maximum EBML ID length: {}", header.max_id_length);
+            println!("|+ Maximum EBML size length: {}", header.max_size_length);
             println!("|+ Document type: {}", header.doc_type);
             println!("|+ Document type version: {}", header.doc_type_version);
             println!(
