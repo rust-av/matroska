@@ -336,9 +336,8 @@ fn run(filename: &str) -> Result<(), InfoError> {
     Ok(())
 }
 
-fn format_uid(uid: &Vec<u8>) -> String {
-    uid
-        .iter()
+fn format_uid(uid: &[u8]) -> String {
+    uid.iter()
         .map(|b| format!("{b:#x}"))
         .collect::<Vec<_>>()
         .join(" ")
