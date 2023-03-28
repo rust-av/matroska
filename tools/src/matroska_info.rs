@@ -172,14 +172,14 @@ fn run(filename: &str) -> Result<(), InfoError> {
                 }
                 SegmentElement::Info(i) => {
                     println!("|+ Segment information");
+                    println!(
+                        "| + Segment UID: {}",
+                        format_uid(i.segment_uid.as_ref().unwrap_or(&Vec::new()))
+                    );
                     println!("| + Timestamp scale: {}", i.timecode_scale);
+                    println!("| + Duration: {}s", i.duration.unwrap_or(0f64) / 1000f64);
                     println!("| + Multiplexing application: {}", i.muxing_app);
                     println!("| + Writing application: {}", i.writing_app);
-                    println!(
-                        "| + Segment UID: {:?}",
-                        i.segment_uid.as_ref().unwrap_or(&Vec::new())
-                    );
-                    println!("| + Duration: {}s", i.duration.unwrap_or(0f64) / 1000f64);
                     if info.is_some() {
                         return Err(InfoError::InfoElement);
                     } else {
@@ -329,4 +329,12 @@ fn run(filename: &str) -> Result<(), InfoError> {
     }
 
     Ok(())
+}
+
+fn format_uid(uid: &Vec<u8>) -> String {
+    uid
+        .iter()
+        .map(|b| format!("{b:#x}"))
+        .collect::<Vec<_>>()
+        .join(" ")
 }
