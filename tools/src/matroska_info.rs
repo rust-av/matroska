@@ -190,9 +190,9 @@ fn run(filename: &str) -> Result<(), InfoError> {
                 }
                 SegmentElement::Tracks(t) => {
                     //eprintln!("got tracks: {:#?}", t);
-                    println!("|+ Segment tracks");
+                    println!("|+ Tracks");
                     for tr in t.tracks.iter() {
-                        println!("| + A track");
+                        println!("| + Track");
                         println!("|  + Track number: {}", tr.track_number);
                         println!("|  + Track UID: {}", tr.track_uid);
                         println!("|  + Track type: {}", tr.track_type);
