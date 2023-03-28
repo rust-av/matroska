@@ -301,7 +301,7 @@ pub trait EbmlSize {
         let self_size = self.capacity();
         let size_tag_size = vint_size(self_size as u64).unwrap_or(0);
 
-        id_size as usize + size_tag_size as usize + self_size as usize
+        id_size as usize + size_tag_size as usize + self_size
     }
 }
 
@@ -339,7 +339,7 @@ impl<T: EbmlSize> EbmlSize for Option<T> {
                 let self_size = self.capacity();
                 let size_tag_size = vint_size(self_size as u64).unwrap_or(0);
 
-                id_size as usize + size_tag_size as usize + self_size as usize
+                id_size as usize + size_tag_size as usize + self_size
             }
             None => 0,
         }

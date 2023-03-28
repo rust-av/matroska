@@ -454,7 +454,7 @@ impl Muxer for MkvMuxer {
         Ok(())
     }
 
-    fn set_option<'a>(&mut self, _key: &str, _val: Value<'a>) -> Result<()> {
+    fn set_option(&mut self, _key: &str, _val: Value<'_>) -> Result<()> {
         Ok(())
     }
 }
