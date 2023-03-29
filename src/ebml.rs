@@ -20,7 +20,40 @@ pub struct Error<'a> {
 #[derive(Debug, PartialEq, Eq)]
 pub enum ErrorKind {
     Nom(nom::error::ErrorKind),
-    Custom(u8),
+    Custom(EbmlError),
+}
+
+#[derive(Debug, PartialEq, Eq)]
+#[non_exhaustive]
+pub enum EbmlError {
+    /// The value of an unsigned integer does not fit into the platform's
+    /// native uint type. This can not happen on 64-bit platforms.
+    UintTooLarge = 0,
+
+    /// A required value was not found by the parser.
+    MissingRequiredValue = 1,
+
+    /// One of the segment element types was discovered more than once in the input.
+    DuplicateSegment = 2,
+
+    /// The VINT_WIDTH is 8 or more, which means that the resulting variable-size
+    /// integer is more than 8 octets wide. This is currently not supported.
+    VintTooWide = 100,
+
+    /// A signed integer element has declared a length of more than 8 octets,
+    /// which is not allowed.
+    IntTooWide = 101,
+
+    /// An unsigned integer element has declared a length of more than 8 octets,
+    /// which is not allowed.
+    UintTooWide = 102,
+
+    /// A float element has declared a length that is not 0, 4 or 8 octets,
+    /// which is not allowed.
+    FloatWidthIncorrect = 103,
+
+    /// A string element contains non-UTF-8 data, which is not allowed.
+    StringNotUtf8 = 104,
 }
 
 impl<'a> nom::error::ParseError<&'a [u8]> for Error<'a> {
@@ -36,24 +69,24 @@ impl<'a> nom::error::ParseError<&'a [u8]> for Error<'a> {
     }
 }
 
-pub fn custom_error(input: &[u8], code: u8) -> Error {
-    Error {
+pub fn custom_error(input: &[u8], code: EbmlError) -> nom::Err<Error> {
+    nom::Err::Error(Error {
         input,
         kind: ErrorKind::Custom(code),
-    }
+    })
 }
 
 pub(crate) fn usize_error(input: &[u8], size: u64) -> Result<usize, nom::Err<Error>> {
     usize::try_from(size).map_err(|_| {
         log::error!("Not possible to convert size into usize");
-        nom::Err::Error(custom_error(input, 0))
+        custom_error(input, EbmlError::UintTooLarge)
     })
 }
 
 pub(crate) fn value_error<T>(input: &[u8], value: Option<T>) -> Result<T, nom::Err<Error>> {
     value.ok_or_else(|| {
         log::error!("Not possible to get the requested value");
-        nom::Err::Error(custom_error(input, 1))
+        custom_error(input, EbmlError::MissingRequiredValue)
     })
 }
 
@@ -66,7 +99,7 @@ pub fn vint(input: &[u8]) -> IResult<&[u8], u64, Error> {
     let len = v.leading_zeros();
 
     if len == 8 {
-        return Err(Err::Error(custom_error(input, 100)));
+        return Err(custom_error(input, EbmlError::VintTooWide));
     }
 
     if input.len() <= len as usize {
@@ -103,7 +136,7 @@ pub fn vid(input: &[u8]) -> IResult<&[u8], u64, Error> {
     let len = v.leading_zeros();
 
     if len == 8 {
-        return Err(Err::Error(custom_error(input, 100)));
+        return Err(custom_error(input, EbmlError::VintTooWide));
     }
 
     if input.len() <= len as usize {
@@ -128,7 +161,7 @@ pub fn parse_uint_data(size: u64) -> impl Fn(&[u8]) -> IResult<&[u8], u64, Error
         let mut val = 0;
 
         if size > 8 {
-            return Err(Err::Error(custom_error(input, 102)));
+            return Err(custom_error(input, EbmlError::UintTooWide));
         }
 
         for i in input.iter().take(size as usize) {
@@ -144,7 +177,7 @@ pub fn parse_int_data(size: u64) -> impl Fn(&[u8]) -> IResult<&[u8], i64, Error>
         let mut val = 0;
 
         if size > 8 {
-            return Err(Err::Error(custom_error(input, 103)));
+            return Err(custom_error(input, EbmlError::IntTooWide));
         }
 
         for i in input.iter().take(size as usize) {
@@ -160,7 +193,7 @@ pub fn parse_str_data(size: u64) -> impl Fn(&[u8]) -> IResult<&[u8], String, Err
         take(usize_error(input, size)?)(input).and_then(|(i, data)| {
             match String::from_utf8(data.to_owned()) {
                 Ok(s) => Ok((i, s)),
-                Err(_) => return Err(Err::Error(custom_error(i, 104))),
+                Err(_) => return Err(custom_error(i, EbmlError::StringNotUtf8)),
             }
         })
     }
@@ -189,7 +222,7 @@ pub fn parse_float_data(size: u64) -> impl Fn(&[u8]) -> IResult<&[u8], f64, Erro
         } else if size == 8 {
             map_parser(take(8usize), be_f64)(input)
         } else {
-            Err(Err::Error(custom_error(input, 104)))
+            Err(custom_error(input, EbmlError::FloatWidthIncorrect))
         }
     }
 }

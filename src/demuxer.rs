@@ -15,7 +15,7 @@ use av_format::{
 };
 
 use crate::{
-    ebml::{self, custom_error, ebml_header, EBMLHeader},
+    ebml::{self, custom_error, ebml_header, EBMLHeader, EbmlError},
     elements::{
         segment, segment_element, simple_block, Audio, Cluster, Info, SeekHead, SegmentElement,
         TrackEntry, TrackType, Tracks, Video,
@@ -85,7 +85,7 @@ impl MkvDemuxer {
                     self.seek_head = if self.seek_head.is_none() {
                         Some(s)
                     } else {
-                        return Err(Err::Error(custom_error(input, 1)));
+                        return Err(custom_error(input, EbmlError::DuplicateSegment));
                     };
                 }
                 SegmentElement::Info(i) => {
@@ -93,7 +93,7 @@ impl MkvDemuxer {
                     self.info = if self.info.is_none() {
                         Some(i)
                     } else {
-                        return Err(Err::Error(custom_error(input, 1)));
+                        return Err(custom_error(input, EbmlError::DuplicateSegment));
                     };
                 }
                 SegmentElement::Tracks(t) => {
@@ -111,7 +111,7 @@ impl MkvDemuxer {
 
                         Some(t)
                     } else {
-                        return Err(Err::Error(custom_error(input, 1)));
+                        return Err(custom_error(input, EbmlError::DuplicateSegment));
                     }
                 }
                 el => {
