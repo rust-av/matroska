@@ -5,8 +5,8 @@
 [![dependency status](https://deps.rs/repo/github/rust-av/matroska/status.svg)](https://deps.rs/repo/github/rust-av/matroska)
 
 ## Specification
-- [rfc](https://datatracker.ietf.org/doc/html/draft-lhomme-cellar-matroska)
-- [git repository](https://github.com/Matroska-Org/matroska-specification/)
+- [rfc](https://datatracker.ietf.org/doc/draft-ietf-cellar-matroska/)
+- [git repository](https://github.com/ietf-wg-cellar/matroska-specification)
 
 ## Status
 - Supported formats
