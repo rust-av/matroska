@@ -61,7 +61,7 @@ impl MkvDemuxer {
     pub fn parse_until_tracks<'a>(
         &mut self,
         original_input: &'a [u8],
-    ) -> IResult<&'a [u8], (), ebml::Error<'a>> {
+    ) -> IResult<&'a [u8], (), ebml::Error> {
         let (i1, header) = ebml_header(original_input)?;
 
         self.header = Some(header);
@@ -85,7 +85,7 @@ impl MkvDemuxer {
                     self.seek_head = if self.seek_head.is_none() {
                         Some(s)
                     } else {
-                        return Err(custom_error(input, EbmlError::DuplicateSegment));
+                        return Err(custom_error(EbmlError::DuplicateSegment(0x114D9B74)));
                     };
                 }
                 SegmentElement::Info(i) => {
@@ -93,7 +93,7 @@ impl MkvDemuxer {
                     self.info = if self.info.is_none() {
                         Some(i)
                     } else {
-                        return Err(custom_error(input, EbmlError::DuplicateSegment));
+                        return Err(custom_error(EbmlError::DuplicateSegment(0x1549A966)));
                     };
                 }
                 SegmentElement::Tracks(t) => {
@@ -111,7 +111,7 @@ impl MkvDemuxer {
 
                         Some(t)
                     } else {
-                        return Err(custom_error(input, EbmlError::DuplicateSegment));
+                        return Err(custom_error(EbmlError::DuplicateSegment(0x1654AE6B)));
                     }
                 }
                 el => {
