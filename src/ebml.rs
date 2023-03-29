@@ -317,13 +317,13 @@ pub fn ebml_header(input: &[u8]) -> IResult<&[u8], EBMLHeader, Error> {
             Ok((
                 i,
                 EBMLHeader {
-                    version: value_error(input, t.0)?,
-                    read_version: value_error(input, t.1)?,
-                    max_id_length: value_error(input, t.2)?,
-                    max_size_length: value_error(input, t.3)?,
+                    version: t.0.unwrap_or(1),
+                    read_version: t.1.unwrap_or(1),
+                    max_id_length: t.2.unwrap_or(4),
+                    max_size_length: t.3.unwrap_or(8),
                     doc_type: value_error(input, t.4)?,
-                    doc_type_version: value_error(input, t.5)?,
-                    doc_type_read_version: value_error(input, t.6)?,
+                    doc_type_version: t.5.unwrap_or(1),
+                    doc_type_read_version: t.6.unwrap_or(1),
                 },
             ))
         })
