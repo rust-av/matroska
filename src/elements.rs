@@ -32,13 +32,16 @@ pub fn segment(input: &[u8]) -> IResult<&[u8], (u64, Option<u64>), Error> {
     pair(verify(vid, |val| *val == 0x18538067), opt(vint))(input)
 }
 
-pub fn sub_element<'a, O1, G>(second: G) -> impl Fn(&'a [u8]) -> IResult<&'a [u8], O1, Error<'a>>
+pub fn sub_element<'a, O1, G>(
+    id: u64,
+    second: G,
+) -> impl Fn(&'a [u8]) -> IResult<&'a [u8], O1, Error>
 where
-    G: Fn(&'a [u8]) -> IResult<&'a [u8], O1, Error<'a>> + Copy,
+    G: Fn(&'a [u8]) -> IResult<&'a [u8], O1, Error> + Copy,
 {
     move |input| {
         pair(vint, opt(ebml_binary(0xBF)))(input).and_then(|(i, (size, crc))| {
-            take(usize_error(i, size - if crc.is_some() { 6 } else { 0 })?)(i)
+            take(usize_error(id, size - if crc.is_some() { 6 } else { 0 })?)(i)
                 .and_then(|(i, data)| second(data).map(|(_, val)| (i, val)))
         })
     }
@@ -47,20 +50,24 @@ where
 // Segment, the root element, has id 0x18538067
 pub fn segment_element(input: &[u8]) -> IResult<&[u8], SegmentElement, Error> {
     vid(input).and_then(|(i, id)| match id {
-        0x114D9B74 => sub_element(seek_head)(i),
-        0x1549A966 => sub_element(info)(i),
-        0x1F43B675 => sub_element(cluster)(i),
-        0x1043A770 => sub_element(chapters)(i),
-        0x1254C367 => sub_element(|i| Ok((i, SegmentElement::Tags(Tags {}))))(i),
-        0x1941A469 => sub_element(|i| Ok((i, SegmentElement::Attachments(Attachments {}))))(i),
-        0x1654AE6B => sub_element(tracks)(i),
-        0x1C53BB6B => sub_element(|i| Ok((i, SegmentElement::Cues(Cues {}))))(i),
+        0x114D9B74 => sub_element(0x114D9B74, seek_head)(i),
+        0x1549A966 => sub_element(0x1549A966, info)(i),
+        0x1F43B675 => sub_element(0x1F43B675, cluster)(i),
+        0x1043A770 => sub_element(0x1043A770, chapters)(i),
+        0x1254C367 => sub_element(0x1254C367, |i| Ok((i, SegmentElement::Tags(Tags {}))))(i),
+        0x1941A469 => sub_element(0x1941A469, |i| {
+            Ok((i, SegmentElement::Attachments(Attachments {})))
+        })(i),
+        0x1654AE6B => sub_element(0x1654AE6B, tracks)(i),
+        0x1C53BB6B => sub_element(0x1C53BB6B, |i| Ok((i, SegmentElement::Cues(Cues {}))))(i),
         0xEC => vint(i).and_then(|(i, size)| {
-            map(take(usize_error(i, size)?), |_| SegmentElement::Void(size))(i)
+            map(take(usize_error(0xEC, size)?), |_| {
+                SegmentElement::Void(size)
+            })(i)
         }),
-        _ => opt(vint)(i).and_then(|(i, size)| {
+        id => opt(vint)(i).and_then(|(i, size)| {
             map(
-                cond(size.is_some(), take(usize_error(i, size.unwrap())?)),
+                cond(size.is_some(), take(usize_error(id, size.unwrap())?)),
                 |_| SegmentElement::Unknown(id, size),
             )(i)
         }),
@@ -96,8 +103,8 @@ pub fn seek(input: &[u8]) -> IResult<&[u8], Seek, Error> {
             Ok((
                 i,
                 Seek {
-                    id: value_error(inp, t.0)?,
-                    position: value_error(inp, t.1)?,
+                    id: value_error(0x53AB, t.0)?,
+                    position: value_error(0x53AC, t.1)?,
                 },
             ))
         })
@@ -152,12 +159,12 @@ pub fn info(input: &[u8]) -> IResult<&[u8], SegmentElement, Error> {
                 next_filename: t.5,
                 segment_family: t.6,
                 chapter_translate: t.7,
-                timecode_scale: value_error(input, t.8)?,
+                timecode_scale: value_error(0x2AD7B1, t.8)?,
                 duration: t.9,
                 date_utc: t.10,
                 title: t.11,
-                muxing_app: value_error(input, t.12)?,
-                writing_app: value_error(input, t.13)?,
+                muxing_app: value_error(0x4D80, t.12)?,
+                writing_app: value_error(0x5741, t.13)?,
             }),
         ))
     })
@@ -197,12 +204,12 @@ pub fn cluster(input: &[u8]) -> IResult<&[u8], SegmentElement, Error> {
         Ok((
             i,
             SegmentElement::Cluster(Cluster {
-                timecode: value_error(input, t.0)?,
+                timecode: value_error(0xE7, t.0)?,
                 silent_tracks: t.1,
                 position: t.2,
                 prev_size: t.3,
-                simple_block: value_error(input, t.4)?,
-                block_group: value_error(input, t.5)?,
+                simple_block: value_error(0xA3, t.4)?,
+                block_group: value_error(0xA0, t.5)?,
                 encrypted_block: t.6,
             }),
         ))
@@ -256,11 +263,11 @@ pub fn block_group(input: &[u8]) -> IResult<&[u8], BlockGroup, Error> {
             Ok((
                 i,
                 BlockGroup {
-                    block: value_error(inp, t.0)?,
+                    block: value_error(0xA1, t.0)?,
                     block_virtual: t.1,
                     block_additions: t.2,
                     block_duration: t.3,
-                    reference_priority: value_error(inp, t.4).unwrap_or(0),
+                    reference_priority: value_error(0xFA, t.4).unwrap_or(0),
                     reference_block: t.5,
                     reference_virtual: t.6,
                     codec_state: t.7,
@@ -525,9 +532,9 @@ pub fn track_entry(input: &[u8]) -> IResult<&[u8], TrackEntry, Error> {
             Ok((
                 i,
                 TrackEntry {
-                    track_number: value_error(inp, t.0)?,
-                    track_uid: value_error(inp, t.1)?,
-                    track_type: value_error(inp, t.2)?,
+                    track_number: value_error(0xD7, t.0)?,
+                    track_uid: value_error(0x73C5, t.1)?,
+                    track_type: value_error(0x83, t.2)?,
                     flag_enabled: t.3,
                     flag_default: t.4,
                     flag_forced: t.5,
@@ -542,7 +549,7 @@ pub fn track_entry(input: &[u8]) -> IResult<&[u8], TrackEntry, Error> {
                     name: t.14,
                     language: t.15,
                     language_ietf: t.16,
-                    codec_id: value_error(inp, t.17)?,
+                    codec_id: value_error(0x86, t.17)?,
                     codec_private: t.18,
                     codec_name: t.19,
                     attachment_link: t.20,
@@ -553,7 +560,7 @@ pub fn track_entry(input: &[u8]) -> IResult<&[u8], TrackEntry, Error> {
                     track_overlay: t.25,
                     codec_delay: t.26,
                     seek_pre_roll: t.27,
-                    track_translate: value_error(inp, t.28)?,
+                    track_translate: value_error(0x6624, t.28)?,
                     video: t.29,
                     audio: t.30,
                     track_operation: t.31,
@@ -588,9 +595,9 @@ pub fn track_translate(input: &[u8]) -> IResult<&[u8], TrackTranslate, Error> {
             Ok((
                 i,
                 TrackTranslate {
-                    edition_uid: value_error(inp, t.0)?,
-                    codec: value_error(inp, t.1)?,
-                    track_id: value_error(inp, t.2)?,
+                    edition_uid: value_error(0x66FC, t.0)?,
+                    codec: value_error(0x66BF, t.1)?,
+                    track_id: value_error(0x66A5, t.2)?,
                 },
             ))
         })
@@ -641,8 +648,8 @@ pub fn track_plane(input: &[u8]) -> IResult<&[u8], TrackPlane, Error> {
                 Ok((
                     i,
                     TrackPlane {
-                        uid: value_error(inp, t.0)?,
-                        plane_type: value_error(inp, t.1)?,
+                        uid: value_error(0xE5, t.0)?,
+                        plane_type: value_error(0xE6, t.1)?,
                     },
                 ))
             },
@@ -698,9 +705,9 @@ pub fn content_encoding(input: &[u8]) -> IResult<&[u8], ContentEncoding, Error> 
             Ok((
                 i,
                 ContentEncoding {
-                    order: value_error(inp, t.0)?,
-                    scope: value_error(inp, t.1)?,
-                    encoding_type: value_error(inp, t.2)?,
+                    order: value_error(0x5031, t.0)?,
+                    scope: value_error(0x5032, t.1)?,
+                    encoding_type: value_error(0x5033, t.2)?,
                     compression: t.3,
                     encryption: t.4,
                 },
@@ -722,7 +729,7 @@ pub fn content_compression(input: &[u8]) -> IResult<&[u8], ContentCompression, E
                 Ok((
                     i,
                     ContentCompression {
-                        algo: value_error(inp, t.0)?,
+                        algo: value_error(0x4254, t.0)?,
                         settings: t.1,
                     },
                 ))
@@ -785,9 +792,9 @@ pub fn audio(input: &[u8]) -> IResult<&[u8], Audio, Error> {
             Ok((
                 i,
                 Audio {
-                    sampling_frequency: value_error(inp, t.0)?,
+                    sampling_frequency: value_error(0xB5, t.0)?,
                     output_sampling_frequency: t.1,
-                    channels: value_error(inp, t.2)?,
+                    channels: value_error(0x9F, t.2)?,
                     channel_positions: t.3,
                     bit_depth: t.4,
                 },
@@ -853,8 +860,8 @@ pub fn video(input: &[u8]) -> IResult<&[u8], Video, Error> {
                     stereo_mode: t.2,
                     alpha_mode: t.3,
                     old_stereo_mode: t.4,
-                    pixel_width: value_error(inp, t.5)?,
-                    pixel_height: value_error(inp, t.6)?,
+                    pixel_width: value_error(0xB0, t.5)?,
+                    pixel_height: value_error(0xBA, t.6)?,
                     pixel_crop_bottom: t.7,
                     pixel_crop_top: t.8,
                     pixel_crop_left: t.9,
@@ -998,11 +1005,11 @@ pub fn projection(input: &[u8]) -> IResult<&[u8], Projection, Error> {
             Ok((
                 i,
                 Projection {
-                    projection_type: value_error(inp, t.0)?,
+                    projection_type: value_error(0x7671, t.0)?,
                     projection_private: t.1,
-                    projection_pose_yaw: value_error(inp, t.2)?,
-                    projection_pose_pitch: value_error(inp, t.3)?,
-                    projection_pose_roll: value_error(inp, t.4)?,
+                    projection_pose_yaw: value_error(0x7673, t.2)?,
+                    projection_pose_pitch: value_error(0x7674, t.3)?,
+                    projection_pose_roll: value_error(0x7675, t.4)?,
                 },
             ))
         })
