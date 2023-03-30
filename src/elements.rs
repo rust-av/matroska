@@ -8,8 +8,8 @@ use nom::{
 };
 
 use crate::ebml::{
-    crc, eat_void, ebml_binary, ebml_binary_ref, ebml_float, ebml_int, ebml_master, ebml_str,
-    ebml_uint, usize_error, value_error, vid, vint, Error, checksum,
+    checksum, crc, eat_void, ebml_binary, ebml_binary_ref, ebml_float, ebml_int, ebml_master,
+    ebml_str, ebml_uint, usize_error, value_error, vid, vint, Error,
 };
 use crate::permutation::matroska_permutation;
 
