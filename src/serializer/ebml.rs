@@ -247,11 +247,15 @@ pub(crate) fn gen_ebml_str<'a, 'b>(
     }
 }
 
-pub(crate) fn gen_ebml_binary<'a, 'b>(
+pub(crate) fn gen_ebml_binary<'a, 'b, S>(
     id: u64,
-    s: &'a [u8],
-) -> impl Fn((&'b mut [u8], usize)) -> Result<(&'b mut [u8], usize), GenError> + 'a {
+    s: S,
+) -> impl Fn((&'b mut [u8], usize)) -> Result<(&'b mut [u8], usize), GenError> + 'a
+where
+    S: AsRef<[u8]> + 'a,
+{
     move |input| {
+        let s = s.as_ref();
         let v = vint_size(s.len() as u64)?;
 
         let (buf, ofs_len) = gen_vid(id)(input)?;
@@ -373,6 +377,12 @@ impl<'a> EbmlSize for Vec<&'a [u8]> {
 impl EbmlSize for Vec<u64> {
     fn capacity(&self) -> usize {
         self.len() * 8
+    }
+}
+
+impl EbmlSize for uuid::Uuid {
+    fn capacity(&self) -> usize {
+        16
     }
 }
 
