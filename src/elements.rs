@@ -8,8 +8,8 @@ use nom::{
 };
 
 use crate::ebml::{
-    eat_void, ebml_binary, ebml_binary_ref, ebml_float, ebml_int, ebml_master, ebml_str, ebml_uint,
-    usize_error, value_error, vid, vint, Error,
+    crc, eat_void, ebml_binary, ebml_binary_ref, ebml_float, ebml_int, ebml_master, ebml_str,
+    ebml_uint, usize_error, value_error, vid, vint, Error, checksum,
 };
 use crate::permutation::matroska_permutation;
 
@@ -40,8 +40,9 @@ where
     G: Fn(&'a [u8]) -> IResult<&'a [u8], O1, Error> + Copy,
 {
     move |input| {
-        pair(vint, opt(ebml_binary(0xBF)))(input).and_then(|(i, (size, crc))| {
-            take(usize_error(id, size - if crc.is_some() { 6 } else { 0 })?)(i)
+        pair(vint, crc)(input).and_then(|(i, (size, crc))| {
+            let size = if crc.is_some() { size - 6 } else { size };
+            checksum(crc, take(usize_error(id, size)?))(i)
                 .and_then(|(i, data)| second(data).map(|(_, val)| (i, val)))
         })
     }
