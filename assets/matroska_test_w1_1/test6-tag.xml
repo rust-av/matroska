@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+<!DOCTYPE Tags SYSTEM "matroskatags.dtd">
+<Tags>
+  <!-- movie -->
+  <Tag>
+    <Targets>
+      <TargetTypeValue>50</TargetTypeValue>
+    </Targets>
+    <Simple>
+      <Name>TITLE</Name>
+      <String>Big Buck Bunny - test 6</String>
+    </Simple>
+    <Simple>
+      <Name>DATE_RELEASED</Name>
+      <String>2010</String>
+    </Simple>
+    <Simple>
+      <Name>COMMENT</Name>
+      <String>Matroska Validation File 6, random length to code the size of Clusters and Blocks, no Cues for seeking</String>
+    </Simple>
+  </Tag>
+</Tags>
