@@ -8,28 +8,24 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
 
-    - name: Install stable
-      uses: actions-rs/toolchain@v1
+    - name: Install Rust stable
+      uses: dtolnay/rust-toolchain@stable
       with:
-        profile: minimal
         toolchain: stable
-        override: true
         components: clippy, rustfmt
 
     - name: Run rustfmt
-      uses: actions-rs/cargo@v1
-      with:
-        command: fmt
-        args: --all -- --check
+      run:
+        cargo fmt --all -- --check --verbose
 
-    - name: Run clippy
-      uses: actions-rs/clippy-check@v1
+    - name: Run cargo clippy
+      uses: giraffate/clippy-action@v1
       with:
-        token: ${{ secrets.GITHUB_TOKEN }}
-        args: --all --all-targets --all-features -- -D warnings
-
+        github_token: {{ '${{ secrets.GITHUB_TOKEN }}' }}
+        clippy_flags: --all-targets -- -D warnings
+        reporter: github-pr-review
 
   tests:
     strategy:
