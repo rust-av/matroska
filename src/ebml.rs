@@ -22,7 +22,7 @@ pub enum Error {
 
 // TODO: Add Element IDs (u64) to more of these variants
 
-/// The `u64` contained in some of these error variants represents the
+/// The [u64] contained in some of these error variants represents the
 /// EBML or Matroska Element ID of the element where the error occurred.
 ///
 /// For an overview of all Element IDs, see:
@@ -65,6 +65,11 @@ pub enum EbmlError {
 
     /// A string element contains non-UTF-8 data, which is not allowed.
     StringNotUtf8(u64),
+
+    /// A binary element does not adhere to the expected length.
+    ///
+    /// The contained [usize] is the expected length.
+    BinaryWidthIncorrect(usize),
 }
 
 impl<'a> nom::error::ParseError<&'a [u8]> for Error {
@@ -204,6 +209,20 @@ pub fn parse_str_data(id: u64, size: u64) -> impl Fn(&[u8]) -> IResult<&[u8], St
     }
 }
 
+pub fn parse_binary_exact<const N: usize>(
+    id: u64,
+    size: u64,
+) -> impl Fn(&[u8]) -> IResult<&[u8], [u8; N], Error> {
+    // TODO: add N == size check
+    move |input| {
+        match map(take(usize_error(id, size)?), |data: &[u8]| { <[u8; N]>::try_from(data) })(input) {
+            Ok((i, Ok(arr))) => Ok((i, arr)),
+            Ok((_, Err(_))) => Err(custom_error(EbmlError::BinaryWidthIncorrect(N))),
+            Err(e) => Err(e),
+        }
+    }
+}
+
 pub fn parse_binary_data(id: u64, size: u64) -> impl Fn(&[u8]) -> IResult<&[u8], Vec<u8>, Error> {
     move |input| map(take(usize_error(id, size)?), |data: &[u8]| data.to_owned())(input)
 }
@@ -257,6 +276,10 @@ pub fn ebml_float<'a>(id: u64) -> impl Fn(&'a [u8]) -> IResult<&'a [u8], f64, Er
 
 pub fn ebml_str<'a>(id: u64) -> impl Fn(&'a [u8]) -> IResult<&'a [u8], String, Error> {
     compute_ebml_type(id, parse_str_data)
+}
+
+pub fn ebml_binary_exact<'a, const N: usize>(id: u64) -> impl Fn(&'a [u8]) -> IResult<&'a [u8], [u8; N], Error> {
+    compute_ebml_type(id, parse_binary_exact)
 }
 
 pub fn ebml_binary<'a>(id: u64) -> impl Fn(&'a [u8]) -> IResult<&'a [u8], Vec<u8>, Error> {
