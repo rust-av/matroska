@@ -48,23 +48,15 @@ jobs:
     runs-on: ${{ matrix.os }}
 
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
 
-    - name: Install stable
-      uses: actions-rs/toolchain@v1
+    - name: Install Rust stable
+      uses: dtolnay/rust-toolchain@stable
       with:
-        profile: minimal
         toolchain: ${{ matrix.toolchain }}
-        override: true
 
-    - name: Run tests
-      uses: actions-rs/cargo@v1
-      with:
-        command: test
-        args: --all-features --verbose
+    - name: Run test
+      run: cargo test --all-features --verbose
 
     - name: Run doc
-      uses: actions-rs/cargo@v1
-      with:
-        command: doc
-        args: --all-features --verbose
+      run: cargo doc --all-features --verbose --no-deps
