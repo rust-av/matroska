@@ -390,13 +390,42 @@ pub fn ebml_header(input: &[u8]) -> IResult<&[u8], EBMLHeader, Error> {
 #[cfg(test)]
 #[allow(non_upper_case_globals)]
 mod tests {
-    use log::trace;
-    use nom::{HexDisplay, Offset};
+    use std::path::Path;
 
     use super::*;
 
-    const single_stream: &[u8] = include_bytes!("../assets/single_stream.mkv");
-    const webm: &[u8] = include_bytes!("../assets/big-buck-bunny_trailer.webm");
+    #[test]
+    fn mkv_header() {
+        for (f, expected) in mkv_headers() {
+            let path = Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join("assets")
+                .join("matroska_test_w1_1")
+                .join(f);
+
+            let bytes = std::fs::read(path).expect("can read file");
+            let (_, header) = ebml_header(&bytes).expect("can parse header");
+            assert_eq!(header, expected);
+        }
+    }
+
+    #[test]
+    fn webm_header() {
+        let f = Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("assets")
+            .join("big-buck-bunny_trailer.webm");
+
+        let webm = std::fs::read(f).expect("can read file");
+
+        let expected = EBMLHeader {
+            doc_type: "webm".into(),
+            doc_type_version: 1,
+            doc_type_read_version: 1,
+            ..default_header()
+        };
+
+        let (_, header) = ebml_header(&webm[..100]).unwrap();
+        assert_eq!(header, expected);
+    }
 
     #[test]
     fn variable_integer() {
@@ -408,23 +437,31 @@ mod tests {
         }
     }
 
-    #[test]
-    fn mkv_header() {
-        trace!("{}", single_stream[..8].to_hex(8));
-        trace!("{:b} {:b}", single_stream[0], single_stream[1]);
-        trace!("{:?}", ebml_header(&single_stream[..100]).unwrap());
+    fn mkv_headers() -> Vec<(&'static str, EBMLHeader)> {
+        vec![
+            ("test1.mkv", default_header()), // basic
+            ("test2.mkv", default_header()), // includes CRC-32
+            (
+                // some non-default values
+                "test4.mkv",
+                EBMLHeader {
+                    doc_type_version: 1,
+                    doc_type_read_version: 1,
+                    ..default_header()
+                },
+            ),
+        ]
     }
 
-    #[test]
-    fn webm_header() {
-        trace!("{}", webm[..8].to_hex(8));
-        let res = ebml_header(&webm[..100]);
-        trace!("{:?}", res);
-
-        if let Ok((i, _)) = res {
-            trace!("offset: {} bytes", webm.offset(i));
-        } else {
-            panic!();
+    fn default_header() -> EBMLHeader {
+        EBMLHeader {
+            version: 1,
+            read_version: 1,
+            max_id_length: 4,
+            max_size_length: 8,
+            doc_type: "matroska".into(),
+            doc_type_version: 2,
+            doc_type_read_version: 2,
         }
     }
 }
