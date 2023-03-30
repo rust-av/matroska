@@ -8,7 +8,7 @@ use err_derive::Error;
 use nom::{Err, Offset};
 
 use matroska::ebml::ebml_header;
-use matroska::elements::{segment, segment_element, SegmentElement};
+use matroska::elements::{segment, segment_element, SegmentElement, Uuid};
 use matroska::serializer::ebml::EbmlSize;
 
 #[derive(Debug, Error)]
@@ -175,7 +175,7 @@ fn run(filename: &str) -> Result<(), InfoError> {
                     println!("|+ Segment information");
                     println!(
                         "| + Segment UID: {}",
-                        format_uid(i.segment_uid.as_ref().unwrap_or(&Vec::new()))
+                        i.segment_uid.map(format_uid).unwrap_or(String::new())
                     );
                     println!("| + Timestamp scale: {}", i.timecode_scale);
                     if let Some(f) = i.duration {
@@ -336,8 +336,9 @@ fn run(filename: &str) -> Result<(), InfoError> {
     Ok(())
 }
 
-fn format_uid(uid: &[u8]) -> String {
-    uid.iter()
+fn format_uid(uid: Uuid) -> String {
+    uid.as_bytes()
+        .iter()
         .map(|b| format!("{b:#x}"))
         .collect::<Vec<_>>()
         .join(" ")

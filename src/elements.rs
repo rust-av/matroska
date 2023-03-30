@@ -7,9 +7,11 @@ use nom::{
     IResult,
 };
 
+pub use uuid::Uuid;
+
 use crate::ebml::{
-    checksum, crc, eat_void, ebml_binary, ebml_binary_ref, ebml_float, ebml_int, ebml_master,
-    ebml_str, ebml_uint, usize_error, value_error, vid, vint, Error,
+    checksum, crc, eat_void, ebml_binary, ebml_binary_exact, ebml_binary_ref, ebml_float, ebml_int,
+    ebml_master, ebml_str, ebml_uint, usize_error, value_error, vid, vint, Error,
 };
 use crate::permutation::matroska_permutation;
 
@@ -114,13 +116,13 @@ pub fn seek(input: &[u8]) -> IResult<&[u8], Seek, Error> {
 
 #[derive(Debug, Clone, PartialEq, Default)]
 pub struct Info {
-    pub segment_uid: Option<Vec<u8>>,
+    pub segment_uid: Option<Uuid>,
     pub segment_filename: Option<String>,
-    pub prev_uid: Option<Vec<u8>>,
+    pub prev_uid: Option<Uuid>,
     pub prev_filename: Option<String>,
-    pub next_uid: Option<Vec<u8>>,
+    pub next_uid: Option<Uuid>,
     pub next_filename: Option<String>,
-    pub segment_family: Option<Vec<u8>>,
+    pub segment_family: Option<Uuid>,
     pub chapter_translate: Option<ChapterTranslate>,
     pub timecode_scale: u64,
     pub duration: Option<f64>,     // FIXME should be float
@@ -133,32 +135,32 @@ pub struct Info {
 //https://datatracker.ietf.org/doc/html/draft-lhomme-cellar-matroska-03#section-7.3.8
 pub fn info(input: &[u8]) -> IResult<&[u8], SegmentElement, Error> {
     matroska_permutation((
-        complete(ebml_binary(0x73A4)),   // SegmentUID
-        complete(ebml_str(0x7384)),      // SegmentFIlename FIXME SHOULD BE UTF-8 not str
-        complete(ebml_binary(0x3CB923)), // PrevUID
-        complete(ebml_str(0x3C83AB)),    // PrevFilename FIXME SHOULD BE UTF-8 not str
-        complete(ebml_binary(0x3EB923)), // NextUID
-        complete(ebml_str(0x3E83BB)),    // NextFilename FIXME SHOULD BE UTF-8 not str
-        complete(ebml_binary(0x4444)),   // SegmentFamily
-        complete(chapter_translate),     //
-        complete(ebml_uint(0x2AD7B1)),   // TimecodeScale
-        complete(ebml_float(0x4489)),    // Duration: FIXME should be float
-        complete(ebml_binary(0x4461)),   // DateUTC FIXME: should be date
-        complete(ebml_str(0x7BA9)),      // Title FIXME SHOULD BE UTF-8 not str
-        complete(ebml_str(0x4D80)),      // MuxingApp FIXME SHOULD BE UTF-8 not str
-        complete(ebml_str(0x5741)),      // WritingApp FIXME SHOULD BE UTF-8 not str
+        complete(ebml_binary_exact::<16>(0x73A4)),   // SegmentUID
+        complete(ebml_str(0x7384)), // SegmentFIlename FIXME SHOULD BE UTF-8 not str
+        complete(ebml_binary_exact::<16>(0x3CB923)), // PrevUID
+        complete(ebml_str(0x3C83AB)), // PrevFilename FIXME SHOULD BE UTF-8 not str
+        complete(ebml_binary_exact::<16>(0x3EB923)), // NextUID
+        complete(ebml_str(0x3E83BB)), // NextFilename FIXME SHOULD BE UTF-8 not str
+        complete(ebml_binary_exact::<16>(0x4444)), // SegmentFamily
+        complete(chapter_translate), //
+        complete(ebml_uint(0x2AD7B1)), // TimecodeScale
+        complete(ebml_float(0x4489)), // Duration: FIXME should be float
+        complete(ebml_binary(0x4461)), // DateUTC FIXME: should be date
+        complete(ebml_str(0x7BA9)), // Title FIXME SHOULD BE UTF-8 not str
+        complete(ebml_str(0x4D80)), // MuxingApp FIXME SHOULD BE UTF-8 not str
+        complete(ebml_str(0x5741)), // WritingApp FIXME SHOULD BE UTF-8 not str
     ))(input)
     .and_then(|(i, t)| {
         Ok((
             i,
             SegmentElement::Info(Info {
-                segment_uid: t.0,
+                segment_uid: t.0.map(Uuid::from_bytes),
                 segment_filename: t.1,
-                prev_uid: t.2,
+                prev_uid: t.2.map(Uuid::from_bytes),
                 prev_filename: t.3,
-                next_uid: t.4,
+                next_uid: t.4.map(Uuid::from_bytes),
                 next_filename: t.5,
-                segment_family: t.6,
+                segment_family: t.6.map(Uuid::from_bytes),
                 chapter_translate: t.7,
                 timecode_scale: value_error(0x2AD7B1, t.8)?,
                 duration: t.9,
@@ -474,10 +476,10 @@ pub struct TrackEntry {
     pub codec_delay: Option<u64>,
     pub seek_pre_roll: Option<u64>, //FIXME: this flag is mandatory but does not appear in some files?
     pub trick_track_uid: Option<u64>,
-    pub trick_track_segment_uid: Option<Vec<u8>>,
+    pub trick_track_segment_uid: Option<Uuid>,
     pub trick_track_flag: Option<u64>,
     pub trick_master_track_uid: Option<u64>,
-    pub trick_master_track_segment_uid: Option<Vec<u8>>,
+    pub trick_master_track_segment_uid: Option<Uuid>,
     pub video: Option<Video>,
     pub audio: Option<Audio>,
     pub track_translate: Vec<TrackTranslate>,
@@ -523,10 +525,10 @@ pub fn track_entry(input: &[u8]) -> IResult<&[u8], TrackEntry, Error> {
             complete(audio),
             complete(track_operation),
             complete(ebml_uint(0xC0)),
-            complete(ebml_binary(0xC1)),
+            complete(ebml_binary_exact::<16>(0xC1)),
             complete(ebml_uint(0xC6)),
             complete(ebml_uint(0xC7)),
-            complete(ebml_binary(0xC4)),
+            complete(ebml_binary_exact::<16>(0xC4)),
             complete(content_encodings),
         ))(inp)
         .and_then(|(i, t)| {
@@ -566,10 +568,10 @@ pub fn track_entry(input: &[u8]) -> IResult<&[u8], TrackEntry, Error> {
                     audio: t.30,
                     track_operation: t.31,
                     trick_track_uid: t.32,
-                    trick_track_segment_uid: t.33,
+                    trick_track_segment_uid: t.33.map(Uuid::from_bytes),
                     trick_track_flag: t.34,
                     trick_master_track_uid: t.35,
-                    trick_master_track_segment_uid: t.36,
+                    trick_master_track_segment_uid: t.36.map(Uuid::from_bytes),
                     content_encodings: t.37,
                     stream_index: 0,
                 },
