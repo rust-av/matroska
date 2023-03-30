@@ -1,11 +1,12 @@
 use std::convert::TryFrom;
 
+use crc::{Algorithm, Crc};
 use log::trace;
 use nom::{
     bytes::streaming::take,
     combinator::{complete, flat_map, map, map_parser, opt, verify},
     number::streaming::{be_f32, be_f64},
-    sequence::{pair, preceded},
+    sequence::{pair, preceded, tuple},
     Err, IResult, Needed, Parser,
 };
 
@@ -66,10 +67,12 @@ pub enum EbmlError {
     /// A string element contains non-UTF-8 data, which is not allowed.
     StringNotUtf8(u64),
 
-    /// A binary element does not adhere to the expected length.
-    ///
-    /// The contained [usize] is the expected length.
-    BinaryWidthIncorrect(usize),
+    /// A binary element does not adhere to the length declared in the
+    /// specification.
+    BinaryWidthIncorrect(u64, u32),
+
+    /// A CRC-32 element was found, but the checksum did not match.
+    Crc32Mismatch,
 }
 
 impl<'a> nom::error::ParseError<&'a [u8]> for Error {
@@ -213,13 +216,12 @@ pub fn parse_binary_exact<const N: usize>(
     id: u64,
     size: u64,
 ) -> impl Fn(&[u8]) -> IResult<&[u8], [u8; N], Error> {
-    // TODO: add N == size check
-    move |input| {
-        match map(take(usize_error(id, size)?), |data: &[u8]| { <[u8; N]>::try_from(data) })(input) {
-            Ok((i, Ok(arr))) => Ok((i, arr)),
-            Ok((_, Err(_))) => Err(custom_error(EbmlError::BinaryWidthIncorrect(N))),
-            Err(e) => Err(e),
-        }
+    move |input| match map(take(usize_error(id, size)?), <[u8; N]>::try_from)(input) {
+        Ok((i, Ok(arr))) => Ok((i, arr)),
+        Ok((_, Err(_))) => Err(custom_error(EbmlError::BinaryWidthIncorrect(
+            size, N as u32,
+        ))),
+        Err(e) => Err(e),
     }
 }
 
@@ -278,7 +280,9 @@ pub fn ebml_str<'a>(id: u64) -> impl Fn(&'a [u8]) -> IResult<&'a [u8], String, E
     compute_ebml_type(id, parse_str_data)
 }
 
-pub fn ebml_binary_exact<'a, const N: usize>(id: u64) -> impl Fn(&'a [u8]) -> IResult<&'a [u8], [u8; N], Error> {
+pub fn ebml_binary_exact<'a, const N: usize>(
+    id: u64,
+) -> impl Fn(&'a [u8]) -> IResult<&'a [u8], [u8; N], Error> {
     compute_ebml_type(id, parse_binary_exact)
 }
 
@@ -298,8 +302,10 @@ where
     G: Fn(&'a [u8]) -> IResult<&'a [u8], O1, Error> + Copy,
 {
     move |i| {
-        pair(verify(vid, |val| *val == id), vint)(i)
-            .and_then(|(i, (_, size))| map_parser(take(usize_error(0, size)?), second)(i))
+        tuple((verify(vid, |val| *val == id), vint, crc))(i).and_then(|(i, (_, size, crc))| {
+            let size = if crc.is_some() { size - 6 } else { size };
+            map_parser(checksum(crc, take(usize_error(0, size)?)), second)(i)
+        })
     }
 }
 
@@ -313,6 +319,33 @@ where
 pub fn skip_void(input: &[u8]) -> IResult<&[u8], &[u8], Error> {
     pair(verify(vid, |val| *val == 0xEC), vint)(input)
         .and_then(|(i, (_, size))| take(usize_error(0, size)?)(i))
+}
+
+const CRC: Crc<u32> = Crc::<u32>::new(&Algorithm {
+    init: 0xFFFFFFFF,
+    ..crc::CRC_32_ISO_HDLC
+});
+
+pub fn crc(input: &[u8]) -> IResult<&[u8], Option<u32>, Error> {
+    opt(map(ebml_binary_exact::<4>(0xBF), u32::from_le_bytes))(input)
+}
+
+pub fn checksum<'a, G>(
+    crc: Option<u32>,
+    inner: G,
+) -> impl Fn(&'a [u8]) -> IResult<&'a [u8], &'a [u8], Error>
+where
+    G: Fn(&'a [u8]) -> IResult<&'a [u8], &'a [u8], Error>,
+{
+    move |input| {
+        let (i, o) = inner(input)?;
+
+        // FIXME: don't just return an error, the spec has well-defined CRC error handling
+        match crc {
+            Some(cs) if cs != CRC.checksum(o) => Err(custom_error(EbmlError::Crc32Mismatch)),
+            _ => Ok((i, o)),
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
