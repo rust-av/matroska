@@ -390,10 +390,10 @@ impl EbmlSize for uuid::Uuid {
 mod tests {
     use cookie_factory::gen::set_be_u64;
     use log::{info, trace};
-    use nom::{HexDisplay, IResult};
+    use nom::HexDisplay;
     use quickcheck::quickcheck;
 
-    use crate::ebml::Error;
+    use crate::ebml::EbmlResult;
 
     use super::*;
 
@@ -493,7 +493,7 @@ mod tests {
         }
         info!("{}", (data[..]).to_hex(16));
 
-        let parse_res: IResult<&[u8], u64, Error> = crate::ebml::ebml_uint(id)(&data[..]);
+        let parse_res: EbmlResult<u64> = crate::ebml::ebml_uint(id)(&data[..]);
         info!("parse_res: {:?}", parse_res);
         match parse_res {
             Ok((_rest, o)) => {
@@ -531,7 +531,7 @@ mod tests {
         }
         info!("{}", (data[..]).to_hex(16));
 
-        let parse_res: IResult<&[u8], u64, Error> = crate::ebml::ebml_uint(id)(&data[..]);
+        let parse_res: EbmlResult<u64> = crate::ebml::ebml_uint(id)(&data[..]);
         info!("parse_res: {:?}", parse_res);
         match parse_res {
           Ok((_rest, o)) => {

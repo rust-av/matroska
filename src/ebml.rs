@@ -7,10 +7,12 @@ use nom::{
     combinator::{complete, flat_map, map, map_parser, opt, verify},
     number::streaming::{be_f32, be_f64},
     sequence::{pair, preceded, tuple},
-    Err, IResult, Needed, Parser,
+    Err, Needed, Parser,
 };
 
 use crate::permutation::matroska_permutation;
+
+pub(crate) type EbmlResult<'a, T> = nom::IResult<&'a [u8], T, Error>;
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum Error {
@@ -103,7 +105,7 @@ pub(crate) fn value_error<T>(id: u64, value: Option<T>) -> Result<T, nom::Err<Er
     })
 }
 
-pub fn vint(input: &[u8]) -> IResult<&[u8], u64, Error> {
+pub fn vint(input: &[u8]) -> EbmlResult<u64> {
     if input.is_empty() {
         return Err(Err::Incomplete(Needed::new(1)));
     }
@@ -140,7 +142,7 @@ pub fn vint(input: &[u8]) -> IResult<&[u8], u64, Error> {
 
 // The ID are represented in the specification as their binary representation
 // do not drop the marker bit.
-pub fn vid(input: &[u8]) -> IResult<&[u8], u64, Error> {
+pub fn vid(input: &[u8]) -> EbmlResult<u64> {
     if input.is_empty() {
         return Err(Err::Incomplete(Needed::new(1)));
     }
@@ -169,7 +171,7 @@ pub fn vid(input: &[u8]) -> IResult<&[u8], u64, Error> {
     Ok((&input[len as usize + 1..], val))
 }
 
-pub fn parse_uint_data(id: u64, size: u64) -> impl Fn(&[u8]) -> IResult<&[u8], u64, Error> {
+pub fn parse_uint_data(id: u64, size: u64) -> impl Fn(&[u8]) -> EbmlResult<u64> {
     move |input| {
         let mut val = 0;
 
@@ -185,7 +187,7 @@ pub fn parse_uint_data(id: u64, size: u64) -> impl Fn(&[u8]) -> IResult<&[u8], u
     }
 }
 
-pub fn parse_int_data(id: u64, size: u64) -> impl Fn(&[u8]) -> IResult<&[u8], i64, Error> {
+pub fn parse_int_data(id: u64, size: u64) -> impl Fn(&[u8]) -> EbmlResult<i64> {
     move |input| {
         let mut val = 0;
 
@@ -201,7 +203,7 @@ pub fn parse_int_data(id: u64, size: u64) -> impl Fn(&[u8]) -> IResult<&[u8], i6
     }
 }
 
-pub fn parse_str_data(id: u64, size: u64) -> impl Fn(&[u8]) -> IResult<&[u8], String, Error> {
+pub fn parse_str_data(id: u64, size: u64) -> impl Fn(&[u8]) -> EbmlResult<String> {
     move |input| {
         take(usize_error(id, size)?)(input).and_then(|(i, data)| {
             match String::from_utf8(data.to_owned()) {
@@ -215,7 +217,7 @@ pub fn parse_str_data(id: u64, size: u64) -> impl Fn(&[u8]) -> IResult<&[u8], St
 pub fn parse_binary_exact<const N: usize>(
     id: u64,
     size: u64,
-) -> impl Fn(&[u8]) -> IResult<&[u8], [u8; N], Error> {
+) -> impl Fn(&[u8]) -> EbmlResult<[u8; N]> {
     move |input| match map(take(usize_error(id, size)?), <[u8; N]>::try_from)(input) {
         Ok((i, Ok(arr))) => Ok((i, arr)),
         Ok((_, Err(_))) => Err(custom_error(EbmlError::BinaryWidthIncorrect(
@@ -225,17 +227,17 @@ pub fn parse_binary_exact<const N: usize>(
     }
 }
 
-pub fn parse_binary_data(id: u64, size: u64) -> impl Fn(&[u8]) -> IResult<&[u8], Vec<u8>, Error> {
+pub fn parse_binary_data(id: u64, size: u64) -> impl Fn(&[u8]) -> EbmlResult<Vec<u8>> {
     move |input| map(take(usize_error(id, size)?), |data: &[u8]| data.to_owned())(input)
 }
 
-pub fn parse_binary_data_ref(id: u64, size: u64) -> impl Fn(&[u8]) -> IResult<&[u8], &[u8], Error> {
+pub fn parse_binary_data_ref(id: u64, size: u64) -> impl Fn(&[u8]) -> EbmlResult<&[u8]> {
     move |input| map(take(usize_error(id, size)?), |data| data)(input)
 }
 
 //FIXME: handle default values
 //FIXME: is that really following IEEE_754-1985 ?
-pub fn parse_float_data(id: u64, size: u64) -> impl Fn(&[u8]) -> IResult<&[u8], f64, Error> {
+pub fn parse_float_data(id: u64, size: u64) -> impl Fn(&[u8]) -> EbmlResult<f64> {
     move |input| {
         if size == 0 {
             Ok((input, 0f64))
@@ -249,10 +251,7 @@ pub fn parse_float_data(id: u64, size: u64) -> impl Fn(&[u8]) -> IResult<&[u8], 
     }
 }
 
-fn compute_ebml_type<'a, G, H, O1>(
-    id: u64,
-    second: G,
-) -> impl Fn(&'a [u8]) -> IResult<&'a [u8], O1, Error>
+fn compute_ebml_type<'a, G, H, O1>(id: u64, second: G) -> impl Fn(&'a [u8]) -> EbmlResult<'a, O1>
 where
     G: Fn(u64, u64) -> H,
     H: Parser<&'a [u8], O1, Error>,
@@ -264,42 +263,39 @@ where
     }
 }
 
-pub fn ebml_uint<'a>(id: u64) -> impl Fn(&'a [u8]) -> IResult<&'a [u8], u64, Error> {
+pub fn ebml_uint<'a>(id: u64) -> impl Fn(&'a [u8]) -> EbmlResult<'a, u64> {
     compute_ebml_type(id, parse_uint_data)
 }
 
-pub fn ebml_int<'a>(id: u64) -> impl Fn(&'a [u8]) -> IResult<&'a [u8], i64, Error> {
+pub fn ebml_int<'a>(id: u64) -> impl Fn(&'a [u8]) -> EbmlResult<'a, i64> {
     compute_ebml_type(id, parse_int_data)
 }
 
-pub fn ebml_float<'a>(id: u64) -> impl Fn(&'a [u8]) -> IResult<&'a [u8], f64, Error> {
+pub fn ebml_float<'a>(id: u64) -> impl Fn(&'a [u8]) -> EbmlResult<'a, f64> {
     compute_ebml_type(id, parse_float_data)
 }
 
-pub fn ebml_str<'a>(id: u64) -> impl Fn(&'a [u8]) -> IResult<&'a [u8], String, Error> {
+pub fn ebml_str<'a>(id: u64) -> impl Fn(&'a [u8]) -> EbmlResult<'a, String> {
     compute_ebml_type(id, parse_str_data)
 }
 
 pub fn ebml_binary_exact<'a, const N: usize>(
     id: u64,
-) -> impl Fn(&'a [u8]) -> IResult<&'a [u8], [u8; N], Error> {
+) -> impl Fn(&'a [u8]) -> EbmlResult<'a, [u8; N]> {
     compute_ebml_type(id, parse_binary_exact)
 }
 
-pub fn ebml_binary<'a>(id: u64) -> impl Fn(&'a [u8]) -> IResult<&'a [u8], Vec<u8>, Error> {
+pub fn ebml_binary<'a>(id: u64) -> impl Fn(&'a [u8]) -> EbmlResult<'a, Vec<u8>> {
     compute_ebml_type(id, parse_binary_data)
 }
 
-pub fn ebml_binary_ref<'a>(id: u64) -> impl Fn(&'a [u8]) -> IResult<&'a [u8], &'a [u8], Error> {
+pub fn ebml_binary_ref<'a>(id: u64) -> impl Fn(&'a [u8]) -> EbmlResult<'a, &'a [u8]> {
     compute_ebml_type(id, parse_binary_data_ref)
 }
 
-pub fn ebml_master<'a, G, O1>(
-    id: u64,
-    second: G,
-) -> impl Fn(&'a [u8]) -> IResult<&'a [u8], O1, Error>
+pub fn ebml_master<'a, G, O1>(id: u64, second: G) -> impl Fn(&'a [u8]) -> EbmlResult<'a, O1>
 where
-    G: Fn(&'a [u8]) -> IResult<&'a [u8], O1, Error> + Copy,
+    G: Fn(&'a [u8]) -> EbmlResult<'a, O1> + Copy,
 {
     move |i| {
         tuple((verify(vid, |val| *val == id), vint, crc))(i).and_then(|(i, (_, size, crc))| {
@@ -309,14 +305,14 @@ where
     }
 }
 
-pub fn eat_void<'a, G, O1>(second: G) -> impl Fn(&'a [u8]) -> IResult<&'a [u8], O1, Error>
+pub fn eat_void<'a, G, O1>(second: G) -> impl Fn(&'a [u8]) -> EbmlResult<'a, O1>
 where
     G: Parser<&'a [u8], O1, Error> + Copy,
 {
     move |i| preceded(opt(skip_void), second)(i)
 }
 
-pub fn skip_void(input: &[u8]) -> IResult<&[u8], &[u8], Error> {
+pub fn skip_void(input: &[u8]) -> EbmlResult<&[u8]> {
     pair(verify(vid, |val| *val == 0xEC), vint)(input)
         .and_then(|(i, (_, size))| take(usize_error(0, size)?)(i))
 }
@@ -326,16 +322,13 @@ const CRC: Crc<u32> = Crc::<u32>::new(&Algorithm {
     ..crc::CRC_32_ISO_HDLC
 });
 
-pub fn crc(input: &[u8]) -> IResult<&[u8], Option<u32>, Error> {
+pub fn crc(input: &[u8]) -> EbmlResult<Option<u32>> {
     opt(map(ebml_binary_exact::<4>(0xBF), u32::from_le_bytes))(input)
 }
 
-pub fn checksum<'a, G>(
-    crc: Option<u32>,
-    inner: G,
-) -> impl Fn(&'a [u8]) -> IResult<&'a [u8], &'a [u8], Error>
+pub fn checksum<'a, G>(crc: Option<u32>, inner: G) -> impl Fn(&'a [u8]) -> EbmlResult<'a, &'a [u8]>
 where
-    G: Fn(&'a [u8]) -> IResult<&'a [u8], &'a [u8], Error>,
+    G: Fn(&'a [u8]) -> EbmlResult<'a, &'a [u8]>,
 {
     move |input| {
         let (i, o) = inner(input)?;
@@ -359,7 +352,7 @@ pub struct EBMLHeader {
     pub doc_type_read_version: u64,
 }
 
-pub fn ebml_header(input: &[u8]) -> IResult<&[u8], EBMLHeader, Error> {
+pub fn ebml_header(input: &[u8]) -> EbmlResult<EBMLHeader> {
     ebml_master(0x1A45DFA3, |i| {
         matroska_permutation((
             complete(ebml_uint(0x4286)), // version
