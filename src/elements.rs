@@ -24,8 +24,8 @@ pub enum SegmentElement<'a> {
     Cues(Cues),
     Attachments(Attachments),
     Tags(Tags),
-    Void(u64),
-    Unknown(u64, Option<u64>),
+    Void(usize),
+    Unknown(u64, Option<usize>),
 }
 
 // https://datatracker.ietf.org/doc/html/draft-lhomme-cellar-matroska-03#section-7.3.3
@@ -56,11 +56,12 @@ pub fn segment_element(input: &[u8]) -> EbmlResult<SegmentElement> {
         0x1941A469 => sub_element(|i| Ok((i, SegmentElement::Attachments(Attachments {}))))(i),
         0x1654AE6B => sub_element(tracks)(i),
         0x1C53BB6B => sub_element(|i| Ok((i, SegmentElement::Cues(Cues {}))))(i),
-        0xEC => elem_size(i)
-            .and_then(|(i, size)| map(take(size), |_| SegmentElement::Void(size as u64))(i)),
+        0xEC => {
+            elem_size(i).and_then(|(i, size)| map(take(size), |_| SegmentElement::Void(size))(i))
+        }
         id => opt(elem_size)(i).and_then(|(i, size)| {
             map(cond(size.is_some(), take(size.unwrap())), |_| {
-                SegmentElement::Unknown(id, size.map(|u| u as u64))
+                SegmentElement::Unknown(id, size)
             })(i)
         }),
     })
