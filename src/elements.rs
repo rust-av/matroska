@@ -10,7 +10,7 @@ pub use uuid::Uuid;
 
 use crate::ebml::{
     checksum, crc, eat_void, ebml_binary, ebml_binary_exact, ebml_binary_ref, ebml_float, ebml_int,
-    ebml_master, ebml_str, ebml_uint, usize_error, value_error, vid, vint, EbmlResult,
+    ebml_master, ebml_str, ebml_uint, elem_size, value_error, vid, vint, EbmlResult,
 };
 use crate::permutation::matroska_permutation;
 
@@ -33,15 +33,14 @@ pub fn segment(input: &[u8]) -> EbmlResult<(u64, Option<u64>)> {
     pair(verify(vid, |val| *val == 0x18538067), opt(vint))(input)
 }
 
-pub fn sub_element<'a, O1, G>(id: u64, second: G) -> impl Fn(&'a [u8]) -> EbmlResult<'a, O1>
+pub fn sub_element<'a, O1, G>(second: G) -> impl Fn(&'a [u8]) -> EbmlResult<'a, O1>
 where
     G: Fn(&'a [u8]) -> EbmlResult<'a, O1> + Copy,
 {
     move |input| {
-        pair(vint, crc)(input).and_then(|(i, (size, crc))| {
+        pair(elem_size, crc)(input).and_then(|(i, (size, crc))| {
             let size = if crc.is_some() { size - 6 } else { size };
-            checksum(crc, take(usize_error(id, size)?))(i)
-                .and_then(|(i, data)| second(data).map(|(_, val)| (i, val)))
+            checksum(crc, take(size))(i).and_then(|(i, data)| second(data).map(|(_, val)| (i, val)))
         })
     }
 }
@@ -49,26 +48,20 @@ where
 // Segment, the root element, has id 0x18538067
 pub fn segment_element(input: &[u8]) -> EbmlResult<SegmentElement> {
     vid(input).and_then(|(i, id)| match id {
-        0x114D9B74 => sub_element(0x114D9B74, seek_head)(i),
-        0x1549A966 => sub_element(0x1549A966, info)(i),
-        0x1F43B675 => sub_element(0x1F43B675, cluster)(i),
-        0x1043A770 => sub_element(0x1043A770, chapters)(i),
-        0x1254C367 => sub_element(0x1254C367, |i| Ok((i, SegmentElement::Tags(Tags {}))))(i),
-        0x1941A469 => sub_element(0x1941A469, |i| {
-            Ok((i, SegmentElement::Attachments(Attachments {})))
-        })(i),
-        0x1654AE6B => sub_element(0x1654AE6B, tracks)(i),
-        0x1C53BB6B => sub_element(0x1C53BB6B, |i| Ok((i, SegmentElement::Cues(Cues {}))))(i),
-        0xEC => vint(i).and_then(|(i, size)| {
-            map(take(usize_error(0xEC, size)?), |_| {
-                SegmentElement::Void(size)
+        0x114D9B74 => sub_element(seek_head)(i),
+        0x1549A966 => sub_element(info)(i),
+        0x1F43B675 => sub_element(cluster)(i),
+        0x1043A770 => sub_element(chapters)(i),
+        0x1254C367 => sub_element(|i| Ok((i, SegmentElement::Tags(Tags {}))))(i),
+        0x1941A469 => sub_element(|i| Ok((i, SegmentElement::Attachments(Attachments {}))))(i),
+        0x1654AE6B => sub_element(tracks)(i),
+        0x1C53BB6B => sub_element(|i| Ok((i, SegmentElement::Cues(Cues {}))))(i),
+        0xEC => elem_size(i)
+            .and_then(|(i, size)| map(take(size), |_| SegmentElement::Void(size as u64))(i)),
+        id => opt(elem_size)(i).and_then(|(i, size)| {
+            map(cond(size.is_some(), take(size.unwrap())), |_| {
+                SegmentElement::Unknown(id, size.map(|u| u as u64))
             })(i)
-        }),
-        id => opt(vint)(i).and_then(|(i, size)| {
-            map(
-                cond(size.is_some(), take(usize_error(id, size.unwrap())?)),
-                |_| SegmentElement::Unknown(id, size),
-            )(i)
         }),
     })
 }
