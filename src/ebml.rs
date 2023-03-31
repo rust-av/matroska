@@ -36,9 +36,9 @@ pub enum Error {
 #[derive(Debug, PartialEq, Eq)]
 #[non_exhaustive]
 pub enum ErrorKind {
-    /// The value of an unsigned integer does not fit into the platform's
-    /// native uint type. This can not happen on 64-bit platforms.
-    UintTooLarge(u64),
+    /// The Element Data Size did not fit within a [usize].
+    /// The current parsing code cannot handle an element of this size.
+    ElementTooLarge,
 
     /// A required value was not found by the parser.
     MissingRequiredValue(u64),
@@ -145,7 +145,7 @@ pub fn elem_size(input: &[u8]) -> EbmlResult<usize> {
     map_res(vint, |u| {
         usize::try_from(u).map_err(|_| {
             log::error!("Element Data Size does not fit into usize");
-            Error::Ebml(ErrorKind::UintTooLarge(0)) // FIXME: better errorkind
+            Error::Ebml(ErrorKind::ElementTooLarge)
         })
     })(input)
 }
