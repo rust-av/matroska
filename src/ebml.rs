@@ -4,7 +4,7 @@ use crc::{Algorithm, Crc};
 use log::trace;
 use nom::{
     bytes::streaming::take,
-    combinator::{complete, flat_map, map, map_parser, opt, verify},
+    combinator::{complete, flat_map, map, map_parser, map_res, opt, verify},
     number::streaming::{be_f32, be_f64},
     sequence::{pair, preceded, tuple},
     Err, Needed, Parser,
@@ -71,7 +71,7 @@ pub enum ErrorKind {
 
     /// A binary element does not adhere to the length declared in the
     /// specification.
-    BinaryWidthIncorrect(u64, u32),
+    BinaryWidthIncorrect(usize, u32),
 
     /// A CRC-32 element was found, but the checksum did not match.
     Crc32Mismatch,
@@ -91,11 +91,10 @@ pub fn ebml_err<'a, T>(err: ErrorKind) -> EbmlResult<'a, T> {
     Err(nom::Err::Error(Error::Ebml(err)))
 }
 
-pub(crate) fn usize_error(id: u64, size: u64) -> Result<usize, nom::Err<Error>> {
-    usize::try_from(size).map_err(|_| {
-        log::error!("Not possible to convert size into usize");
-        nom::Err::Error(Error::Ebml(ErrorKind::UintTooLarge(id)))
-    })
+impl<I> nom::error::FromExternalError<I, Error> for Error {
+    fn from_external_error(_input: I, _kind: nom::error::ErrorKind, e: Error) -> Self {
+        e
+    }
 }
 
 pub(crate) fn value_error<T>(id: u64, value: Option<T>) -> Result<T, nom::Err<Error>> {
@@ -140,6 +139,17 @@ pub fn vint(input: &[u8]) -> EbmlResult<u64> {
     Ok((&input[len as usize + 1..], val))
 }
 
+// The take combinator can only accept `usize`, so we need to make
+// sure that the `vint` fits inside those bounds.
+pub fn elem_size(input: &[u8]) -> EbmlResult<usize> {
+    map_res(vint, |u| {
+        usize::try_from(u).map_err(|_| {
+            log::error!("Element Data Size does not fit into usize");
+            Error::Ebml(ErrorKind::UintTooLarge(0)) // FIXME: better errorkind
+        })
+    })(input)
+}
+
 // The ID are represented in the specification as their binary representation
 // do not drop the marker bit.
 pub fn vid(input: &[u8]) -> EbmlResult<u64> {
@@ -171,7 +181,7 @@ pub fn vid(input: &[u8]) -> EbmlResult<u64> {
     Ok((&input[len as usize + 1..], val))
 }
 
-pub fn parse_uint_data(id: u64, size: u64) -> impl Fn(&[u8]) -> EbmlResult<u64> {
+pub fn parse_uint_data(id: u64, size: usize) -> impl Fn(&[u8]) -> EbmlResult<u64> {
     move |input| {
         let mut val = 0;
 
@@ -179,15 +189,15 @@ pub fn parse_uint_data(id: u64, size: u64) -> impl Fn(&[u8]) -> EbmlResult<u64> 
             return ebml_err(ErrorKind::UintTooWide(id));
         }
 
-        for i in input.iter().take(size as usize) {
+        for i in input.iter().take(size) {
             val = (val << 8) | u64::from(*i);
         }
 
-        Ok((&input[size as usize..], val))
+        Ok((&input[size..], val))
     }
 }
 
-pub fn parse_int_data(id: u64, size: u64) -> impl Fn(&[u8]) -> EbmlResult<i64> {
+pub fn parse_int_data(id: u64, size: usize) -> impl Fn(&[u8]) -> EbmlResult<i64> {
     move |input| {
         let mut val = 0;
 
@@ -195,17 +205,17 @@ pub fn parse_int_data(id: u64, size: u64) -> impl Fn(&[u8]) -> EbmlResult<i64> {
             return ebml_err(ErrorKind::IntTooWide(id));
         }
 
-        for i in input.iter().take(size as usize) {
+        for i in input.iter().take(size) {
             val = (val << 8) | u64::from(*i);
         }
 
-        Ok((&input[size as usize..], val as i64))
+        Ok((&input[size..], val as i64))
     }
 }
 
-pub fn parse_str_data(id: u64, size: u64) -> impl Fn(&[u8]) -> EbmlResult<String> {
+pub fn parse_str_data(id: u64, size: usize) -> impl Fn(&[u8]) -> EbmlResult<String> {
     move |input| {
-        take(usize_error(id, size)?)(input).and_then(|(i, data)| {
+        take(size)(input).and_then(|(i, data)| {
             match String::from_utf8(data.to_owned()) {
                 Ok(s) => Ok((i, s)),
                 Err(_) => ebml_err(ErrorKind::StringNotUtf8(id)),
@@ -215,34 +225,34 @@ pub fn parse_str_data(id: u64, size: u64) -> impl Fn(&[u8]) -> EbmlResult<String
 }
 
 pub fn parse_binary_exact<const N: usize>(
-    id: u64,
-    size: u64,
+    _id: u64,
+    size: usize,
 ) -> impl Fn(&[u8]) -> EbmlResult<[u8; N]> {
-    move |input| match map(take(usize_error(id, size)?), <[u8; N]>::try_from)(input) {
+    move |input| match map(take(size), <[u8; N]>::try_from)(input) {
         Ok((i, Ok(arr))) => Ok((i, arr)),
         Ok((_, Err(_))) => ebml_err(ErrorKind::BinaryWidthIncorrect(size, N as u32)),
         Err(e) => Err(e),
     }
 }
 
-pub fn parse_binary_data(id: u64, size: u64) -> impl Fn(&[u8]) -> EbmlResult<Vec<u8>> {
-    move |input| map(take(usize_error(id, size)?), |data: &[u8]| data.to_owned())(input)
+pub fn parse_binary_data(_id: u64, size: usize) -> impl Fn(&[u8]) -> EbmlResult<Vec<u8>> {
+    move |input| map(take(size), |data: &[u8]| data.to_owned())(input)
 }
 
-pub fn parse_binary_data_ref(id: u64, size: u64) -> impl Fn(&[u8]) -> EbmlResult<&[u8]> {
-    move |input| map(take(usize_error(id, size)?), |data| data)(input)
+pub fn parse_binary_data_ref(_id: u64, size: usize) -> impl Fn(&[u8]) -> EbmlResult<&[u8]> {
+    move |input| map(take(size), |data| data)(input)
 }
 
 //FIXME: handle default values
 //FIXME: is that really following IEEE_754-1985 ?
-pub fn parse_float_data(id: u64, size: u64) -> impl Fn(&[u8]) -> EbmlResult<f64> {
+pub fn parse_float_data(id: u64, size: usize) -> impl Fn(&[u8]) -> EbmlResult<f64> {
     move |input| {
         if size == 0 {
             Ok((input, 0f64))
         } else if size == 4 {
-            map(map_parser(take(4usize), be_f32), f64::from)(input)
+            map(map_parser(take(size), be_f32), f64::from)(input)
         } else if size == 8 {
-            map_parser(take(8usize), be_f64)(input)
+            map_parser(take(size), be_f64)(input)
         } else {
             ebml_err(ErrorKind::FloatWidthIncorrect(id))
         }
@@ -251,13 +261,14 @@ pub fn parse_float_data(id: u64, size: u64) -> impl Fn(&[u8]) -> EbmlResult<f64>
 
 fn compute_ebml_type<'a, G, H, O1>(id: u64, second: G) -> impl Fn(&'a [u8]) -> EbmlResult<'a, O1>
 where
-    G: Fn(u64, u64) -> H,
+    G: Fn(u64, usize) -> H,
     H: Parser<&'a [u8], O1, Error>,
 {
     move |i| {
-        flat_map(pair(verify(vid, |val| *val == id), vint), |(id, size)| {
-            second(id, size)
-        })(i)
+        flat_map(
+            pair(verify(vid, |val| *val == id), elem_size),
+            |(id, size)| second(id, size),
+        )(i)
     }
 }
 
@@ -296,9 +307,9 @@ where
     G: Fn(&'a [u8]) -> EbmlResult<'a, O1> + Copy,
 {
     move |i| {
-        tuple((verify(vid, |val| *val == id), vint, crc))(i).and_then(|(i, (_, size, crc))| {
+        tuple((verify(vid, |val| *val == id), elem_size, crc))(i).and_then(|(i, (_, size, crc))| {
             let size = if crc.is_some() { size - 6 } else { size };
-            map_parser(checksum(crc, take(usize_error(0, size)?)), second)(i)
+            map_parser(checksum(crc, take(size)), second)(i)
         })
     }
 }
@@ -311,8 +322,8 @@ where
 }
 
 pub fn skip_void(input: &[u8]) -> EbmlResult<&[u8]> {
-    pair(verify(vid, |val| *val == 0xEC), vint)(input)
-        .and_then(|(i, (_, size))| take(usize_error(0, size)?)(i))
+    pair(verify(vid, |val| *val == 0xEC), elem_size)(input)
+        .and_then(|(i, (_, size))| take(size)(i))
 }
 
 const CRC: Crc<u32> = Crc::<u32>::new(&Algorithm {
