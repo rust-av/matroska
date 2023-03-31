@@ -8,7 +8,7 @@ use av_data::{packet::Packet, params::MediaKind, value::Value};
 use av_format::{common::GlobalInfo, error::*, muxer::*, stream::Stream};
 
 use crate::{
-    ebml::EBMLHeader,
+    ebml::EbmlHeader,
     elements::{
         Audio, Cluster, Colour, Info, Lacing, Seek, SeekHead, SimpleBlock, TrackEntry, TrackType,
         Tracks, Video,
@@ -25,7 +25,7 @@ use crate::{
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct MkvMuxer {
-    header: EBMLHeader,
+    header: EbmlHeader,
     seek_head: SeekHead,
     info: Option<Info>,
     tracks: Option<Tracks>,
@@ -37,7 +37,7 @@ pub struct MkvMuxer {
 impl MkvMuxer {
     pub fn matroska() -> MkvMuxer {
         MkvMuxer {
-            header: EBMLHeader {
+            header: EbmlHeader {
                 version: 1,
                 read_version: 1,
                 max_id_length: 4,
@@ -59,7 +59,7 @@ impl MkvMuxer {
 
     pub fn webm() -> MkvMuxer {
         MkvMuxer {
-            header: EBMLHeader {
+            header: EbmlHeader {
                 version: 1,
                 read_version: 1,
                 max_id_length: 4,
@@ -470,7 +470,7 @@ fn offset<'a>(original: &(&'a [u8], usize), subslice: &(&'a [u8], usize)) -> usi
 #[allow(dead_code)]
 fn gen_mkv_prefix<'b>(
     input: (&'b mut [u8], usize),
-    header: &EBMLHeader,
+    header: &EbmlHeader,
     seek_head: &SeekHead,
     info: &Info,
     tracks: &Tracks,

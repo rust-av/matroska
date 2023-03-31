@@ -15,7 +15,7 @@ use av_format::{
 };
 
 use crate::{
-    ebml::{self, custom_error, ebml_header, EBMLHeader, EbmlError},
+    ebml::{self, custom_error, ebml_header, EbmlError, EbmlHeader},
     elements::{
         segment, segment_element, simple_block, Audio, Cluster, Info, SeekHead, SegmentElement,
         TrackEntry, TrackType, Tracks, Video,
@@ -24,7 +24,7 @@ use crate::{
 
 #[derive(Debug, Clone, Default)]
 pub struct MkvDemuxer {
-    pub header: Option<EBMLHeader>,
+    pub header: Option<EbmlHeader>,
     pub seek_head: Option<SeekHead>,
     pub info: Option<Info>,
     pub tracks: Option<Tracks>,
