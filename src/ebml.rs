@@ -87,21 +87,21 @@ impl<'a> nom::error::ParseError<&'a [u8]> for Error {
     }
 }
 
-pub fn custom_error(err: ErrorKind) -> nom::Err<Error> {
-    nom::Err::Error(Error::Ebml(err))
+pub fn ebml_err<'a, T>(err: ErrorKind) -> EbmlResult<'a, T> {
+    Err(nom::Err::Error(Error::Ebml(err)))
 }
 
 pub(crate) fn usize_error(id: u64, size: u64) -> Result<usize, nom::Err<Error>> {
     usize::try_from(size).map_err(|_| {
         log::error!("Not possible to convert size into usize");
-        custom_error(ErrorKind::UintTooLarge(id))
+        nom::Err::Error(Error::Ebml(ErrorKind::UintTooLarge(id)))
     })
 }
 
 pub(crate) fn value_error<T>(id: u64, value: Option<T>) -> Result<T, nom::Err<Error>> {
     value.ok_or_else(|| {
         log::error!("Not possible to get the requested value");
-        custom_error(ErrorKind::MissingRequiredValue(id))
+        nom::Err::Error(Error::Ebml(ErrorKind::MissingRequiredValue(id)))
     })
 }
 
@@ -114,7 +114,7 @@ pub fn vint(input: &[u8]) -> EbmlResult<u64> {
     let len = v.leading_zeros();
 
     if len == 8 {
-        return Err(custom_error(ErrorKind::VintTooWide));
+        return ebml_err(ErrorKind::VintTooWide);
     }
 
     if input.len() <= len as usize {
@@ -151,7 +151,7 @@ pub fn vid(input: &[u8]) -> EbmlResult<u64> {
     let len = v.leading_zeros();
 
     if len == 8 {
-        return Err(custom_error(ErrorKind::IDTooWide));
+        return ebml_err(ErrorKind::IDTooWide);
     }
 
     if input.len() <= len as usize {
@@ -176,7 +176,7 @@ pub fn parse_uint_data(id: u64, size: u64) -> impl Fn(&[u8]) -> EbmlResult<u64> 
         let mut val = 0;
 
         if size > 8 {
-            return Err(custom_error(ErrorKind::UintTooWide(id)));
+            return ebml_err(ErrorKind::UintTooWide(id));
         }
 
         for i in input.iter().take(size as usize) {
@@ -192,7 +192,7 @@ pub fn parse_int_data(id: u64, size: u64) -> impl Fn(&[u8]) -> EbmlResult<i64> {
         let mut val = 0;
 
         if size > 8 {
-            return Err(custom_error(ErrorKind::IntTooWide(id)));
+            return ebml_err(ErrorKind::IntTooWide(id));
         }
 
         for i in input.iter().take(size as usize) {
@@ -208,7 +208,7 @@ pub fn parse_str_data(id: u64, size: u64) -> impl Fn(&[u8]) -> EbmlResult<String
         take(usize_error(id, size)?)(input).and_then(|(i, data)| {
             match String::from_utf8(data.to_owned()) {
                 Ok(s) => Ok((i, s)),
-                Err(_) => Err(custom_error(ErrorKind::StringNotUtf8(id))),
+                Err(_) => ebml_err(ErrorKind::StringNotUtf8(id)),
             }
         })
     }
@@ -220,9 +220,7 @@ pub fn parse_binary_exact<const N: usize>(
 ) -> impl Fn(&[u8]) -> EbmlResult<[u8; N]> {
     move |input| match map(take(usize_error(id, size)?), <[u8; N]>::try_from)(input) {
         Ok((i, Ok(arr))) => Ok((i, arr)),
-        Ok((_, Err(_))) => Err(custom_error(ErrorKind::BinaryWidthIncorrect(
-            size, N as u32,
-        ))),
+        Ok((_, Err(_))) => ebml_err(ErrorKind::BinaryWidthIncorrect(size, N as u32)),
         Err(e) => Err(e),
     }
 }
@@ -246,7 +244,7 @@ pub fn parse_float_data(id: u64, size: u64) -> impl Fn(&[u8]) -> EbmlResult<f64>
         } else if size == 8 {
             map_parser(take(8usize), be_f64)(input)
         } else {
-            Err(custom_error(ErrorKind::FloatWidthIncorrect(id)))
+            ebml_err(ErrorKind::FloatWidthIncorrect(id))
         }
     }
 }
@@ -335,7 +333,7 @@ where
 
         // FIXME: don't just return an error, the spec has well-defined CRC error handling
         match crc {
-            Some(cs) if cs != CRC.checksum(o) => Err(custom_error(ErrorKind::Crc32Mismatch)),
+            Some(cs) if cs != CRC.checksum(o) => ebml_err(ErrorKind::Crc32Mismatch),
             _ => Ok((i, o)),
         }
     }
