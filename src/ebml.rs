@@ -342,7 +342,7 @@ where
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct EBMLHeader {
+pub struct EbmlHeader {
     pub version: u64,
     pub read_version: u64,
     pub max_id_length: u64,
@@ -352,7 +352,7 @@ pub struct EBMLHeader {
     pub doc_type_read_version: u64,
 }
 
-pub fn ebml_header(input: &[u8]) -> EbmlResult<EBMLHeader> {
+pub fn ebml_header(input: &[u8]) -> EbmlResult<EbmlHeader> {
     ebml_master(0x1A45DFA3, |i| {
         matroska_permutation((
             complete(ebml_uint(0x4286)), // version
@@ -366,7 +366,7 @@ pub fn ebml_header(input: &[u8]) -> EbmlResult<EBMLHeader> {
         .and_then(|(i, t)| {
             Ok((
                 i,
-                EBMLHeader {
+                EbmlHeader {
                     version: t.0.unwrap_or(1),
                     read_version: t.1.unwrap_or(1),
                     max_id_length: t.2.unwrap_or(4),
@@ -409,7 +409,7 @@ mod tests {
 
         let webm = std::fs::read(f).expect("can read file");
 
-        let expected = EBMLHeader {
+        let expected = EbmlHeader {
             doc_type: "webm".into(),
             doc_type_version: 1,
             doc_type_read_version: 1,
@@ -430,14 +430,14 @@ mod tests {
         }
     }
 
-    fn mkv_headers() -> Vec<(&'static str, EBMLHeader)> {
+    fn mkv_headers() -> Vec<(&'static str, EbmlHeader)> {
         vec![
             ("test1.mkv", default_header()), // basic
             ("test2.mkv", default_header()), // includes CRC-32
             (
                 // some non-default values
                 "test4.mkv",
-                EBMLHeader {
+                EbmlHeader {
                     doc_type_version: 1,
                     doc_type_read_version: 1,
                     ..default_header()
@@ -446,8 +446,8 @@ mod tests {
         ]
     }
 
-    fn default_header() -> EBMLHeader {
-        EBMLHeader {
+    fn default_header() -> EbmlHeader {
+        EbmlHeader {
             version: 1,
             read_version: 1,
             max_id_length: 4,

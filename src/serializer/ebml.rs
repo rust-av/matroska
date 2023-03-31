@@ -2,7 +2,7 @@ use cookie_factory::gen::set_be_u8;
 use cookie_factory::GenError;
 use nom::AsBytes;
 
-use crate::ebml::EBMLHeader;
+use crate::ebml::EbmlHeader;
 use crate::serializer::cookie_utils::{
     gen_at_offset, gen_skip, gen_slice, set_be_f64, set_be_i8, tuple,
 };
@@ -265,7 +265,7 @@ where
     }
 }
 
-impl EbmlSize for EBMLHeader {
+impl EbmlSize for EbmlHeader {
     fn capacity(&self) -> usize {
         self.version.size(0x4286)
             + self.read_version.size(0x42F7)
@@ -278,7 +278,7 @@ impl EbmlSize for EBMLHeader {
 }
 
 pub(crate) fn gen_ebml_header<'a, 'b>(
-    h: &'a EBMLHeader,
+    h: &'a EbmlHeader,
 ) -> impl Fn((&'b mut [u8], usize)) -> Result<(&'b mut [u8], usize), GenError> + 'a {
     move |input| {
         gen_ebml_master(
@@ -546,7 +546,7 @@ mod tests {
     quickcheck! {
       fn test_ebml_header(version: u8, read_version: u8, max_id_length: u8, max_size_length: u8, doc_type: String,
         doc_type_version: u8, doc_type_read_version: u8) -> bool {
-        let header = EBMLHeader {
+        let header = EbmlHeader {
           version: version as u64,
           read_version: read_version as u64,
           max_id_length: max_id_length as u64,
