@@ -4,14 +4,13 @@ use nom::{
     multi::{many0, many1},
     number::streaming::{be_i16, be_u8},
     sequence::{pair, tuple},
-    IResult,
 };
 
 pub use uuid::Uuid;
 
 use crate::ebml::{
     checksum, crc, eat_void, ebml_binary, ebml_binary_exact, ebml_binary_ref, ebml_float, ebml_int,
-    ebml_master, ebml_str, ebml_uint, usize_error, value_error, vid, vint, Error,
+    ebml_master, ebml_str, ebml_uint, usize_error, value_error, vid, vint, EbmlResult,
 };
 use crate::permutation::matroska_permutation;
 
@@ -30,16 +29,13 @@ pub enum SegmentElement<'a> {
 }
 
 // https://datatracker.ietf.org/doc/html/draft-lhomme-cellar-matroska-03#section-7.3.3
-pub fn segment(input: &[u8]) -> IResult<&[u8], (u64, Option<u64>), Error> {
+pub fn segment(input: &[u8]) -> EbmlResult<(u64, Option<u64>)> {
     pair(verify(vid, |val| *val == 0x18538067), opt(vint))(input)
 }
 
-pub fn sub_element<'a, O1, G>(
-    id: u64,
-    second: G,
-) -> impl Fn(&'a [u8]) -> IResult<&'a [u8], O1, Error>
+pub fn sub_element<'a, O1, G>(id: u64, second: G) -> impl Fn(&'a [u8]) -> EbmlResult<'a, O1>
 where
-    G: Fn(&'a [u8]) -> IResult<&'a [u8], O1, Error> + Copy,
+    G: Fn(&'a [u8]) -> EbmlResult<'a, O1> + Copy,
 {
     move |input| {
         pair(vint, crc)(input).and_then(|(i, (size, crc))| {
@@ -51,7 +47,7 @@ where
 }
 
 // Segment, the root element, has id 0x18538067
-pub fn segment_element(input: &[u8]) -> IResult<&[u8], SegmentElement, Error> {
+pub fn segment_element(input: &[u8]) -> EbmlResult<SegmentElement> {
     vid(input).and_then(|(i, id)| match id {
         0x114D9B74 => sub_element(0x114D9B74, seek_head)(i),
         0x1549A966 => sub_element(0x1549A966, info)(i),
@@ -83,7 +79,7 @@ pub struct SeekHead {
 }
 
 //https://datatracker.ietf.org/doc/html/draft-lhomme-cellar-matroska-03#section-7.3.4
-pub fn seek_head(input: &[u8]) -> IResult<&[u8], SegmentElement, Error> {
+pub fn seek_head(input: &[u8]) -> EbmlResult<SegmentElement> {
     map(many1(complete(seek)), |positions| {
         SegmentElement::SeekHead(SeekHead { positions })
     })(input)
@@ -96,7 +92,7 @@ pub struct Seek {
 }
 
 //https://datatracker.ietf.org/doc/html/draft-lhomme-cellar-matroska-03#section-7.3.4
-pub fn seek(input: &[u8]) -> IResult<&[u8], Seek, Error> {
+pub fn seek(input: &[u8]) -> EbmlResult<Seek> {
     ebml_master(0x4DBB, |inp| {
         matroska_permutation((
             complete(ebml_binary(0x53AB)), // SeekID
@@ -133,7 +129,7 @@ pub struct Info {
 }
 
 //https://datatracker.ietf.org/doc/html/draft-lhomme-cellar-matroska-03#section-7.3.8
-pub fn info(input: &[u8]) -> IResult<&[u8], SegmentElement, Error> {
+pub fn info(input: &[u8]) -> EbmlResult<SegmentElement> {
     matroska_permutation((
         complete(ebml_binary_exact::<16>(0x73A4)),   // SegmentUID
         complete(ebml_str(0x7384)), // SegmentFIlename FIXME SHOULD BE UTF-8 not str
@@ -177,7 +173,7 @@ pub fn info(input: &[u8]) -> IResult<&[u8], SegmentElement, Error> {
 pub struct ChapterTranslate {}
 
 //https://datatracker.ietf.org/doc/html/draft-lhomme-cellar-matroska-03#section-7.3.16
-pub fn chapter_translate(input: &[u8]) -> IResult<&[u8], ChapterTranslate, Error> {
+pub fn chapter_translate(input: &[u8]) -> EbmlResult<ChapterTranslate> {
     ebml_master(0x6924, |i| Ok((i, ChapterTranslate {})))(input)
 }
 
@@ -193,7 +189,7 @@ pub struct Cluster<'a> {
     pub encrypted_block: Option<&'a [u8]>,
 }
 
-pub fn cluster(input: &[u8]) -> IResult<&[u8], SegmentElement, Error> {
+pub fn cluster(input: &[u8]) -> EbmlResult<SegmentElement> {
     matroska_permutation((
         complete(ebml_uint(0xE7)),
         complete(silent_tracks),
@@ -225,7 +221,7 @@ pub struct SilentTracks {
 }
 
 //https://datatracker.ietf.org/doc/html/draft-lhomme-cellar-matroska-03#section-7.3.16
-pub fn silent_tracks(input: &[u8]) -> IResult<&[u8], SilentTracks, Error> {
+pub fn silent_tracks(input: &[u8]) -> EbmlResult<SilentTracks> {
     ebml_master(0x5854, |i| {
         map(many0(ebml_uint(0x58D7)), |v| SilentTracks { numbers: v })(i)
     })(input)
@@ -247,7 +243,7 @@ pub struct BlockGroup<'a> {
 }
 
 //https://datatracker.ietf.org/doc/html/draft-lhomme-cellar-matroska-03#section-7.3.16
-pub fn block_group(input: &[u8]) -> IResult<&[u8], BlockGroup, Error> {
+pub fn block_group(input: &[u8]) -> EbmlResult<BlockGroup> {
     ebml_master(0xA0, |inp| {
         matroska_permutation((
             complete(ebml_binary_ref(0xA1)),
@@ -287,7 +283,7 @@ pub fn block_group(input: &[u8]) -> IResult<&[u8], BlockGroup, Error> {
 pub struct BlockAdditions {}
 
 //https://datatracker.ietf.org/doc/html/draft-lhomme-cellar-matroska-03#section-7.3.16
-pub fn block_additions(input: &[u8]) -> IResult<&[u8], BlockAdditions, Error> {
+pub fn block_additions(input: &[u8]) -> EbmlResult<BlockAdditions> {
     ebml_master(0x75A1, |i| Ok((i, BlockAdditions {})))(input)
 }
 
@@ -295,7 +291,7 @@ pub fn block_additions(input: &[u8]) -> IResult<&[u8], BlockAdditions, Error> {
 pub struct Slices {}
 
 //https://datatracker.ietf.org/doc/html/draft-lhomme-cellar-matroska-03#section-7.3.46
-pub fn slices(input: &[u8]) -> IResult<&[u8], Slices, Error> {
+pub fn slices(input: &[u8]) -> EbmlResult<Slices> {
     ebml_master(0x8E, |i| Ok((i, Slices {})))(input)
 }
 
@@ -303,7 +299,7 @@ pub fn slices(input: &[u8]) -> IResult<&[u8], Slices, Error> {
 pub struct ReferenceFrame {}
 
 //https://datatracker.ietf.org/doc/html/draft-lhomme-cellar-matroska-03#section-7.3.53
-pub fn reference_frame(input: &[u8]) -> IResult<&[u8], ReferenceFrame, Error> {
+pub fn reference_frame(input: &[u8]) -> EbmlResult<ReferenceFrame> {
     ebml_master(0xC8, |i| Ok((i, ReferenceFrame {})))(input)
 }
 
@@ -315,7 +311,7 @@ pub struct Block {
     pub lacing: Lacing,
 }
 
-pub fn block(input: &[u8]) -> IResult<&[u8], Block, Error> {
+pub fn block(input: &[u8]) -> EbmlResult<Block> {
     map(
         tuple((vint, be_i16, map_opt(be_u8, block_flags))),
         |(track_number, timecode, flags)| Block {
@@ -363,7 +359,7 @@ fn block_flags(data: u8) -> Option<BlockFlags> {
     })
 }
 
-pub fn simple_block(input: &[u8]) -> IResult<&[u8], SimpleBlock, Error> {
+pub fn simple_block(input: &[u8]) -> EbmlResult<SimpleBlock> {
     map(
         tuple((vint, be_i16, map_opt(be_u8, block_flags))),
         |(track_number, timecode, flags)| SimpleBlock {
@@ -413,7 +409,7 @@ impl Tracks {
 }
 
 //https://datatracker.ietf.org/doc/html/draft-lhomme-cellar-matroska-03#section-7.3.16
-pub fn tracks(input: &[u8]) -> IResult<&[u8], SegmentElement, Error> {
+pub fn tracks(input: &[u8]) -> EbmlResult<SegmentElement> {
     map(many1(complete(eat_void(track_entry))), |v| {
         SegmentElement::Tracks(Tracks { tracks: v })
     })(input)
@@ -489,7 +485,7 @@ pub struct TrackEntry {
     pub stream_index: usize,
 }
 
-pub fn track_entry(input: &[u8]) -> IResult<&[u8], TrackEntry, Error> {
+pub fn track_entry(input: &[u8]) -> EbmlResult<TrackEntry> {
     ebml_master(0xAE, |inp| {
         matroska_permutation((
             complete(ebml_uint(0xD7)),
@@ -587,7 +583,7 @@ pub struct TrackTranslate {
     pub track_id: u64,
 }
 
-pub fn track_translate(input: &[u8]) -> IResult<&[u8], TrackTranslate, Error> {
+pub fn track_translate(input: &[u8]) -> EbmlResult<TrackTranslate> {
     ebml_master(0x6624, |inp| {
         matroska_permutation((
             many1(complete(ebml_uint(0x66FC))),
@@ -613,7 +609,7 @@ pub struct TrackOperation {
     pub join_blocks: Option<TrackJoinBlocks>,
 }
 
-pub fn track_operation(input: &[u8]) -> IResult<&[u8], TrackOperation, Error> {
+pub fn track_operation(input: &[u8]) -> EbmlResult<TrackOperation> {
     ebml_master(0xE2, |i| {
         map(
             matroska_permutation((complete(track_combine_planes), complete(track_join_blocks))),
@@ -630,7 +626,7 @@ pub struct TrackCombinePlanes {
     pub track_planes: Vec<TrackPlane>,
 }
 
-pub fn track_combine_planes(input: &[u8]) -> IResult<&[u8], TrackCombinePlanes, Error> {
+pub fn track_combine_planes(input: &[u8]) -> EbmlResult<TrackCombinePlanes> {
     ebml_master(0xE3, |i| {
         map(many1(complete(track_plane)), |v| TrackCombinePlanes {
             track_planes: v,
@@ -644,7 +640,7 @@ pub struct TrackPlane {
     pub plane_type: u64,
 }
 
-pub fn track_plane(input: &[u8]) -> IResult<&[u8], TrackPlane, Error> {
+pub fn track_plane(input: &[u8]) -> EbmlResult<TrackPlane> {
     ebml_master(0xE4, |inp| {
         matroska_permutation((complete(ebml_uint(0xE5)), complete(ebml_uint(0xE6))))(inp).and_then(
             |(i, t)| {
@@ -665,7 +661,7 @@ pub struct TrackJoinBlocks {
     pub uid: Vec<u64>,
 }
 
-pub fn track_join_blocks(input: &[u8]) -> IResult<&[u8], TrackJoinBlocks, Error> {
+pub fn track_join_blocks(input: &[u8]) -> EbmlResult<TrackJoinBlocks> {
     ebml_master(0xE9, |i| {
         map(many1(complete(ebml_uint(0xED))), |v| TrackJoinBlocks {
             uid: v,
@@ -678,7 +674,7 @@ pub struct ContentEncodings {
     pub content_encoding: Vec<ContentEncoding>,
 }
 
-pub fn content_encodings(input: &[u8]) -> IResult<&[u8], ContentEncodings, Error> {
+pub fn content_encodings(input: &[u8]) -> EbmlResult<ContentEncodings> {
     ebml_master(0x6D80, |i| {
         map(many1(complete(content_encoding)), |v| ContentEncodings {
             content_encoding: v,
@@ -695,7 +691,7 @@ pub struct ContentEncoding {
     encryption: Option<ContentEncryption>,
 }
 
-pub fn content_encoding(input: &[u8]) -> IResult<&[u8], ContentEncoding, Error> {
+pub fn content_encoding(input: &[u8]) -> EbmlResult<ContentEncoding> {
     ebml_master(0x6240, |inp| {
         matroska_permutation((
             complete(ebml_uint(0x5031)),
@@ -725,7 +721,7 @@ pub struct ContentCompression {
     settings: Option<u64>,
 }
 
-pub fn content_compression(input: &[u8]) -> IResult<&[u8], ContentCompression, Error> {
+pub fn content_compression(input: &[u8]) -> EbmlResult<ContentCompression> {
     ebml_master(0x5034, |inp| {
         matroska_permutation((complete(ebml_uint(0x4254)), complete(ebml_uint(0x4255))))(inp)
             .and_then(|(i, t)| {
@@ -750,7 +746,7 @@ pub struct ContentEncryption {
     sig_hash_algo: Option<u64>,
 }
 
-pub fn content_encryption(input: &[u8]) -> IResult<&[u8], ContentEncryption, Error> {
+pub fn content_encryption(input: &[u8]) -> EbmlResult<ContentEncryption> {
     ebml_master(0x5035, |i| {
         map(
             matroska_permutation((
@@ -782,7 +778,7 @@ pub struct Audio {
     pub bit_depth: Option<u64>,
 }
 
-pub fn audio(input: &[u8]) -> IResult<&[u8], Audio, Error> {
+pub fn audio(input: &[u8]) -> EbmlResult<Audio> {
     ebml_master(0xE1, |inp| {
         matroska_permutation((
             complete(ebml_float(0xB5)),
@@ -830,7 +826,7 @@ pub struct Video {
     pub projection: Option<Projection>,
 }
 
-pub fn video(input: &[u8]) -> IResult<&[u8], Video, Error> {
+pub fn video(input: &[u8]) -> EbmlResult<Video> {
     ebml_master(0xE0, |inp| {
         matroska_permutation((
             complete(ebml_uint(0x9A)),
@@ -902,7 +898,7 @@ pub struct Colour {
     pub mastering_metadata: Option<MasteringMetadata>,
 }
 
-pub fn colour(input: &[u8]) -> IResult<&[u8], Colour, Error> {
+pub fn colour(input: &[u8]) -> EbmlResult<Colour> {
     ebml_master(0x55B0, |i| {
         map(
             matroska_permutation((
@@ -955,7 +951,7 @@ pub struct MasteringMetadata {
     pub luminance_min: Option<f64>,
 }
 
-pub fn mastering_metadata(input: &[u8]) -> IResult<&[u8], MasteringMetadata, Error> {
+pub fn mastering_metadata(input: &[u8]) -> EbmlResult<MasteringMetadata> {
     ebml_master(0x55D0, |i| {
         map(
             matroska_permutation((
@@ -995,7 +991,7 @@ pub struct Projection {
     pub projection_pose_roll: f64,
 }
 
-pub fn projection(input: &[u8]) -> IResult<&[u8], Projection, Error> {
+pub fn projection(input: &[u8]) -> EbmlResult<Projection> {
     ebml_master(0x7670, |inp| {
         matroska_permutation((
             complete(ebml_uint(0x7671)),
@@ -1023,7 +1019,7 @@ pub fn projection(input: &[u8]) -> IResult<&[u8], Projection, Error> {
 pub struct Chapters {}
 
 //https://datatracker.ietf.org/doc/html/draft-lhomme-cellar-matroska-03#section-7.3.199
-pub fn chapters(input: &[u8]) -> IResult<&[u8], SegmentElement, Error> {
+pub fn chapters(input: &[u8]) -> EbmlResult<SegmentElement> {
     ebml_master(0x45B9, |i| Ok((i, SegmentElement::Chapters(Chapters {}))))(input)
 }
 
