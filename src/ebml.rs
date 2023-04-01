@@ -215,11 +215,9 @@ pub fn parse_int_data(id: u64, size: usize) -> impl Fn(&[u8]) -> EbmlResult<i64>
 
 pub fn parse_str_data(id: u64, size: usize) -> impl Fn(&[u8]) -> EbmlResult<String> {
     move |input| {
-        take(size)(input).and_then(|(i, data)| {
-            match String::from_utf8(data.to_owned()) {
-                Ok(s) => Ok((i, s)),
-                Err(_) => ebml_err(ErrorKind::StringNotUtf8(id)),
-            }
+        take(size)(input).and_then(|(i, data)| match String::from_utf8(data.to_owned()) {
+            Ok(s) => Ok((i, s)),
+            Err(_) => ebml_err(ErrorKind::StringNotUtf8(id)),
         })
     }
 }
@@ -322,8 +320,7 @@ where
 }
 
 pub fn skip_void(input: &[u8]) -> EbmlResult<&[u8]> {
-    pair(verify(vid, |val| *val == 0xEC), elem_size)(input)
-        .and_then(|(i, (_, size))| take(size)(i))
+    pair(verify(vid, |val| *val == 0xEC), elem_size)(input).and_then(|(i, (_, size))| take(size)(i))
 }
 
 const CRC: Crc<u32> = Crc::<u32>::new(&Algorithm {
