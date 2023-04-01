@@ -28,7 +28,7 @@ pub enum InfoError {
     #[error(display = "unexpected element: {}", _0)]
     UnexpectedElement(String),
     #[error(display = "offset {:X?}: got unknown element: {:X?} {:#?}", _0, _1, _2)]
-    UnknownElement(usize, u64, Option<usize>),
+    UnknownElement(usize, u32, Option<usize>),
     #[error(display = "failed parsing: {}", _0)]
     Parse(String),
     #[error(display = "could not read the file: {}", _0)]

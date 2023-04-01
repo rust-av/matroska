@@ -1,4 +1,5 @@
 use cookie_factory::gen::set_be_u8;
+use cookie_factory::gen_slice;
 use cookie_factory::GenError;
 use nom::AsBytes;
 
@@ -26,12 +27,9 @@ pub(crate) fn vint_size(i: u64) -> Result<u8, GenError> {
     Ok(val)
 }
 
-pub(crate) fn log2(i: u64) -> u32 {
-    64 - (i | 1).leading_zeros()
-}
-
-pub(crate) fn vid_size(i: u64) -> u8 {
-    ((log2(i + 1) - 1) / 7) as u8
+// Will return zero if i == 0.
+pub(crate) fn vid_size(i: u32) -> u8 {
+    4 - (i.leading_zeros() / 8) as u8
 }
 
 pub(crate) fn gen_vint(
@@ -62,28 +60,11 @@ pub(crate) fn gen_vint(
 }
 
 pub(crate) fn gen_vid(
-    num: u64,
+    num: u32,
 ) -> impl Fn((&mut [u8], usize)) -> Result<(&mut [u8], usize), GenError> {
-    move |mut input| {
-        let needed_bytes = vid_size(num);
-
-        let mut i = needed_bytes - 1;
-
-        loop {
-            match set_be_u8((input.0, input.1), (num >> (i * 8)) as u8) {
-                Ok(next) => {
-                    input = next;
-                }
-                Err(e) => return Err(e),
-            }
-
-            if i == 0 {
-                break;
-            }
-            i -= 1;
-        }
-
-        Ok(input)
+    move |input| {
+        let skip = 4 - vid_size(num) as usize;
+        gen_slice!(input, &num.to_be_bytes()[skip..])
     }
 }
 
@@ -139,7 +120,7 @@ pub(crate) fn gen_int(
 }
 
 fn gen_type<T: Copy, G>(
-    id: u64,
+    id: u32,
     size: u64,
     num: T,
     f: G,
@@ -155,7 +136,7 @@ where
 }
 
 pub(crate) fn gen_f64(
-    id: u64,
+    id: u32,
     num: f64,
 ) -> impl Fn((&mut [u8], usize)) -> Result<(&mut [u8], usize), GenError> {
     move |input| gen_type(id, 8, num, set_be_f64)(input)
@@ -177,7 +158,7 @@ pub(crate) fn gen_ebml_size(
 }
 
 pub(crate) fn gen_ebml_master<'a, 'b, G>(
-    id: u64,
+    id: u32,
     expected_size: u8,
     f: G,
 ) -> impl Fn((&'b mut [u8], usize)) -> Result<(&'b mut [u8], usize), GenError> + 'a
@@ -193,7 +174,7 @@ where
 }
 
 pub(crate) fn gen_ebml_uint_l<G>(
-    id: u64,
+    id: u32,
     num: u64,
     expected_size: G,
 ) -> impl Fn((&mut [u8], usize)) -> Result<(&mut [u8], usize), GenError>
@@ -212,14 +193,14 @@ where
 }
 
 pub(crate) fn gen_ebml_uint(
-    id: u64,
+    id: u32,
     num: u64,
 ) -> impl Fn((&mut [u8], usize)) -> Result<(&mut [u8], usize), GenError> {
     gen_ebml_uint_l(id, num, move || vint_size(num))
 }
 
 pub(crate) fn gen_ebml_int(
-    id: u64,
+    id: u32,
     num: i64,
 ) -> impl Fn((&mut [u8], usize)) -> Result<(&mut [u8], usize), GenError> {
     move |input| {
@@ -234,7 +215,7 @@ pub(crate) fn gen_ebml_int(
 }
 
 pub(crate) fn gen_ebml_str<'a, 'b>(
-    id: u64,
+    id: u32,
     s: &'a str,
 ) -> impl Fn((&'b mut [u8], usize)) -> Result<(&'b mut [u8], usize), GenError> + 'a {
     move |input| {
@@ -248,7 +229,7 @@ pub(crate) fn gen_ebml_str<'a, 'b>(
 }
 
 pub(crate) fn gen_ebml_binary<'a, 'b, S>(
-    id: u64,
+    id: u32,
     s: S,
 ) -> impl Fn((&'b mut [u8], usize)) -> Result<(&'b mut [u8], usize), GenError> + 'a
 where
@@ -300,7 +281,7 @@ pub(crate) fn gen_ebml_header<'a, 'b>(
 pub trait EbmlSize {
     fn capacity(&self) -> usize;
 
-    fn size(&self, id: u64) -> usize {
+    fn size(&self, id: u32) -> usize {
         let id_size = vid_size(id);
         let self_size = self.capacity();
         let size_tag_size = vint_size(self_size as u64).unwrap_or(0);
@@ -336,7 +317,7 @@ impl<T: EbmlSize> EbmlSize for Option<T> {
         }
     }
 
-    fn size(&self, id: u64) -> usize {
+    fn size(&self, id: u32) -> usize {
         match *self {
             Some(_) => {
                 let id_size = vid_size(id);
@@ -398,14 +379,14 @@ mod tests {
     use super::*;
 
     fn gen_u64(
-        id: u64,
+        id: u32,
         num: u64,
     ) -> impl Fn((&mut [u8], usize)) -> Result<(&mut [u8], usize), GenError> {
         move |input| gen_type(id, 8, num, set_be_u64)(input)
     }
 
     fn gen_u8(
-        id: u64,
+        id: u32,
         num: u8,
     ) -> impl Fn((&mut [u8], usize)) -> Result<(&mut [u8], usize), GenError> {
         move |input| gen_type(id, 1, num, set_be_u8)(input)
@@ -453,7 +434,7 @@ mod tests {
         test_vint_serializer(2100000);
     }
 
-    fn test_vid_serializer(id: u64) -> bool {
+    fn test_vid_serializer(id: u32) -> bool {
         info!("\ntesting for id={}", id);
 
         let mut data = [0u8; 10];
@@ -484,23 +465,23 @@ mod tests {
 
     fn test_ebml_u64_serializer(num: u64) -> bool {
         let id = 0x9F;
-        info!("\ntesting for id={}, num={}", id, num);
+        info!("\ntesting for id={id}, num={num}");
 
-        let mut data = [0u8; 100];
+        let data = &mut [0u8; 100];
         {
-            let gen_res = gen_u64(id, num)((&mut data[..], 0));
-            info!("gen_res: {:?}", gen_res);
+            let (_, written) = gen_u64(id, num)((data, 0)).unwrap();
+            info!("written: {written:?}");
         }
-        info!("{}", (data[..]).to_hex(16));
+        info!("{}", data.to_hex(16));
 
-        let parse_res: EbmlResult<u64> = crate::ebml::ebml_uint(id)(&data[..]);
-        info!("parse_res: {:?}", parse_res);
+        let parse_res: EbmlResult<u64> = crate::ebml::ebml_uint(id)(data);
+        info!("parse_res: {parse_res:?}");
         match parse_res {
             Ok((_rest, o)) => {
                 assert_eq!(num, o);
                 true
             }
-            e => panic!("{}", format!("parse error: {:?}", e)),
+            e => panic!("parse error: {e:?}"),
         }
     }
 
