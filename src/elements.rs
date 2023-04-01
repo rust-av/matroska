@@ -25,11 +25,11 @@ pub enum SegmentElement<'a> {
     Attachments(Attachments),
     Tags(Tags),
     Void(usize),
-    Unknown(u64, Option<usize>),
+    Unknown(u32, Option<usize>),
 }
 
 // https://datatracker.ietf.org/doc/html/draft-lhomme-cellar-matroska-03#section-7.3.3
-pub fn segment(input: &[u8]) -> EbmlResult<(u64, Option<u64>)> {
+pub fn segment(input: &[u8]) -> EbmlResult<(u32, Option<u64>)> {
     pair(verify(vid, |val| *val == 0x18538067), opt(vint))(input)
 }
 
