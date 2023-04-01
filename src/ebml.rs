@@ -59,6 +59,10 @@ pub enum ErrorKind {
     /// which is not allowed.
     IntTooWide(u32),
 
+    /// An unsigned integer with a maximum length of 4 octets has declared a
+    /// length of more than 4 octets, which is not allowed.
+    U32TooWide(u32),
+
     /// An unsigned integer element has declared a length of more than 8 octets,
     /// which is not allowed.
     UintTooWide(u32),
@@ -182,6 +186,22 @@ pub fn vid(input: &[u8]) -> EbmlResult<u32> {
     Ok((&input[len as usize + 1..], val))
 }
 
+pub fn parse_u32_data(id: u32, size: usize) -> impl Fn(&[u8]) -> EbmlResult<u32> {
+    move |input| {
+        let mut val = 0;
+
+        if size > 4 {
+            return ebml_err(ErrorKind::U32TooWide(id));
+        }
+
+        for i in input.iter().take(size) {
+            val = (val << 8) | u32::from(*i);
+        }
+
+        Ok((&input[size..], val))
+    }
+}
+
 pub fn parse_uint_data(id: u32, size: usize) -> impl Fn(&[u8]) -> EbmlResult<u64> {
     move |input| {
         let mut val = 0;
@@ -271,6 +291,10 @@ where
     }
 }
 
+pub fn ebml_u32<'a>(id: u32) -> impl Fn(&'a [u8]) -> EbmlResult<'a, u32> {
+    compute_ebml_type(id, parse_u32_data)
+}
+
 pub fn ebml_uint<'a>(id: u32) -> impl Fn(&'a [u8]) -> EbmlResult<'a, u64> {
     compute_ebml_type(id, parse_uint_data)
 }
@@ -350,25 +374,25 @@ where
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct EbmlHeader {
-    pub version: u64,
-    pub read_version: u64,
-    pub max_id_length: u64,
-    pub max_size_length: u64,
+    pub version: u32,
+    pub read_version: u32,
+    pub max_id_length: u32,
+    pub max_size_length: u32,
     pub doc_type: String,
-    pub doc_type_version: u64,
-    pub doc_type_read_version: u64,
+    pub doc_type_version: u32,
+    pub doc_type_read_version: u32,
 }
 
 pub fn ebml_header(input: &[u8]) -> EbmlResult<EbmlHeader> {
     ebml_master(0x1A45DFA3, |i| {
         matroska_permutation((
-            complete(ebml_uint(0x4286)), // version
-            complete(ebml_uint(0x42F7)), // read_version
-            complete(ebml_uint(0x42F2)), // max id length
-            complete(ebml_uint(0x42F3)), // max size length
-            complete(ebml_str(0x4282)),  // doctype
-            complete(ebml_uint(0x4287)), // doctype version
-            complete(ebml_uint(0x4285)), // doctype_read version
+            complete(ebml_u32(0x4286)), // version
+            complete(ebml_u32(0x42F7)), // read_version
+            complete(ebml_u32(0x42F2)), // max id length
+            complete(ebml_u32(0x42F3)), // max size length
+            complete(ebml_str(0x4282)), // doctype
+            complete(ebml_u32(0x4287)), // doctype version
+            complete(ebml_u32(0x4285)), // doctype_read version
         ))(i)
         .and_then(|(i, t)| {
             Ok((

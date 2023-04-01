@@ -266,13 +266,13 @@ pub(crate) fn gen_ebml_header<'a, 'b>(
             0x1A45DFA3,
             vint_size(h.capacity() as u64)?,
             tuple((
-                gen_ebml_uint_l(0x4286, h.version, || Ok(1)),
-                gen_ebml_uint_l(0x42F7, h.read_version, || Ok(1)),
-                gen_ebml_uint_l(0x42F2, h.max_id_length, || Ok(1)),
-                gen_ebml_uint_l(0x42F3, h.max_size_length, || Ok(1)),
+                gen_ebml_uint_l(0x4286, h.version as u64, || Ok(1)),
+                gen_ebml_uint_l(0x42F7, h.read_version as u64, || Ok(1)),
+                gen_ebml_uint_l(0x42F2, h.max_id_length as u64, || Ok(1)),
+                gen_ebml_uint_l(0x42F3, h.max_size_length as u64, || Ok(1)),
                 gen_ebml_str(0x4282, &h.doc_type),
-                gen_ebml_uint_l(0x4287, h.doc_type_version, || Ok(1)),
-                gen_ebml_uint_l(0x4285, h.doc_type_read_version, || Ok(1)),
+                gen_ebml_uint_l(0x4287, h.doc_type_version as u64, || Ok(1)),
+                gen_ebml_uint_l(0x4285, h.doc_type_read_version as u64, || Ok(1)),
             )),
         )(input)
     }
@@ -287,6 +287,12 @@ pub trait EbmlSize {
         let size_tag_size = vint_size(self_size as u64).unwrap_or(0);
 
         id_size as usize + size_tag_size as usize + self_size
+    }
+}
+
+impl EbmlSize for u32 {
+    fn capacity(&self) -> usize {
+        (*self as u64).capacity()
     }
 }
 
@@ -528,13 +534,13 @@ mod tests {
       fn test_ebml_header(version: u8, read_version: u8, max_id_length: u8, max_size_length: u8, doc_type: String,
         doc_type_version: u8, doc_type_read_version: u8) -> bool {
         let header = EbmlHeader {
-          version: version as u64,
-          read_version: read_version as u64,
-          max_id_length: max_id_length as u64,
-          max_size_length: max_size_length as u64,
+          version: version as u32,
+          read_version: read_version as u32,
+          max_id_length: max_id_length as u32,
+          max_size_length: max_size_length as u32,
           doc_type,
-          doc_type_version: doc_type_version as u64,
-          doc_type_read_version: doc_type_read_version as u64
+          doc_type_version: doc_type_version as u32,
+          doc_type_read_version: doc_type_read_version as u32,
         };
 
         info!("will serialize: {:#?}", header);
