@@ -257,15 +257,15 @@ impl Muxer for MkvMuxer {
         self.write_tracks(&mut tracks)?;
 
         let info_seek = Seek {
-            id: vec![0x15, 0x49, 0xA9, 0x66],
+            id: 0x1549A966,
             position: 0,
         };
         let tracks_seek = Seek {
-            id: vec![0x16, 0x54, 0xAE, 0x6B],
+            id: 0x1654AE6B,
             position: 0,
         };
         let cluster_seek = Seek {
-            id: vec![0x1F, 0x43, 0xB6, 0x75],
+            id: 0x1F43B675,
             position: 0,
         };
         self.seek_head.positions.push(info_seek);

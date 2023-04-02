@@ -32,7 +32,7 @@ fn gen_seek<'a, 'b>(
             0x4DBB,
             vint_size(s.capacity() as u64)?,
             tuple((
-                gen_ebml_binary(0x53AB, &s.id),
+                gen_ebml_binary(0x53AB, &s.id.to_be_bytes()),
                 gen_ebml_uint_l(0x53AC, s.position, || Ok(8)),
             )),
         )(input)
@@ -556,7 +556,6 @@ fn gen_fixed_size_laced_frames<'a>(
 #[cfg(test)]
 mod tests {
     use log::trace;
-    use nom::HexDisplay;
     use quickcheck::{quickcheck, Arbitrary, Gen, TestResult};
 
     use crate::elements::SegmentElement;
@@ -566,27 +565,21 @@ mod tests {
     impl Arbitrary for Seek {
         fn arbitrary(g: &mut Gen) -> Seek {
             Seek {
-                id: Vec::<u8>::arbitrary(g),
+                id: u32::arbitrary(g),
                 position: u64::arbitrary(g),
             }
         }
     }
 
     fn test_seek_head_serializer(seeks: Vec<Seek>) -> bool {
-        trace!("testing for {:?}", seeks);
+        trace!("testing for {seeks:?}");
 
         for seek in seeks.iter() {
-            trace!("id: {}", seek.id.to_hex(16));
-            if seek.id.is_empty() {
-                trace!("id is empty, returning");
-                return true;
-            }
+            trace!("id: {:x}", seek.id);
         }
 
-        let capacity = seeks
-            .iter()
-            .fold(0, |acc, seek| acc + 8 + seek.id.len() + 100);
-        trace!("defining capacity as {}", capacity);
+        let capacity = (12 + 100) * seeks.len(); // (fields + padding) * len
+        trace!("defining capacity as {capacity}");
 
         let mut data = vec![0; capacity];
 
@@ -595,22 +588,22 @@ mod tests {
         };
 
         let gen_res = gen_seek_head(&seek_head)((&mut data[..], 0));
-        trace!("gen_res: {:?}", gen_res);
+        trace!("gen_res: {gen_res:?}");
         if let Err(e) = gen_res {
-            trace!("gen_res is error: {:?}", e);
+            trace!("gen_res is error: {e:?}");
             // Do not fail if quickcheck generated data is too large
             return true;
         }
 
         let parse_res = crate::elements::segment_element(&data[..]);
-        trace!("parse_res: {:?}", parse_res);
+        trace!("parse_res: {parse_res:?}");
         match parse_res {
             Ok((_, SegmentElement::SeekHead(o))) => {
                 assert_eq!(seek_head, o);
                 true
             }
             e => {
-                panic!("{}", format!("parse error: {:?} for input: {:?}", e, seeks))
+                panic!("parse error: {e:?} for input: {seeks:?}")
             }
         }
     }

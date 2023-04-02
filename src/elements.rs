@@ -9,8 +9,8 @@ use nom::{
 pub use uuid::Uuid;
 
 use crate::ebml::{
-    binary, binary_ref, checksum, crc, elem_size, float, float_or, int, master, skip_void, str,
-    uint, uuid, value_error, vid, vint, EbmlResult,
+    binary, binary_exact, binary_ref, checksum, crc, elem_size, float, float_or, int, master,
+    skip_void, str, uint, uuid, value_error, vid, vint, EbmlResult,
 };
 use crate::permutation::matroska_permutation;
 
@@ -81,7 +81,7 @@ pub fn seek_head(input: &[u8]) -> EbmlResult<SegmentElement> {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Seek {
-    pub id: Vec<u8>,
+    pub id: u32,
     pub position: u64,
 }
 
@@ -89,14 +89,14 @@ pub struct Seek {
 pub fn seek(input: &[u8]) -> EbmlResult<Seek> {
     master(0x4DBB, |inp| {
         matroska_permutation((
-            binary(0x53AB), // SeekID
-            uint(0x53AC),   // SeekPosition
+            binary_exact::<4>(0x53AB), // SeekID
+            uint(0x53AC),              // SeekPosition
         ))(inp)
         .and_then(|(i, t)| {
             Ok((
                 i,
                 Seek {
-                    id: value_error(0x53AB, t.0)?,
+                    id: u32::from_be_bytes(value_error(0x53AB, t.0)?),
                     position: value_error(0x53AC, t.1)?,
                 },
             ))
