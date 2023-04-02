@@ -9,8 +9,8 @@ use nom::{
 pub use uuid::Uuid;
 
 use crate::ebml::{
-    checksum, crc, eat_void, ebml_binary, ebml_binary_exact, ebml_binary_ref, ebml_float, ebml_int,
-    ebml_master, ebml_str, ebml_uint, elem_size, value_error, vid, vint, EbmlResult,
+    binary, binary_ref, checksum, crc, skip_void, elem_size, float, int, master, str, uint, uuid,
+    value_error, vid, vint, EbmlResult,
 };
 use crate::permutation::matroska_permutation;
 
@@ -87,10 +87,10 @@ pub struct Seek {
 
 //https://datatracker.ietf.org/doc/html/draft-lhomme-cellar-matroska-03#section-7.3.4
 pub fn seek(input: &[u8]) -> EbmlResult<Seek> {
-    ebml_master(0x4DBB, |inp| {
+    master(0x4DBB, |inp| {
         matroska_permutation((
-            complete(ebml_binary(0x53AB)), // SeekID
-            complete(ebml_uint(0x53AC)),   // SeekPosition
+            binary(0x53AB), // SeekID
+            uint(0x53AC),   // SeekPosition
         ))(inp)
         .and_then(|(i, t)| {
             Ok((
@@ -125,32 +125,32 @@ pub struct Info {
 //https://datatracker.ietf.org/doc/html/draft-lhomme-cellar-matroska-03#section-7.3.8
 pub fn info(input: &[u8]) -> EbmlResult<SegmentElement> {
     matroska_permutation((
-        complete(ebml_binary_exact::<16>(0x73A4)),   // SegmentUID
-        complete(ebml_str(0x7384)), // SegmentFIlename FIXME SHOULD BE UTF-8 not str
-        complete(ebml_binary_exact::<16>(0x3CB923)), // PrevUID
-        complete(ebml_str(0x3C83AB)), // PrevFilename FIXME SHOULD BE UTF-8 not str
-        complete(ebml_binary_exact::<16>(0x3EB923)), // NextUID
-        complete(ebml_str(0x3E83BB)), // NextFilename FIXME SHOULD BE UTF-8 not str
-        complete(ebml_binary_exact::<16>(0x4444)), // SegmentFamily
+        uuid(0x73A4),                // SegmentUID
+        str(0x7384),                 // SegmentFIlename FIXME SHOULD BE UTF-8 not str
+        uuid(0x3CB923),              // PrevUID
+        str(0x3C83AB),               // PrevFilename FIXME SHOULD BE UTF-8 not str
+        uuid(0x3EB923),              // NextUID
+        str(0x3E83BB),               // NextFilename FIXME SHOULD BE UTF-8 not str
+        uuid(0x4444),                // SegmentFamily
         complete(chapter_translate), //
-        complete(ebml_uint(0x2AD7B1)), // TimecodeScale
-        complete(ebml_float(0x4489)), // Duration: FIXME should be float
-        complete(ebml_binary(0x4461)), // DateUTC FIXME: should be date
-        complete(ebml_str(0x7BA9)), // Title FIXME SHOULD BE UTF-8 not str
-        complete(ebml_str(0x4D80)), // MuxingApp FIXME SHOULD BE UTF-8 not str
-        complete(ebml_str(0x5741)), // WritingApp FIXME SHOULD BE UTF-8 not str
+        uint(0x2AD7B1),              // TimecodeScale
+        float(0x4489),               // Duration: FIXME should be float
+        binary(0x4461),              // DateUTC FIXME: should be date
+        str(0x7BA9),                 // Title FIXME SHOULD BE UTF-8 not str
+        str(0x4D80),                 // MuxingApp FIXME SHOULD BE UTF-8 not str
+        str(0x5741),                 // WritingApp FIXME SHOULD BE UTF-8 not str
     ))(input)
     .and_then(|(i, t)| {
         Ok((
             i,
             SegmentElement::Info(Info {
-                segment_uid: t.0.map(Uuid::from_bytes),
+                segment_uid: t.0,
                 segment_filename: t.1,
-                prev_uid: t.2.map(Uuid::from_bytes),
+                prev_uid: t.2,
                 prev_filename: t.3,
-                next_uid: t.4.map(Uuid::from_bytes),
+                next_uid: t.4,
                 next_filename: t.5,
-                segment_family: t.6.map(Uuid::from_bytes),
+                segment_family: t.6,
                 chapter_translate: t.7,
                 timecode_scale: value_error(0x2AD7B1, t.8)?,
                 duration: t.9,
@@ -168,7 +168,7 @@ pub struct ChapterTranslate {}
 
 //https://datatracker.ietf.org/doc/html/draft-lhomme-cellar-matroska-03#section-7.3.16
 pub fn chapter_translate(input: &[u8]) -> EbmlResult<ChapterTranslate> {
-    ebml_master(0x6924, |i| Ok((i, ChapterTranslate {})))(input)
+    master(0x6924, |i| Ok((i, ChapterTranslate {})))(input)
 }
 
 //https://datatracker.ietf.org/doc/html/draft-lhomme-cellar-matroska-03#section-7.3.26
@@ -185,13 +185,13 @@ pub struct Cluster<'a> {
 
 pub fn cluster(input: &[u8]) -> EbmlResult<SegmentElement> {
     matroska_permutation((
-        complete(ebml_uint(0xE7)),
+        uint(0xE7),
         complete(silent_tracks),
-        complete(ebml_uint(0xA7)),
-        complete(ebml_uint(0xAB)),
-        many0(complete(ebml_binary_ref(0xA3))),
+        uint(0xA7),
+        uint(0xAB),
+        many0(binary_ref(0xA3)),
         many0(complete(block_group)),
-        complete(ebml_binary_ref(0xAF)),
+        binary_ref(0xAF),
     ))(input)
     .and_then(|(i, t)| {
         Ok((
@@ -216,8 +216,8 @@ pub struct SilentTracks {
 
 //https://datatracker.ietf.org/doc/html/draft-lhomme-cellar-matroska-03#section-7.3.16
 pub fn silent_tracks(input: &[u8]) -> EbmlResult<SilentTracks> {
-    ebml_master(0x5854, |i| {
-        map(many0(ebml_uint(0x58D7)), |v| SilentTracks { numbers: v })(i)
+    master(0x5854, |i| {
+        map(many0(uint(0x58D7)), |v| SilentTracks { numbers: v })(i)
     })(input)
 }
 
@@ -238,17 +238,17 @@ pub struct BlockGroup<'a> {
 
 //https://datatracker.ietf.org/doc/html/draft-lhomme-cellar-matroska-03#section-7.3.16
 pub fn block_group(input: &[u8]) -> EbmlResult<BlockGroup> {
-    ebml_master(0xA0, |inp| {
+    master(0xA0, |inp| {
         matroska_permutation((
-            complete(ebml_binary_ref(0xA1)),
-            complete(ebml_binary(0xA2)),
+            binary_ref(0xA1),
+            binary(0xA2),
             complete(block_additions),
-            complete(ebml_uint(0x9B)),
-            complete(ebml_uint(0xFA)),
-            complete(ebml_uint(0xFB)),
-            complete(ebml_int(0xFD)),
-            complete(ebml_binary(0xA4)),
-            complete(ebml_int(0x75A2)),
+            uint(0x9B),
+            uint(0xFA),
+            uint(0xFB),
+            int(0xFD),
+            binary(0xA4),
+            int(0x75A2),
             complete(slices),
             complete(reference_frame),
         ))(inp)
@@ -278,7 +278,7 @@ pub struct BlockAdditions {}
 
 //https://datatracker.ietf.org/doc/html/draft-lhomme-cellar-matroska-03#section-7.3.16
 pub fn block_additions(input: &[u8]) -> EbmlResult<BlockAdditions> {
-    ebml_master(0x75A1, |i| Ok((i, BlockAdditions {})))(input)
+    master(0x75A1, |i| Ok((i, BlockAdditions {})))(input)
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -286,7 +286,7 @@ pub struct Slices {}
 
 //https://datatracker.ietf.org/doc/html/draft-lhomme-cellar-matroska-03#section-7.3.46
 pub fn slices(input: &[u8]) -> EbmlResult<Slices> {
-    ebml_master(0x8E, |i| Ok((i, Slices {})))(input)
+    master(0x8E, |i| Ok((i, Slices {})))(input)
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -294,7 +294,7 @@ pub struct ReferenceFrame {}
 
 //https://datatracker.ietf.org/doc/html/draft-lhomme-cellar-matroska-03#section-7.3.53
 pub fn reference_frame(input: &[u8]) -> EbmlResult<ReferenceFrame> {
-    ebml_master(0xC8, |i| Ok((i, ReferenceFrame {})))(input)
+    master(0xC8, |i| Ok((i, ReferenceFrame {})))(input)
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -404,7 +404,7 @@ impl Tracks {
 
 //https://datatracker.ietf.org/doc/html/draft-lhomme-cellar-matroska-03#section-7.3.16
 pub fn tracks(input: &[u8]) -> EbmlResult<SegmentElement> {
-    map(many1(complete(eat_void(track_entry))), |v| {
+    map(many1(complete(skip_void(track_entry))), |v| {
         SegmentElement::Tracks(Tracks { tracks: v })
     })(input)
 }
@@ -480,45 +480,45 @@ pub struct TrackEntry {
 }
 
 pub fn track_entry(input: &[u8]) -> EbmlResult<TrackEntry> {
-    ebml_master(0xAE, |inp| {
+    master(0xAE, |inp| {
         matroska_permutation((
-            complete(ebml_uint(0xD7)),
-            complete(ebml_uint(0x73C5)),
-            complete(ebml_uint(0x83)),
-            complete(ebml_uint(0xB9)),
-            complete(ebml_uint(0x88)),
-            complete(ebml_uint(0x55AA)),
-            complete(ebml_uint(0x9C)),
-            complete(ebml_uint(0x6DE7)),
-            complete(ebml_uint(0x6DF8)),
-            complete(ebml_uint(0x23E383)),
-            complete(ebml_uint(0x234E7A)),
-            complete(ebml_float(0x23314F)),
-            complete(ebml_int(0x537F)),
-            complete(ebml_uint(0x55EE)),
-            complete(ebml_str(0x536E)),
-            complete(ebml_str(0x22B59C)),
-            complete(ebml_str(0x22B59D)),
-            complete(ebml_str(0x86)),
-            complete(ebml_binary(0x63A2)),
-            complete(ebml_str(0x258688)),
-            complete(ebml_uint(0x7446)),
-            complete(ebml_str(0x3A9697)),
-            complete(ebml_str(0x3B4040)),
-            complete(ebml_str(0x26B240)),
-            complete(ebml_uint(0xAA)),
-            complete(ebml_uint(0x6FAB)),
-            complete(ebml_uint(0x56AA)),
-            complete(ebml_uint(0x56BB)),
+            uint(0xD7),
+            uint(0x73C5),
+            uint(0x83),
+            uint(0xB9),
+            uint(0x88),
+            uint(0x55AA),
+            uint(0x9C),
+            uint(0x6DE7),
+            uint(0x6DF8),
+            uint(0x23E383),
+            uint(0x234E7A),
+            float(0x23314F),
+            int(0x537F),
+            uint(0x55EE),
+            str(0x536E),
+            str(0x22B59C),
+            str(0x22B59D),
+            str(0x86),
+            binary(0x63A2),
+            str(0x258688),
+            uint(0x7446),
+            str(0x3A9697),
+            str(0x3B4040),
+            str(0x26B240),
+            uint(0xAA),
+            uint(0x6FAB),
+            uint(0x56AA),
+            uint(0x56BB),
             many0(complete(track_translate)),
             complete(video),
             complete(audio),
             complete(track_operation),
-            complete(ebml_uint(0xC0)),
-            complete(ebml_binary_exact::<16>(0xC1)),
-            complete(ebml_uint(0xC6)),
-            complete(ebml_uint(0xC7)),
-            complete(ebml_binary_exact::<16>(0xC4)),
+            uint(0xC0),
+            uuid(0xC1),
+            uint(0xC6),
+            uint(0xC7),
+            uuid(0xC4),
             complete(content_encodings),
         ))(inp)
         .and_then(|(i, t)| {
@@ -558,10 +558,10 @@ pub fn track_entry(input: &[u8]) -> EbmlResult<TrackEntry> {
                     audio: t.30,
                     track_operation: t.31,
                     trick_track_uid: t.32,
-                    trick_track_segment_uid: t.33.map(Uuid::from_bytes),
+                    trick_track_segment_uid: t.33,
                     trick_track_flag: t.34,
                     trick_master_track_uid: t.35,
-                    trick_master_track_segment_uid: t.36.map(Uuid::from_bytes),
+                    trick_master_track_segment_uid: t.36,
                     content_encodings: t.37,
                     stream_index: 0,
                 },
@@ -578,22 +578,19 @@ pub struct TrackTranslate {
 }
 
 pub fn track_translate(input: &[u8]) -> EbmlResult<TrackTranslate> {
-    ebml_master(0x6624, |inp| {
-        matroska_permutation((
-            many1(complete(ebml_uint(0x66FC))),
-            complete(ebml_uint(0x66BF)),
-            complete(ebml_uint(0x66A5)),
-        ))(inp)
-        .and_then(|(i, t)| {
-            Ok((
-                i,
-                TrackTranslate {
-                    edition_uid: value_error(0x66FC, t.0)?,
-                    codec: value_error(0x66BF, t.1)?,
-                    track_id: value_error(0x66A5, t.2)?,
-                },
-            ))
-        })
+    master(0x6624, |inp| {
+        matroska_permutation((many1(uint(0x66FC)), uint(0x66BF), uint(0x66A5)))(inp).and_then(
+            |(i, t)| {
+                Ok((
+                    i,
+                    TrackTranslate {
+                        edition_uid: value_error(0x66FC, t.0)?,
+                        codec: value_error(0x66BF, t.1)?,
+                        track_id: value_error(0x66A5, t.2)?,
+                    },
+                ))
+            },
+        )
     })(input)
 }
 
@@ -604,7 +601,7 @@ pub struct TrackOperation {
 }
 
 pub fn track_operation(input: &[u8]) -> EbmlResult<TrackOperation> {
-    ebml_master(0xE2, |i| {
+    master(0xE2, |i| {
         map(
             matroska_permutation((complete(track_combine_planes), complete(track_join_blocks))),
             |t| TrackOperation {
@@ -621,7 +618,7 @@ pub struct TrackCombinePlanes {
 }
 
 pub fn track_combine_planes(input: &[u8]) -> EbmlResult<TrackCombinePlanes> {
-    ebml_master(0xE3, |i| {
+    master(0xE3, |i| {
         map(many1(complete(track_plane)), |v| TrackCombinePlanes {
             track_planes: v,
         })(i)
@@ -635,18 +632,16 @@ pub struct TrackPlane {
 }
 
 pub fn track_plane(input: &[u8]) -> EbmlResult<TrackPlane> {
-    ebml_master(0xE4, |inp| {
-        matroska_permutation((complete(ebml_uint(0xE5)), complete(ebml_uint(0xE6))))(inp).and_then(
-            |(i, t)| {
-                Ok((
-                    i,
-                    TrackPlane {
-                        uid: value_error(0xE5, t.0)?,
-                        plane_type: value_error(0xE6, t.1)?,
-                    },
-                ))
-            },
-        )
+    master(0xE4, |inp| {
+        matroska_permutation((uint(0xE5), uint(0xE6)))(inp).and_then(|(i, t)| {
+            Ok((
+                i,
+                TrackPlane {
+                    uid: value_error(0xE5, t.0)?,
+                    plane_type: value_error(0xE6, t.1)?,
+                },
+            ))
+        })
     })(input)
 }
 
@@ -656,10 +651,8 @@ pub struct TrackJoinBlocks {
 }
 
 pub fn track_join_blocks(input: &[u8]) -> EbmlResult<TrackJoinBlocks> {
-    ebml_master(0xE9, |i| {
-        map(many1(complete(ebml_uint(0xED))), |v| TrackJoinBlocks {
-            uid: v,
-        })(i)
+    master(0xE9, |i| {
+        map(many1(uint(0xED)), |v| TrackJoinBlocks { uid: v })(i)
     })(input)
 }
 
@@ -669,7 +662,7 @@ pub struct ContentEncodings {
 }
 
 pub fn content_encodings(input: &[u8]) -> EbmlResult<ContentEncodings> {
-    ebml_master(0x6D80, |i| {
+    master(0x6D80, |i| {
         map(many1(complete(content_encoding)), |v| ContentEncodings {
             content_encoding: v,
         })(i)
@@ -686,11 +679,11 @@ pub struct ContentEncoding {
 }
 
 pub fn content_encoding(input: &[u8]) -> EbmlResult<ContentEncoding> {
-    ebml_master(0x6240, |inp| {
+    master(0x6240, |inp| {
         matroska_permutation((
-            complete(ebml_uint(0x5031)),
-            complete(ebml_uint(0x5032)),
-            complete(ebml_uint(0x5033)),
+            uint(0x5031),
+            uint(0x5032),
+            uint(0x5033),
             complete(content_compression),
             complete(content_encryption),
         ))(inp)
@@ -716,17 +709,16 @@ pub struct ContentCompression {
 }
 
 pub fn content_compression(input: &[u8]) -> EbmlResult<ContentCompression> {
-    ebml_master(0x5034, |inp| {
-        matroska_permutation((complete(ebml_uint(0x4254)), complete(ebml_uint(0x4255))))(inp)
-            .and_then(|(i, t)| {
-                Ok((
-                    i,
-                    ContentCompression {
-                        algo: value_error(0x4254, t.0)?,
-                        settings: t.1,
-                    },
-                ))
-            })
+    master(0x5034, |inp| {
+        matroska_permutation((uint(0x4254), uint(0x4255)))(inp).and_then(|(i, t)| {
+            Ok((
+                i,
+                ContentCompression {
+                    algo: value_error(0x4254, t.0)?,
+                    settings: t.1,
+                },
+            ))
+        })
     })(input)
 }
 
@@ -741,15 +733,15 @@ pub struct ContentEncryption {
 }
 
 pub fn content_encryption(input: &[u8]) -> EbmlResult<ContentEncryption> {
-    ebml_master(0x5035, |i| {
+    master(0x5035, |i| {
         map(
             matroska_permutation((
-                complete(ebml_uint(0x47E1)),
-                complete(ebml_binary(0x47E2)),
-                complete(ebml_binary(0x47E3)),
-                complete(ebml_binary(0x47E4)),
-                complete(ebml_uint(0x47E5)),
-                complete(ebml_uint(0x47E6)),
+                uint(0x47E1),
+                binary(0x47E2),
+                binary(0x47E3),
+                binary(0x47E4),
+                uint(0x47E5),
+                uint(0x47E6),
             )),
             |t| ContentEncryption {
                 enc_algo: t.0,
@@ -773,13 +765,13 @@ pub struct Audio {
 }
 
 pub fn audio(input: &[u8]) -> EbmlResult<Audio> {
-    ebml_master(0xE1, |inp| {
+    master(0xE1, |inp| {
         matroska_permutation((
-            complete(ebml_float(0xB5)),
-            complete(ebml_float(0x78B5)),
-            ebml_uint(0x9F),
-            complete(ebml_binary(0x7D7B)),
-            complete(ebml_uint(0x6264)),
+            float(0xB5),
+            float(0x78B5),
+            uint(0x9F),
+            binary(0x7D7B),
+            uint(0x6264),
         ))(inp)
         .and_then(|(i, t)| {
             Ok((
@@ -821,26 +813,26 @@ pub struct Video {
 }
 
 pub fn video(input: &[u8]) -> EbmlResult<Video> {
-    ebml_master(0xE0, |inp| {
+    master(0xE0, |inp| {
         matroska_permutation((
-            complete(ebml_uint(0x9A)),
-            complete(ebml_uint(0x9D)),
-            complete(ebml_uint(0x53B8)),
-            complete(ebml_uint(0x53C0)),
-            complete(ebml_uint(0x53B9)),
-            complete(ebml_uint(0xB0)),
-            complete(ebml_uint(0xBA)),
-            complete(ebml_uint(0x54AA)),
-            complete(ebml_uint(0x54BB)),
-            complete(ebml_uint(0x54CC)),
-            complete(ebml_uint(0x54DD)),
-            complete(ebml_uint(0x54B0)),
-            complete(ebml_uint(0x54BA)),
-            complete(ebml_uint(0x54B2)),
-            complete(ebml_uint(0x54B3)),
-            complete(ebml_binary(0x2EB524)),
-            complete(ebml_float(0x2FB523)),
-            complete(ebml_float(0x2383E3)),
+            uint(0x9A),
+            uint(0x9D),
+            uint(0x53B8),
+            uint(0x53C0),
+            uint(0x53B9),
+            uint(0xB0),
+            uint(0xBA),
+            uint(0x54AA),
+            uint(0x54BB),
+            uint(0x54CC),
+            uint(0x54DD),
+            uint(0x54B0),
+            uint(0x54BA),
+            uint(0x54B2),
+            uint(0x54B3),
+            binary(0x2EB524),
+            float(0x2FB523),
+            float(0x2383E3),
             complete(colour),
             complete(projection),
         ))(inp)
@@ -893,22 +885,22 @@ pub struct Colour {
 }
 
 pub fn colour(input: &[u8]) -> EbmlResult<Colour> {
-    ebml_master(0x55B0, |i| {
+    master(0x55B0, |i| {
         map(
             matroska_permutation((
-                complete(ebml_uint(0x55B1)),
-                complete(ebml_uint(0x55B2)),
-                complete(ebml_uint(0x55B3)),
-                complete(ebml_uint(0x55B4)),
-                complete(ebml_uint(0x55B5)),
-                complete(ebml_uint(0x55B6)),
-                complete(ebml_uint(0x55B7)),
-                complete(ebml_uint(0x55B8)),
-                complete(ebml_uint(0x55B9)),
-                complete(ebml_uint(0x55BA)),
-                complete(ebml_uint(0x55BB)),
-                complete(ebml_uint(0x55BC)),
-                complete(ebml_uint(0x55BD)),
+                uint(0x55B1),
+                uint(0x55B2),
+                uint(0x55B3),
+                uint(0x55B4),
+                uint(0x55B5),
+                uint(0x55B6),
+                uint(0x55B7),
+                uint(0x55B8),
+                uint(0x55B9),
+                uint(0x55BA),
+                uint(0x55BB),
+                uint(0x55BC),
+                uint(0x55BD),
                 complete(mastering_metadata),
             )),
             |t| Colour {
@@ -946,19 +938,19 @@ pub struct MasteringMetadata {
 }
 
 pub fn mastering_metadata(input: &[u8]) -> EbmlResult<MasteringMetadata> {
-    ebml_master(0x55D0, |i| {
+    master(0x55D0, |i| {
         map(
             matroska_permutation((
-                complete(ebml_float(0x55D1)),
-                complete(ebml_float(0x55D2)),
-                complete(ebml_float(0x55D3)),
-                complete(ebml_float(0x55D4)),
-                complete(ebml_float(0x55D5)),
-                complete(ebml_float(0x55D6)),
-                complete(ebml_float(0x55D7)),
-                complete(ebml_float(0x55D8)),
-                complete(ebml_float(0x55D9)),
-                complete(ebml_float(0x55DA)),
+                float(0x55D1),
+                float(0x55D2),
+                float(0x55D3),
+                float(0x55D4),
+                float(0x55D5),
+                float(0x55D6),
+                float(0x55D7),
+                float(0x55D8),
+                float(0x55D9),
+                float(0x55DA),
             )),
             |t| MasteringMetadata {
                 primary_r_chromaticity_x: t.0,
@@ -986,13 +978,13 @@ pub struct Projection {
 }
 
 pub fn projection(input: &[u8]) -> EbmlResult<Projection> {
-    ebml_master(0x7670, |inp| {
+    master(0x7670, |inp| {
         matroska_permutation((
-            complete(ebml_uint(0x7671)),
-            complete(ebml_binary(0x7672)),
-            complete(ebml_float(0x7673)),
-            complete(ebml_float(0x7674)),
-            complete(ebml_float(0x7675)),
+            uint(0x7671),
+            binary(0x7672),
+            float(0x7673),
+            float(0x7674),
+            float(0x7675),
         ))(inp)
         .and_then(|(i, t)| {
             Ok((
@@ -1014,7 +1006,7 @@ pub struct Chapters {}
 
 //https://datatracker.ietf.org/doc/html/draft-lhomme-cellar-matroska-03#section-7.3.199
 pub fn chapters(input: &[u8]) -> EbmlResult<SegmentElement> {
-    ebml_master(0x45B9, |i| Ok((i, SegmentElement::Chapters(Chapters {}))))(input)
+    master(0x45B9, |i| Ok((i, SegmentElement::Chapters(Chapters {}))))(input)
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

@@ -7,10 +7,11 @@ use crc::{Algorithm, Crc};
 use log::trace;
 use nom::{
     bytes::streaming::take,
-    combinator::{complete, map, map_parser, map_res, opt, verify},
-    sequence::{pair, preceded, tuple},
+    combinator::{complete, flat_map, map, map_parser, map_res, opt, verify},
+    sequence::{preceded, tuple},
     Err, Needed, Parser,
 };
+use uuid::Uuid;
 
 use crate::permutation::matroska_permutation;
 
@@ -233,55 +234,67 @@ impl EbmlParsable for Vec<u8> {
     }
 }
 
-fn compute_ebml_type<O: EbmlParsable>(id: u32) -> impl Fn(&[u8]) -> EbmlResult<O> {
-    move |i| {
-        let (i, (_, size)) = pair(verify(vid, |val| *val == id), elem_size)(i)?;
-        map_res(take(size), |d| {
-            O::try_parse(d).map_err(|k| Error::Ebml(id, k))
-        })(i)
+impl EbmlParsable for Uuid {
+    fn try_parse(data: &[u8]) -> Result<Self, ParseError> {
+        <[u8; 16] as EbmlParsable>::try_parse(data).map(Uuid::from_bytes)
     }
 }
 
-pub fn ebml_u32(id: u32) -> impl Fn(&[u8]) -> EbmlResult<u32> {
-    compute_ebml_type(id)
-}
-
-pub fn ebml_uint(id: u32) -> impl Fn(&[u8]) -> EbmlResult<u64> {
-    compute_ebml_type(id)
-}
-
-pub fn ebml_int(id: u32) -> impl Fn(&[u8]) -> EbmlResult<i64> {
-    compute_ebml_type(id)
-}
-
-pub fn ebml_float(id: u32) -> impl Fn(&[u8]) -> EbmlResult<f64> {
-    compute_ebml_type(id)
-}
-
-pub fn ebml_str(id: u32) -> impl Fn(&[u8]) -> EbmlResult<String> {
-    compute_ebml_type(id)
-}
-
-pub fn ebml_binary_exact<const N: usize>(id: u32) -> impl Fn(&[u8]) -> EbmlResult<[u8; N]> {
-    compute_ebml_type(id)
-}
-
-pub fn ebml_binary(id: u32) -> impl Fn(&[u8]) -> EbmlResult<Vec<u8>> {
-    compute_ebml_type(id)
-}
-
-// Doing this via EbmlParsable would make the trait more
-// complicated, so it gets special treatment instead.
-pub fn ebml_binary_ref<'a>(id: u32) -> impl Fn(&'a [u8]) -> EbmlResult<&'a [u8]> {
+fn ebml_generic<O: EbmlParsable>(id: u32) -> impl Fn(&[u8]) -> EbmlResult<O> {
     move |i| {
-        let (i, (_, size)) = pair(verify(vid, |val| *val == id), elem_size)(i)?;
-        take(size)(i)
+        let data = flat_map(preceded(verify(vid, |val| *val == id), elem_size), take);
+        let parsed = map_res(data, |d| O::try_parse(d).map_err(|k| Error::Ebml(id, k)));
+        complete(parsed)(i)
     }
 }
 
-pub fn ebml_master<'a, G, O1>(id: u32, second: G) -> impl Fn(&'a [u8]) -> EbmlResult<'a, O1>
+pub fn u32(id: u32) -> impl Fn(&[u8]) -> EbmlResult<u32> {
+    ebml_generic(id)
+}
+
+pub fn uint(id: u32) -> impl Fn(&[u8]) -> EbmlResult<u64> {
+    ebml_generic(id)
+}
+
+pub fn int(id: u32) -> impl Fn(&[u8]) -> EbmlResult<i64> {
+    ebml_generic(id)
+}
+
+pub fn float(id: u32) -> impl Fn(&[u8]) -> EbmlResult<f64> {
+    ebml_generic(id)
+}
+
+pub fn str(id: u32) -> impl Fn(&[u8]) -> EbmlResult<String> {
+    ebml_generic(id)
+}
+
+pub fn binary_exact<const N: usize>(id: u32) -> impl Fn(&[u8]) -> EbmlResult<[u8; N]> {
+    ebml_generic(id)
+}
+
+pub fn binary(id: u32) -> impl Fn(&[u8]) -> EbmlResult<Vec<u8>> {
+    ebml_generic(id)
+}
+
+pub fn uuid(id: u32) -> impl Fn(&[u8]) -> EbmlResult<Uuid> {
+    ebml_generic(id)
+}
+
+// Doing this via EbmlParsable would make the trait more complicated,
+// so it gets special treatment instead. This basically does the same
+// thing as ebml_generic(id), but without a mapping function.
+pub fn binary_ref<'a>(id: u32) -> impl Fn(&'a [u8]) -> EbmlResult<&'a [u8]> {
+    move |i| {
+        complete(flat_map(
+            preceded(verify(vid, |val| *val == id), elem_size),
+            take,
+        ))(i)
+    }
+}
+
+pub fn master<'a, F, O>(id: u32, second: F) -> impl Fn(&'a [u8]) -> EbmlResult<'a, O>
 where
-    G: Fn(&'a [u8]) -> EbmlResult<'a, O1> + Copy,
+    F: Parser<&'a [u8], O, Error> + Copy,
 {
     move |i| {
         tuple((verify(vid, |val| *val == id), elem_size, crc))(i).and_then(|(i, (_, size, crc))| {
@@ -291,15 +304,15 @@ where
     }
 }
 
-pub fn eat_void<'a, G, O1>(second: G) -> impl Fn(&'a [u8]) -> EbmlResult<'a, O1>
+pub fn skip_void<'a, F, O>(second: F) -> impl FnMut(&'a [u8]) -> EbmlResult<'a, O>
 where
-    G: Parser<&'a [u8], O1, Error> + Copy,
+    F: Parser<&'a [u8], O, Error> + Copy,
 {
-    move |i| preceded(opt(skip_void), second)(i)
+    preceded(opt(void), second)
 }
 
-pub fn skip_void(input: &[u8]) -> EbmlResult<&[u8]> {
-    pair(verify(vid, |val| *val == 0xEC), elem_size)(input).and_then(|(i, (_, size))| take(size)(i))
+pub fn void(input: &[u8]) -> EbmlResult<&[u8]> {
+    binary_ref(0xEC)(input)
 }
 
 const CRC: Crc<u32> = Crc::<u32>::new(&Algorithm {
@@ -308,15 +321,18 @@ const CRC: Crc<u32> = Crc::<u32>::new(&Algorithm {
 });
 
 pub fn crc(input: &[u8]) -> EbmlResult<Option<u32>> {
-    opt(map(ebml_binary_exact::<4>(0xBF), u32::from_le_bytes))(input)
+    opt(map(binary_exact::<4>(0xBF), u32::from_le_bytes))(input)
 }
 
-pub fn checksum<'a, G>(crc: Option<u32>, inner: G) -> impl Fn(&'a [u8]) -> EbmlResult<'a, &'a [u8]>
+pub fn checksum<'a, F>(
+    crc: Option<u32>,
+    mut inner: F,
+) -> impl FnMut(&'a [u8]) -> EbmlResult<'a, &'a [u8]>
 where
-    G: Fn(&'a [u8]) -> EbmlResult<'a, &'a [u8]>,
+    F: Parser<&'a [u8], &'a [u8], Error>,
 {
     move |input| {
-        let (i, o) = inner(input)?;
+        let (i, o) = inner.parse(input)?;
 
         // FIXME: don't just return an error, the spec has well-defined CRC error handling
         match crc {
@@ -338,15 +354,15 @@ pub struct EbmlHeader {
 }
 
 pub fn ebml_header(input: &[u8]) -> EbmlResult<EbmlHeader> {
-    ebml_master(0x1A45DFA3, |i| {
+    master(0x1A45DFA3, |i| {
         matroska_permutation((
-            complete(ebml_u32(0x4286)), // version
-            complete(ebml_u32(0x42F7)), // read_version
-            complete(ebml_u32(0x42F2)), // max id length
-            complete(ebml_u32(0x42F3)), // max size length
-            complete(ebml_str(0x4282)), // doctype
-            complete(ebml_u32(0x4287)), // doctype version
-            complete(ebml_u32(0x4285)), // doctype_read version
+            u32(0x4286), // version
+            u32(0x42F7), // read_version
+            u32(0x42F2), // max id length
+            u32(0x42F3), // max size length
+            str(0x4282), // doctype
+            u32(0x4287), // doctype version
+            u32(0x4285), // doctype_read version
         ))(i)
         .and_then(|(i, t)| {
             Ok((

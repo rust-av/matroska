@@ -480,7 +480,7 @@ mod tests {
         }
         info!("{}", data.to_hex(16));
 
-        let parse_res: EbmlResult<u64> = crate::ebml::ebml_uint(id)(data);
+        let parse_res: EbmlResult<u64> = crate::ebml::uint(id)(data);
         info!("parse_res: {parse_res:?}");
         match parse_res {
             Ok((_rest, o)) => {
@@ -518,7 +518,7 @@ mod tests {
         }
         info!("{}", (data[..]).to_hex(16));
 
-        let parse_res: EbmlResult<u64> = crate::ebml::ebml_uint(id)(&data[..]);
+        let parse_res: EbmlResult<u64> = crate::ebml::uint(id)(&data[..]);
         info!("parse_res: {:?}", parse_res);
         match parse_res {
           Ok((_rest, o)) => {
