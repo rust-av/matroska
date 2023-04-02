@@ -132,29 +132,22 @@ fn run(filename: &str) -> Result<(), InfoError> {
                 SegmentElement::SeekHead(s) => {
                     println!("|+ Seek head at {:#0x} size {}", 0x0, b.data().offset(i));
                     for seek in s.positions.iter() {
-                        let _id: u64 = (u64::from(seek.id[0]) << 24)
-                            | (u64::from(seek.id[1]) << 16)
-                            | (u64::from(seek.id[2]) << 8)
-                            | u64::from(seek.id[3]);
-
                         let element_size = seek.size(0x4DBB);
                         let id_size = seek.id.size(0x53AB);
                         let position_size = seek.position.size(0x53AC);
 
                         println!("| + Seek entry size {}", element_size);
 
-                        print!("|  + Seek ID:");
-                        for id in seek.id.iter() {
-                            print!(" {:#0x}", id);
-                        }
+                        // FIXME: Make the formatting similar to mkvinfo again
+                        print!("|  + Seek ID: {:x}", seek.id);
 
-                        let name = match &seek.id[..] {
-                            [0x11, 0x4D, 0x9B, 0x74] => " (KaxSeekHead)",
-                            [0x12, 0x54, 0xC3, 0x67] => " (KaxTags)",
-                            [0x15, 0x49, 0xA9, 0x66] => " (KaxInfo)",
-                            [0x16, 0x54, 0xAE, 0x6B] => " (KaxTracks)",
-                            [0x1C, 0x53, 0xBB, 0x6B] => " (KaxCues)",
-                            [0x1F, 0x43, 0xB6, 0x75] => " (KaxCluster)",
+                        let name = match seek.id {
+                            0x114D9B74 => " (KaxSeekHead)",
+                            0x1254C367 => " (KaxTags)",
+                            0x1549A966 => " (KaxInfo)",
+                            0x1654AE6B => " (KaxTracks)",
+                            0x1C53BB6B => " (KaxCues)",
+                            0x1F43B675 => " (KaxCluster)",
                             _ => "",
                         };
 
