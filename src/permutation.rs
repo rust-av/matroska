@@ -92,8 +92,7 @@ macro_rules! permutation_trait_impl(
           let mut err: Option<Error> = None;
 
           // Skip void elements
-          let void_res = crate::ebml::skip_void(input);
-          if let Ok((i,_)) = void_res {
+          if let Ok((i, _)) = crate::ebml::void(input) {
             input = i;
             continue;
           }
