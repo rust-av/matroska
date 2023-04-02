@@ -9,7 +9,7 @@ use nom::{
 pub use uuid::Uuid;
 
 use crate::ebml::{
-    binary, binary_ref, checksum, crc, skip_void, elem_size, float, int, master, str, uint, uuid,
+    binary, binary_ref, checksum, crc, elem_size, float, int, master, skip_void, str, uint, uuid,
     value_error, vid, vint, EbmlResult,
 };
 use crate::permutation::matroska_permutation;
