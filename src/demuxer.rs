@@ -15,7 +15,7 @@ use av_format::{
 };
 
 use crate::{
-    ebml::{self, ebml_err, ebml_header, EbmlHeader, ErrorKind},
+    ebml::{self, ebml_err, ebml_header, EbmlHeader, ParseError},
     elements::{
         segment, segment_element, simple_block, Audio, Cluster, Info, SeekHead, SegmentElement,
         TrackEntry, TrackType, Tracks, Video,
@@ -81,23 +81,23 @@ impl MkvDemuxer {
 
             match element {
                 SegmentElement::SeekHead(s) => {
-                    trace!("got seek head: {:#?}", s);
+                    trace!("got seek head: {s:#?}");
                     self.seek_head = if self.seek_head.is_none() {
                         Some(s)
                     } else {
-                        return ebml_err(ErrorKind::DuplicateSegment(0x114D9B74));
+                        return ebml_err(0x114D9B74, ParseError::DuplicateSegment);
                     };
                 }
                 SegmentElement::Info(i) => {
-                    trace!("got info: {:#?}", i);
+                    trace!("got info: {i:#?}");
                     self.info = if self.info.is_none() {
                         Some(i)
                     } else {
-                        return ebml_err(ErrorKind::DuplicateSegment(0x1549A966));
+                        return ebml_err(0x1549A966, ParseError::DuplicateSegment);
                     };
                 }
                 SegmentElement::Tracks(t) => {
-                    trace!("got tracks: {:#?}", t);
+                    trace!("got tracks: {t:#?}");
                     self.tracks = if self.tracks.is_none() {
                         let mut t = t;
 
@@ -111,11 +111,11 @@ impl MkvDemuxer {
 
                         Some(t)
                     } else {
-                        return ebml_err(ErrorKind::DuplicateSegment(0x1654AE6B));
+                        return ebml_err(0x1654AE6B, ParseError::DuplicateSegment);
                     }
                 }
                 el => {
-                    debug!("got element: {:#?}", el);
+                    debug!("got element: {el:#?}");
                 }
             }
 
