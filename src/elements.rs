@@ -9,8 +9,8 @@ use nom::{
 pub use uuid::Uuid;
 
 use crate::ebml::{
-    binary, binary_ref, checksum, crc, elem_size, float, int, master, skip_void, str, uint, uuid,
-    value_error, vid, vint, EbmlResult,
+    binary, binary_ref, checksum, crc, elem_size, float, float_def, int, master, skip_void, str,
+    uint, uuid, value_error, vid, vint, EbmlResult,
 };
 use crate::permutation::matroska_permutation;
 
@@ -448,7 +448,7 @@ pub struct TrackEntry {
     pub max_cache: Option<u64>,
     pub default_duration: Option<u64>,
     pub default_decoded_field_duration: Option<u64>,
-    pub track_timecode_scale: Option<f64>, //FIXME: this flag is mandatory but does not appear in some files?
+    pub track_timecode_scale: f64,
     pub track_offset: Option<i64>,
     pub max_block_addition_id: Option<u64>, //FIXME: this flag is mandatory but does not appear in some files?
     pub name: Option<String>,
@@ -493,7 +493,7 @@ pub fn track_entry(input: &[u8]) -> EbmlResult<TrackEntry> {
             uint(0x6DF8),
             uint(0x23E383),
             uint(0x234E7A),
-            float(0x23314F),
+            float_def(0x23314F, 1.0),
             int(0x537F),
             uint(0x55EE),
             str(0x536E),
@@ -536,7 +536,7 @@ pub fn track_entry(input: &[u8]) -> EbmlResult<TrackEntry> {
                     max_cache: t.8,
                     default_duration: t.9,
                     default_decoded_field_duration: t.10,
-                    track_timecode_scale: t.11,
+                    track_timecode_scale: value_error(0x23314F, t.11)?,
                     track_offset: t.12,
                     max_block_addition_id: t.13,
                     name: t.14,
@@ -767,7 +767,7 @@ pub struct Audio {
 pub fn audio(input: &[u8]) -> EbmlResult<Audio> {
     master(0xE1, |inp| {
         matroska_permutation((
-            float(0xB5),
+            float_def(0xB5, 5360.0), // 0x1.4fp+12
             float(0x78B5),
             uint(0x9F),
             binary(0x7D7B),
@@ -992,9 +992,9 @@ pub fn projection(input: &[u8]) -> EbmlResult<Projection> {
                 Projection {
                     projection_type: value_error(0x7671, t.0)?,
                     projection_private: t.1,
-                    projection_pose_yaw: value_error(0x7673, t.2)?,
-                    projection_pose_pitch: value_error(0x7674, t.3)?,
-                    projection_pose_roll: value_error(0x7675, t.4)?,
+                    projection_pose_yaw: t.2.unwrap_or(0.0),
+                    projection_pose_pitch: t.3.unwrap_or(0.0),
+                    projection_pose_roll: t.4.unwrap_or(0.0),
                 },
             ))
         })

@@ -181,7 +181,7 @@ fn gen_track_entry<'a, 'b>(
                 gen_opt_copy(t.default_decoded_field_duration, |v| {
                     gen_ebml_uint(0x234E7A, v)
                 }),
-                gen_opt_copy(t.track_timecode_scale, |v| gen_f64(0x23314F, v)),
+                gen_f64(0x23314F, t.track_timecode_scale), // FIXME: don't serialize if default
                 gen_opt_copy(t.track_offset, |v| gen_ebml_int(0x537F, v)),
                 gen_opt_copy(t.max_block_addition_id, |v| gen_ebml_uint(0x55EE, v)),
                 gen_opt(t.name.as_ref(), |v| gen_ebml_str(0x536E, v)),
