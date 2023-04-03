@@ -233,15 +233,7 @@ fn track_entry_media_kind(t: &TrackEntry) -> Option<MediaKind> {
 }
 
 pub fn track_to_stream(info: &Info, t: &TrackEntry) -> Stream {
-    let num = t
-        .track_timecode_scale
-        .map_or(info.timecode_scale as i64, |ts| {
-            if ts != 0. {
-                (ts * info.timecode_scale as f64) as i64
-            } else {
-                info.timecode_scale as i64
-            }
-        });
+    let num = (t.track_timecode_scale * info.timecode_scale as f64) as i64;
 
     Stream {
         id: t.track_uid as isize,
