@@ -163,7 +163,7 @@ impl Demuxer for MkvDemuxer {
                 Ok((i, element)) => {
                     let seek = SeekFrom::Current(buf.data().offset(i) as i64);
                     if let SegmentElement::Cluster(c) = element {
-                        debug!("got cluster element at timecode: {}", c.timecode);
+                        debug!("got cluster element at timestamp: {}", c.timestamp);
                         let mut packets = c.generate_packets(self.tracks.as_ref().unwrap());
                         self.queue.extend(packets.drain(..));
                         if let Some(event) = self.queue.pop_front() {
@@ -233,7 +233,7 @@ fn track_entry_media_kind(t: &TrackEntry) -> Option<MediaKind> {
 }
 
 pub fn track_to_stream(info: &Info, t: &TrackEntry) -> Stream {
-    let num = (t.track_timecode_scale * info.timecode_scale as f64) as i64;
+    let num = (t.track_timestamp_scale * info.timestamp_scale as f64) as i64;
 
     Stream {
         id: t.track_uid as isize,
@@ -265,7 +265,7 @@ impl<'a> Cluster<'a> {
                     let packet = Packet {
                         data: i.into(),
                         t: TimeInfo {
-                            pts: Some(i64::from(block.timecode)),
+                            pts: Some(i64::from(block.timestamp)),
                             dts: None,
                             duration: None,
                             timebase: None,

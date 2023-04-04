@@ -31,7 +31,7 @@ pub struct MkvMuxer {
     tracks: Option<Tracks>,
     blocks: Vec<Vec<u8>>,
     blocks_len: usize,
-    timecode: Option<u64>,
+    timestamp: Option<u64>,
 }
 
 impl MkvMuxer {
@@ -53,7 +53,7 @@ impl MkvMuxer {
             tracks: None,
             blocks: Vec::new(),
             blocks_len: 0,
-            timecode: None,
+            timestamp: None,
         }
     }
 
@@ -75,7 +75,7 @@ impl MkvMuxer {
             tracks: None,
             blocks: Vec::new(),
             blocks_len: 0,
-            timecode: None,
+            timestamp: None,
         }
     }
 
@@ -296,7 +296,7 @@ impl Muxer for MkvMuxer {
 
         let s = SimpleBlock {
             track_number: pkt.stream_index as u64 + 1,
-            timecode: pkt.t.pts.or(pkt.t.dts).unwrap_or(0) as i16,
+            timestamp: pkt.t.pts.or(pkt.t.dts).unwrap_or(0) as i16,
             keyframe: pkt.is_key,
             invisible: false,
             lacing: Lacing::None,
@@ -334,7 +334,7 @@ impl Muxer for MkvMuxer {
         self.blocks.push(v);
         self.blocks_len += len;
 
-        self.timecode = if self.timecode.is_none() {
+        self.timestamp = if self.timestamp.is_none() {
             Some(pkt.t.pts.or(pkt.t.dts).unwrap_or(0) as u64)
         } else {
             return Err(Error::InvalidData);
@@ -345,7 +345,7 @@ impl Muxer for MkvMuxer {
                 let simple_blocks: Vec<&[u8]> = self.blocks.iter().map(|v| &v[..]).collect();
 
                 let cluster = Cluster {
-                    timecode: self.timecode.take().unwrap(),
+                    timestamp: self.timestamp.take().unwrap(),
                     silent_tracks: None,
                     position: None,
                     prev_size: None,
@@ -397,7 +397,7 @@ impl Muxer for MkvMuxer {
             let simple_blocks: Vec<&[u8]> = self.blocks.iter().map(|v| &v[..]).collect();
 
             let cluster = Cluster {
-                timecode: self.timecode.take().unwrap(),
+                timestamp: self.timestamp.take().unwrap(),
                 silent_tracks: None,
                 position: None,
                 prev_size: None,
@@ -447,7 +447,7 @@ impl Muxer for MkvMuxer {
             muxing_app: String::from("rust-av"),
             writing_app: String::from("rust-av"),
             duration: info.duration.map(|d| d as f64),
-            timecode_scale: 1000000,
+            timestamp_scale: 1000000,
             ..Default::default()
         });
 
