@@ -262,6 +262,8 @@ pub fn int(id: u32) -> impl Fn(&[u8]) -> EbmlResult<i64> {
     ebml_generic(id)
 }
 
+// FIXME: Define and double-check float parsing behaviour in error cases
+// FIXME: Also implement a test suite for that
 pub fn float(id: u32) -> impl Fn(&[u8]) -> EbmlResult<f64> {
     ebml_generic(id)
 }
