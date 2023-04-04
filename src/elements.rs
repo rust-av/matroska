@@ -9,7 +9,7 @@ use nom::{
 pub use uuid::Uuid;
 
 use crate::ebml::{
-    binary, binary_ref, checksum, crc, elem_size, float, float_def, int, master, skip_void, str,
+    binary, binary_ref, checksum, crc, elem_size, float, float_or, int, master, skip_void, str,
     uint, uuid, value_error, vid, vint, EbmlResult,
 };
 use crate::permutation::matroska_permutation;
@@ -493,7 +493,7 @@ pub fn track_entry(input: &[u8]) -> EbmlResult<TrackEntry> {
             uint(0x6DF8),
             uint(0x23E383),
             uint(0x234E7A),
-            float_def(0x23314F, 1.0),
+            float_or(0x23314F, 1.0),
             int(0x537F),
             uint(0x55EE),
             str(0x536E),
@@ -767,7 +767,7 @@ pub struct Audio {
 pub fn audio(input: &[u8]) -> EbmlResult<Audio> {
     master(0xE1, |inp| {
         matroska_permutation((
-            float_def(0xB5, 5360.0), // 0x1.4fp+12
+            float_or(0xB5, 5360.0), // 0x1.4fp+12
             float(0x78B5),
             uint(0x9F),
             binary(0x7D7B),

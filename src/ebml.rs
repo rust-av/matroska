@@ -267,7 +267,7 @@ pub fn float(id: u32) -> impl Fn(&[u8]) -> EbmlResult<f64> {
 }
 
 /// Handles missing and empty (0-octet) elements.
-pub fn float_def(id: u32, default: f64) -> impl Fn(&[u8]) -> EbmlResult<f64> {
+pub fn float_or(id: u32, default: f64) -> impl Fn(&[u8]) -> EbmlResult<f64> {
     move |input| match ebml_generic(id)(input) {
         Err(Err::Error(Error::Nom(nom::error::ErrorKind::Verify)))
         | Err(Err::Error(Error::Ebml(_, ParseError::EmptyFloat))) => Ok((input, default)),
