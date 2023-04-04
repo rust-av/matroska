@@ -192,12 +192,9 @@ fn run(filename: &str) -> Result<(), InfoError> {
                         println!("|  + Track number: {}", tr.track_number);
                         println!("|  + Track UID: {}", tr.track_uid);
                         println!("|  + Track type: {}", tr.track_type);
-                        println!("|  + Lacing flag: {}", tr.flag_lacing.unwrap_or(0));
-                        println!("|  + Default flag: {}", tr.flag_default.unwrap_or(0));
-                        println!(
-                            "|  + Language: {}",
-                            tr.language.as_ref().unwrap_or(&"".to_string())
-                        );
+                        println!("|  + Lacing flag: {}", tr.flag_lacing);
+                        println!("|  + Default flag: {}", tr.flag_default);
+                        println!("|  + Language: {}", tr.language);
                         println!("|  + Codec ID: {}", tr.codec_id);
                         println!(
                             "|  + Codec private: length {}",
@@ -208,18 +205,14 @@ fn run(filename: &str) -> Result<(), InfoError> {
                             println!("|  + Video track");
                             println!("|    + Pixel width: {}", v.pixel_width);
                             println!("|    + Pixel height: {}", v.pixel_height);
-                            if let Some(inter) = v.flag_interlaced {
-                                println!("|    + Interlaced: {}", inter);
-                            }
+                            println!("|    + Interlaced: {}", v.flag_interlaced);
                             if let Some(width) = v.display_width {
                                 println!("|    + Display width: {}", width);
                             }
                             if let Some(height) = v.display_height {
                                 println!("|    + Display height: {}", height);
                             }
-                            if let Some(unit) = v.display_unit {
-                                println!("|    + Display unit: {}", unit);
-                            }
+                            println!("|    + Display unit: {}", v.display_unit);
                         }
 
                         if let Some(ref a) = tr.audio {

@@ -499,9 +499,9 @@ pub fn stream_to_track(s: &Stream) -> TrackEntry {
         track_type: 0,
         codec_id,
         default_duration: s.duration,
-        codec_delay: Some(s.params.delay as u64),
+        codec_delay: s.params.delay as u64,
         codec_private: s.params.extradata.clone(),
-        seek_pre_roll: Some(s.params.convergence_window as u64),
+        seek_pre_roll: s.params.convergence_window as u64,
         ..Default::default()
     };
 
@@ -512,18 +512,18 @@ pub fn stream_to_track(s: &Stream) -> TrackEntry {
                 pixel_width: v.width as u64,
                 pixel_height: v.height as u64,
                 colour: Some(Colour {
-                    matrix_coefficients: Some(match v.format.as_ref() {
+                    matrix_coefficients: match v.format.as_ref() {
                         Some(fmt) => fmt.get_matrix() as u64,
                         None => 0u64,
-                    }),
-                    transfer_characteristics: Some(match v.format.as_ref() {
+                    },
+                    transfer_characteristics: match v.format.as_ref() {
                         Some(fmt) => fmt.get_xfer() as u64,
                         None => 0u64,
-                    }),
-                    primaries: Some(match v.format.as_ref() {
+                    },
+                    primaries: match v.format.as_ref() {
                         Some(fmt) => fmt.get_primaries() as u64,
                         None => 0u64,
-                    }),
+                    },
                     ..Default::default()
                 }),
                 ..Default::default()
