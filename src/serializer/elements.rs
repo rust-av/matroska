@@ -63,7 +63,7 @@ impl EbmlSize for Info {
       + self.next_uid.size(0x3EB923) + self.next_filename.size(0x3E83BB)
       //FIXME: chapter translate
       + self.segment_family.size(0x4444)
-      + self.timecode_scale.size(0x2AD7B1) + self.duration.size(0x4489)
+      + self.timestamp_scale.size(0x2AD7B1) + self.duration.size(0x4489)
       + self.date_utc.size(0x4461) + self.title.size(0x7BA9)
       + self.muxing_app.size(0x4D80) + self.writing_app.size(0x5741)
     }
@@ -85,7 +85,7 @@ pub(crate) fn gen_info<'a, 'b>(
                 gen_opt(i.next_uid.as_ref(), |v| gen_ebml_binary(0x3EB923, v)),
                 gen_opt(i.next_filename.as_ref(), |v| gen_ebml_str(0x3E83BB, v)),
                 gen_opt(i.segment_family.as_ref(), |v| gen_ebml_binary(0x4444, v)),
-                gen_ebml_uint(0x2AD7B1, i.timecode_scale),
+                gen_ebml_uint(0x2AD7B1, i.timestamp_scale),
                 gen_opt(i.duration.as_ref(), |v| gen_f64(0x4489, *v)),
                 gen_opt(i.date_utc.as_ref(), |v| gen_ebml_binary(0x4461, v)),
                 gen_opt(i.title.as_ref(), |v| gen_ebml_str(0x7BA9, v)),
@@ -130,7 +130,7 @@ impl EbmlSize for TrackEntry {
             + self.max_cache.size(0x6DF8)
             + self.default_duration.size(0x23E383)
             + self.default_decoded_field_duration.size(0x234E7A)
-            + self.track_timecode_scale.size(0x23314F)
+            + self.track_timestamp_scale.size(0x23314F)
             + self.track_offset.size(0x537F)
             + self.max_block_addition_id.size(0x55EE)
             + self.name.size(0x536E)
@@ -181,7 +181,7 @@ fn gen_track_entry<'a, 'b>(
                 gen_opt_copy(t.default_decoded_field_duration, |v| {
                     gen_ebml_uint(0x234E7A, v)
                 }),
-                gen_f64(0x23314F, t.track_timecode_scale), // FIXME: don't serialize if default
+                gen_f64(0x23314F, t.track_timestamp_scale), // FIXME: don't serialize if default
                 gen_opt_copy(t.track_offset, |v| gen_ebml_int(0x537F, v)),
                 gen_opt_copy(t.max_block_addition_id, |v| gen_ebml_uint(0x55EE, v)),
                 gen_opt(t.name.as_ref(), |v| gen_ebml_str(0x536E, v)),
@@ -430,7 +430,7 @@ fn gen_track_entry_video_projection<'a, 'b>(
 
 impl<'a> EbmlSize for Cluster<'a> {
     fn capacity(&self) -> usize {
-        self.timecode.size(0xE7) + self.silent_tracks.size(0x5854) + self.position.size(0xA7) +
+        self.timestamp.size(0xE7) + self.silent_tracks.size(0x5854) + self.position.size(0xA7) +
       self.prev_size.size(0xAB) + self.simple_block.size(0xA3) +
       // TODO: implement for BlockGroup
       // self.block_group.size(0xA0) +
@@ -447,7 +447,7 @@ pub(crate) fn gen_cluster<'a, 'b>(
             0x1F43B675,
             byte_capacity,
             tuple((
-                gen_ebml_uint(0xE7, c.timecode),
+                gen_ebml_uint(0xE7, c.timestamp),
                 gen_opt(c.silent_tracks.as_ref(), gen_silent_tracks),
                 gen_opt_copy(c.position, |v| gen_ebml_uint(0xA7, v)),
                 gen_opt_copy(c.prev_size, |v| gen_ebml_uint(0xAB, v)),
@@ -505,7 +505,7 @@ pub(crate) fn gen_simple_block_header<'a, 'b>(
         }
 
         set_be_u8(
-            tuple((gen_vint(s.track_number), |i| set_be_i16(i, s.timecode)))(input)?,
+            tuple((gen_vint(s.track_number), |i| set_be_i16(i, s.timestamp)))(input)?,
             flags,
         )
     }

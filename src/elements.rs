@@ -114,7 +114,7 @@ pub struct Info {
     pub next_filename: Option<String>,
     pub segment_family: Option<Uuid>,
     pub chapter_translate: Option<ChapterTranslate>,
-    pub timecode_scale: u64,
+    pub timestamp_scale: u64,
     pub duration: Option<f64>,     // FIXME should be float
     pub date_utc: Option<Vec<u8>>, //FIXME: should be date
     pub title: Option<String>,
@@ -133,7 +133,7 @@ pub fn info(input: &[u8]) -> EbmlResult<SegmentElement> {
         str(0x3E83BB),               // NextFilename FIXME SHOULD BE UTF-8 not str
         uuid(0x4444),                // SegmentFamily
         complete(chapter_translate), //
-        uint(0x2AD7B1),              // TimecodeScale
+        uint(0x2AD7B1),              // TimestampScale
         float(0x4489),               // Duration: FIXME should be float
         binary(0x4461),              // DateUTC FIXME: should be date
         str(0x7BA9),                 // Title FIXME SHOULD BE UTF-8 not str
@@ -152,7 +152,7 @@ pub fn info(input: &[u8]) -> EbmlResult<SegmentElement> {
                 next_filename: t.5,
                 segment_family: t.6,
                 chapter_translate: t.7,
-                timecode_scale: value_error(0x2AD7B1, t.8)?,
+                timestamp_scale: value_error(0x2AD7B1, t.8)?,
                 duration: t.9,
                 date_utc: t.10,
                 title: t.11,
@@ -174,7 +174,7 @@ pub fn chapter_translate(input: &[u8]) -> EbmlResult<ChapterTranslate> {
 //https://datatracker.ietf.org/doc/html/draft-lhomme-cellar-matroska-03#section-7.3.26
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Cluster<'a> {
-    pub timecode: u64,
+    pub timestamp: u64,
     pub silent_tracks: Option<SilentTracks>,
     pub position: Option<u64>,
     pub prev_size: Option<u64>,
@@ -197,7 +197,7 @@ pub fn cluster(input: &[u8]) -> EbmlResult<SegmentElement> {
         Ok((
             i,
             SegmentElement::Cluster(Cluster {
-                timecode: value_error(0xE7, t.0)?,
+                timestamp: value_error(0xE7, t.0)?,
                 silent_tracks: t.1,
                 position: t.2,
                 prev_size: t.3,
@@ -300,7 +300,7 @@ pub fn reference_frame(input: &[u8]) -> EbmlResult<ReferenceFrame> {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Block {
     pub track_number: u64,
-    pub timecode: i16,
+    pub timestamp: i16,
     pub invisible: bool,
     pub lacing: Lacing,
 }
@@ -308,9 +308,9 @@ pub struct Block {
 pub fn block(input: &[u8]) -> EbmlResult<Block> {
     map(
         tuple((vint, be_i16, map_opt(be_u8, block_flags))),
-        |(track_number, timecode, flags)| Block {
+        |(track_number, timestamp, flags)| Block {
             track_number,
-            timecode,
+            timestamp,
             invisible: flags.invisible,
             lacing: flags.lacing,
         },
@@ -328,7 +328,7 @@ pub struct BlockFlags {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SimpleBlock {
     pub track_number: u64,
-    pub timecode: i16,
+    pub timestamp: i16,
     pub keyframe: bool,
     pub invisible: bool,
     pub lacing: Lacing,
@@ -356,9 +356,9 @@ fn block_flags(data: u8) -> Option<BlockFlags> {
 pub fn simple_block(input: &[u8]) -> EbmlResult<SimpleBlock> {
     map(
         tuple((vint, be_i16, map_opt(be_u8, block_flags))),
-        |(track_number, timecode, flags)| SimpleBlock {
+        |(track_number, timestamp, flags)| SimpleBlock {
             track_number,
-            timecode,
+            timestamp,
             keyframe: flags.keyframe,
             invisible: flags.invisible,
             lacing: flags.lacing,
@@ -448,7 +448,7 @@ pub struct TrackEntry {
     pub max_cache: Option<u64>,
     pub default_duration: Option<u64>,
     pub default_decoded_field_duration: Option<u64>,
-    pub track_timecode_scale: f64,
+    pub track_timestamp_scale: f64,
     pub track_offset: Option<i64>,
     pub max_block_addition_id: Option<u64>, //FIXME: this flag is mandatory but does not appear in some files?
     pub name: Option<String>,
@@ -536,7 +536,7 @@ pub fn track_entry(input: &[u8]) -> EbmlResult<TrackEntry> {
                     max_cache: t.8,
                     default_duration: t.9,
                     default_decoded_field_duration: t.10,
-                    track_timecode_scale: value_error(0x23314F, t.11)?,
+                    track_timestamp_scale: value_error(0x23314F, t.11)?,
                     track_offset: t.12,
                     max_block_addition_id: t.13,
                     name: t.14,

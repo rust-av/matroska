@@ -170,9 +170,9 @@ fn run(filename: &str) -> Result<(), InfoError> {
                         "| + Segment UID: {}",
                         i.segment_uid.map(format_uid).unwrap_or(String::new())
                     );
-                    println!("| + Timestamp scale: {}", i.timecode_scale);
+                    println!("| + Timestamp scale: {}", i.timestamp_scale);
                     if let Some(f) = i.duration {
-                        let nanos = f * i.timecode_scale as f64;
+                        let nanos = f * i.timestamp_scale as f64;
                         let d = Duration::from_nanos(nanos.round() as u64);
                         println!("| + Duration: {}", format_duration(d));
                     }
@@ -294,7 +294,7 @@ fn run(filename: &str) -> Result<(), InfoError> {
                 }
                 SegmentElement::Cluster(c) => {
                     println!("|+ Cluster");
-                    println!("|+   Timecode: {}", c.timecode);
+                    println!("|+   Timestamp: {}", c.timestamp);
                     println!("|+   Silent_tracks: {:?}", c.silent_tracks);
                     println!("|+   Position: {:?}", c.position);
                     println!("|+   Prev size: {:?}", c.prev_size);
