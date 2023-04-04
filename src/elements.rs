@@ -152,7 +152,7 @@ pub fn info(input: &[u8]) -> EbmlResult<SegmentElement> {
                 next_filename: t.5,
                 segment_family: t.6,
                 chapter_translate: t.7,
-                timestamp_scale: value_error(0x2AD7B1, t.8)?,
+                timestamp_scale: t.8.unwrap_or(1_000_000),
                 duration: t.9,
                 date_utc: t.10,
                 title: t.11,
@@ -260,7 +260,7 @@ pub fn block_group(input: &[u8]) -> EbmlResult<BlockGroup> {
                     block_virtual: t.1,
                     block_additions: t.2,
                     block_duration: t.3,
-                    reference_priority: value_error(0xFA, t.4).unwrap_or(0),
+                    reference_priority: t.4.unwrap_or(0),
                     reference_block: t.5,
                     reference_virtual: t.6,
                     codec_state: t.7,
@@ -440,19 +440,19 @@ pub struct TrackEntry {
     pub track_number: u64,
     pub track_uid: u64,
     pub track_type: u64,
-    pub flag_enabled: Option<u64>, //FIXME: this flag is mandatory but does not appear in some files?
-    pub flag_default: Option<u64>, //FIXME: this flag is mandatory but does not appear in some files?
-    pub flag_forced: Option<u64>, //FIXME: this flag is mandatory but does not appear in some files?
-    pub flag_lacing: Option<u64>, //FIXME: this flag is mandatory but does not appear in some files?
-    pub min_cache: Option<u64>,   //FIXME: this flag is mandatory but does not appear in some files?
+    pub flag_enabled: u64,
+    pub flag_default: u64,
+    pub flag_forced: u64,
+    pub flag_lacing: u64,
+    pub min_cache: Option<u64>,
     pub max_cache: Option<u64>,
     pub default_duration: Option<u64>,
     pub default_decoded_field_duration: Option<u64>,
     pub track_timestamp_scale: f64,
     pub track_offset: Option<i64>,
-    pub max_block_addition_id: Option<u64>, //FIXME: this flag is mandatory but does not appear in some files?
+    pub max_block_addition_id: u64,
     pub name: Option<String>,
-    pub language: Option<String>,
+    pub language: String,
     pub language_ietf: Option<String>,
     pub codec_id: String,
     pub codec_private: Option<Vec<u8>>,
@@ -463,8 +463,8 @@ pub struct TrackEntry {
     pub codec_download_url: Option<String>,
     pub codec_decode_all: Option<u64>, //FIXME: this flag is mandatory but does not appear in some files?
     pub track_overlay: Option<u64>,
-    pub codec_delay: Option<u64>,
-    pub seek_pre_roll: Option<u64>, //FIXME: this flag is mandatory but does not appear in some files?
+    pub codec_delay: u64,
+    pub seek_pre_roll: u64,
     pub trick_track_uid: Option<u64>,
     pub trick_track_segment_uid: Option<Uuid>,
     pub trick_track_flag: Option<u64>,
@@ -528,19 +528,19 @@ pub fn track_entry(input: &[u8]) -> EbmlResult<TrackEntry> {
                     track_number: value_error(0xD7, t.0)?,
                     track_uid: value_error(0x73C5, t.1)?,
                     track_type: value_error(0x83, t.2)?,
-                    flag_enabled: t.3,
-                    flag_default: t.4,
-                    flag_forced: t.5,
-                    flag_lacing: t.6,
+                    flag_enabled: t.3.unwrap_or(1),
+                    flag_default: t.4.unwrap_or(1),
+                    flag_forced: t.5.unwrap_or(0),
+                    flag_lacing: t.6.unwrap_or(1),
                     min_cache: t.7,
                     max_cache: t.8,
                     default_duration: t.9,
                     default_decoded_field_duration: t.10,
                     track_timestamp_scale: value_error(0x23314F, t.11)?,
                     track_offset: t.12,
-                    max_block_addition_id: t.13,
+                    max_block_addition_id: t.13.unwrap_or(0),
                     name: t.14,
-                    language: t.15,
+                    language: t.15.unwrap_or(String::from("eng")),
                     language_ietf: t.16,
                     codec_id: value_error(0x86, t.17)?,
                     codec_private: t.18,
@@ -551,8 +551,8 @@ pub fn track_entry(input: &[u8]) -> EbmlResult<TrackEntry> {
                     codec_download_url: t.23,
                     codec_decode_all: t.24,
                     track_overlay: t.25,
-                    codec_delay: t.26,
-                    seek_pre_roll: t.27,
+                    codec_delay: t.26.unwrap_or(0),
+                    seek_pre_roll: t.27.unwrap_or(0),
                     track_translate: value_error(0x6624, t.28)?,
                     video: t.29,
                     audio: t.30,
@@ -687,17 +687,17 @@ pub fn content_encoding(input: &[u8]) -> EbmlResult<ContentEncoding> {
             complete(content_compression),
             complete(content_encryption),
         ))(inp)
-        .and_then(|(i, t)| {
-            Ok((
+        .map(|(i, t)| {
+            (
                 i,
                 ContentEncoding {
-                    order: value_error(0x5031, t.0)?,
-                    scope: value_error(0x5032, t.1)?,
-                    encoding_type: value_error(0x5033, t.2)?,
+                    order: t.0.unwrap_or(0),
+                    scope: t.1.unwrap_or(1),
+                    encoding_type: t.2.unwrap_or(0),
                     compression: t.3,
                     encryption: t.4,
                 },
-            ))
+            )
         })
     })(input)
 }
@@ -710,21 +710,21 @@ pub struct ContentCompression {
 
 pub fn content_compression(input: &[u8]) -> EbmlResult<ContentCompression> {
     master(0x5034, |inp| {
-        matroska_permutation((uint(0x4254), uint(0x4255)))(inp).and_then(|(i, t)| {
-            Ok((
+        matroska_permutation((uint(0x4254), uint(0x4255)))(inp).map(|(i, t)| {
+            (
                 i,
                 ContentCompression {
-                    algo: value_error(0x4254, t.0)?,
+                    algo: t.0.unwrap_or(0),
                     settings: t.1,
                 },
-            ))
+            )
         })
     })(input)
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ContentEncryption {
-    enc_algo: Option<u64>,
+    enc_algo: u64,
     enc_key_id: Option<Vec<u8>>,
     signature: Option<Vec<u8>>,
     sig_key_id: Option<Vec<u8>>,
@@ -744,7 +744,7 @@ pub fn content_encryption(input: &[u8]) -> EbmlResult<ContentEncryption> {
                 uint(0x47E6),
             )),
             |t| ContentEncryption {
-                enc_algo: t.0,
+                enc_algo: t.0.unwrap_or(0),
                 enc_key_id: t.1,
                 signature: t.2,
                 sig_key_id: t.3,
@@ -779,7 +779,7 @@ pub fn audio(input: &[u8]) -> EbmlResult<Audio> {
                 Audio {
                     sampling_frequency: value_error(0xB5, t.0)?,
                     output_sampling_frequency: t.1,
-                    channels: value_error(0x9F, t.2)?,
+                    channels: t.2.unwrap_or(1),
                     channel_positions: t.3,
                     bit_depth: t.4,
                 },
@@ -790,20 +790,20 @@ pub fn audio(input: &[u8]) -> EbmlResult<Audio> {
 
 #[derive(Debug, Clone, PartialEq, Default)]
 pub struct Video {
-    pub flag_interlaced: Option<u64>,
-    pub field_order: Option<u64>,
-    pub stereo_mode: Option<u64>,
-    pub alpha_mode: Option<u64>,
+    pub flag_interlaced: u64,
+    pub field_order: u64,
+    pub stereo_mode: u64,
+    pub alpha_mode: u64,
     pub old_stereo_mode: Option<u64>,
     pub pixel_width: u64,
     pub pixel_height: u64,
-    pub pixel_crop_bottom: Option<u64>,
-    pub pixel_crop_top: Option<u64>,
-    pub pixel_crop_left: Option<u64>,
-    pub pixel_crop_right: Option<u64>,
+    pub pixel_crop_bottom: u64,
+    pub pixel_crop_top: u64,
+    pub pixel_crop_left: u64,
+    pub pixel_crop_right: u64,
     pub display_width: Option<u64>,
     pub display_height: Option<u64>,
-    pub display_unit: Option<u64>,
+    pub display_unit: u64,
     pub aspect_ratio_type: Option<u64>,
     pub colour_space: Option<Vec<u8>>,
     pub gamma_value: Option<f64>,
@@ -840,20 +840,20 @@ pub fn video(input: &[u8]) -> EbmlResult<Video> {
             Ok((
                 i,
                 Video {
-                    flag_interlaced: t.0,
-                    field_order: t.1,
-                    stereo_mode: t.2,
-                    alpha_mode: t.3,
+                    flag_interlaced: t.0.unwrap_or(0),
+                    field_order: t.1.unwrap_or(2),
+                    stereo_mode: t.2.unwrap_or(0),
+                    alpha_mode: t.3.unwrap_or(0),
                     old_stereo_mode: t.4,
                     pixel_width: value_error(0xB0, t.5)?,
                     pixel_height: value_error(0xBA, t.6)?,
-                    pixel_crop_bottom: t.7,
-                    pixel_crop_top: t.8,
-                    pixel_crop_left: t.9,
-                    pixel_crop_right: t.10,
+                    pixel_crop_bottom: t.7.unwrap_or(0),
+                    pixel_crop_top: t.8.unwrap_or(0),
+                    pixel_crop_left: t.9.unwrap_or(0),
+                    pixel_crop_right: t.10.unwrap_or(0),
                     display_width: t.11,
                     display_height: t.12,
-                    display_unit: t.13,
+                    display_unit: t.13.unwrap_or(0),
                     aspect_ratio_type: t.14,
                     colour_space: t.15,
                     gamma_value: t.16,
@@ -868,17 +868,17 @@ pub fn video(input: &[u8]) -> EbmlResult<Video> {
 
 #[derive(Debug, Clone, PartialEq, Default)]
 pub struct Colour {
-    pub matrix_coefficients: Option<u64>,
-    pub bits_per_channel: Option<u64>,
+    pub matrix_coefficients: u64,
+    pub bits_per_channel: u64,
     pub chroma_subsampling_horz: Option<u64>,
     pub chroma_subsampling_vert: Option<u64>,
     pub cb_subsampling_horz: Option<u64>,
     pub cb_subsampling_vert: Option<u64>,
-    pub chroma_siting_horz: Option<u64>,
-    pub chroma_siting_vert: Option<u64>,
-    pub range: Option<u64>,
-    pub transfer_characteristics: Option<u64>,
-    pub primaries: Option<u64>,
+    pub chroma_siting_horz: u64,
+    pub chroma_siting_vert: u64,
+    pub range: u64,
+    pub transfer_characteristics: u64,
+    pub primaries: u64,
     pub max_cll: Option<u64>,
     pub max_fall: Option<u64>,
     pub mastering_metadata: Option<MasteringMetadata>,
@@ -904,17 +904,17 @@ pub fn colour(input: &[u8]) -> EbmlResult<Colour> {
                 complete(mastering_metadata),
             )),
             |t| Colour {
-                matrix_coefficients: t.0,
-                bits_per_channel: t.1,
+                matrix_coefficients: t.0.unwrap_or(2),
+                bits_per_channel: t.1.unwrap_or(0),
                 chroma_subsampling_horz: t.2,
                 chroma_subsampling_vert: t.3,
                 cb_subsampling_horz: t.4,
                 cb_subsampling_vert: t.5,
-                chroma_siting_horz: t.6,
-                chroma_siting_vert: t.7,
-                range: t.8,
-                transfer_characteristics: t.9,
-                primaries: t.10,
+                chroma_siting_horz: t.6.unwrap_or(0),
+                chroma_siting_vert: t.7.unwrap_or(0),
+                range: t.8.unwrap_or(0),
+                transfer_characteristics: t.9.unwrap_or(2),
+                primaries: t.10.unwrap_or(2),
                 max_cll: t.11,
                 max_fall: t.12,
                 mastering_metadata: t.13,
@@ -982,19 +982,19 @@ pub fn projection(input: &[u8]) -> EbmlResult<Projection> {
         matroska_permutation((
             uint(0x7671),
             binary(0x7672),
-            float(0x7673),
-            float(0x7674),
-            float(0x7675),
+            float_or(0x7673, 0.0),
+            float_or(0x7674, 0.0),
+            float_or(0x7675, 0.0),
         ))(inp)
         .and_then(|(i, t)| {
             Ok((
                 i,
                 Projection {
-                    projection_type: value_error(0x7671, t.0)?,
+                    projection_type: t.0.unwrap_or(0),
                     projection_private: t.1,
-                    projection_pose_yaw: t.2.unwrap_or(0.0),
-                    projection_pose_pitch: t.3.unwrap_or(0.0),
-                    projection_pose_roll: t.4.unwrap_or(0.0),
+                    projection_pose_yaw: value_error(0x7673, t.2)?,
+                    projection_pose_pitch: value_error(0x7674, t.3)?,
+                    projection_pose_roll: value_error(0x7675, t.4)?,
                 },
             ))
         })
