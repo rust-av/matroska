@@ -1,8 +1,9 @@
 # Matroska
 
-[![LICENSE](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-[![Actions Status](https://github.com/rust-av/matroska/workflows/matroska/badge.svg)](https://github.com/rust-av/matroska/actions)
-[![dependency status](https://deps.rs/repo/github/rust-av/matroska/status.svg)](https://deps.rs/repo/github/rust-av/matroska)
+[![Actions Status][actions badge]][actions]
+[![CodeCov][codecov badge]][codecov]
+[![Dependency Status][dependency badge]][dependency]
+[![LICENSE][license badge]][license]
 
 ## Specification
 - [rfc](https://datatracker.ietf.org/doc/draft-ietf-cellar-matroska/)
@@ -17,3 +18,16 @@
     - [x] Opus
     - [x] VP9
     - [x] Vorbis
+
+<!-- Links -->
+[actions]: https://github.com/rust-av/matroska/actions
+[codecov]: https://codecov.io/gh/rust-av/matroska
+[dependency]: https://deps.rs/repo/github/rust-av/matroska
+[license]: LICENSE
+
+<!-- Badges -->
+[actions badge]: https://github.com/rust-av/matroska/workflows/matroska/badge.svg
+[codecov badge]: https://codecov.io/gh/rust-av/matroska/branch/master/graph/badge.svg
+[dependency badge]: https://deps.rs/repo/github/rust-av/matroska/status.svg
+[license badge]: https://img.shields.io/badge/license-MIT-blue.svg
+
