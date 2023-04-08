@@ -1,6 +1,6 @@
 use nom::{
     bytes::streaming::take,
-    combinator::{complete, cond, map, map_opt, opt, verify},
+    combinator::{complete, cond, map, map_opt, opt},
     multi::{many0, many1},
     number::streaming::{be_i16, be_u8},
     sequence::{pair, tuple},
@@ -9,8 +9,8 @@ use nom::{
 pub use uuid::Uuid;
 
 use crate::ebml::{
-    binary, binary_exact, binary_ref, checksum, crc, elem_size, float, float_or, int, master,
-    skip_void, str, uint, uuid, vid, vint, EbmlResult,
+    binary, binary_exact, binary_ref, check_id, checksum, crc, elem_size, float, float_or, int,
+    master, skip_void, str, uint, uuid, vid, vint, EbmlResult,
 };
 use crate::permutation::matroska_permutation;
 
@@ -30,7 +30,7 @@ pub enum SegmentElement<'a> {
 
 // https://datatracker.ietf.org/doc/html/draft-lhomme-cellar-matroska-03#section-7.3.3
 pub fn segment(input: &[u8]) -> EbmlResult<(u32, Option<u64>)> {
-    pair(verify(vid, |val| *val == 0x18538067), opt(vint))(input)
+    pair(check_id(0x18538067), opt(vint))(input)
 }
 
 pub fn sub_element<'a, O1, G>(second: G) -> impl Fn(&'a [u8]) -> EbmlResult<'a, O1>

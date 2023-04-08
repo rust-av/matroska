@@ -7,7 +7,7 @@ use crc::{Algorithm, Crc};
 use log::trace;
 use nom::{
     bytes::streaming::take,
-    combinator::{complete, flat_map, map, map_parser, map_res, opt, verify},
+    combinator::{complete, flat_map, map, map_parser, map_res, opt},
     sequence::{preceded, tuple},
     Err, Needed, Parser,
 };
@@ -44,6 +44,9 @@ pub enum ParseError {
 
     /// A required value was not found by the parser.
     MissingRequiredValue,
+
+    /// Unknown Element ID.
+    UnknownID,
 
     /// One of the segment element types was discovered more than once in the input.
     DuplicateSegment,
@@ -237,7 +240,7 @@ impl EbmlParsable for Uuid {
 
 fn ebml_generic<O: EbmlParsable>(id: u32) -> impl Fn(&[u8]) -> EbmlResult<O> {
     move |i| {
-        let data = flat_map(preceded(verify(vid, |val| *val == id), elem_size), take);
+        let data = flat_map(preceded(check_id(id), elem_size), take);
         let parsed = map_res(data, |d| O::try_parse(d).map_err(|k| Error::Ebml(id, k)));
         complete(parsed)(i)
     }
@@ -264,7 +267,7 @@ pub fn float(id: u32) -> impl Fn(&[u8]) -> EbmlResult<f64> {
 /// Handles missing and empty (0-octet) elements.
 pub fn float_or(id: u32, default: f64) -> impl Fn(&[u8]) -> EbmlResult<f64> {
     move |input| match ebml_generic(id)(input) {
-        Err(Err::Error(Error::Nom(nom::error::ErrorKind::Verify)))
+        Err(Err::Error(Error::Ebml(_, ParseError::UnknownID)))
         | Err(Err::Error(Error::Ebml(_, ParseError::EmptyFloat))) => Ok((input, default)),
         rest => rest,
     }
@@ -290,12 +293,7 @@ pub fn uuid(id: u32) -> impl Fn(&[u8]) -> EbmlResult<Uuid> {
 // so it gets special treatment instead. This basically does the same
 // thing as ebml_generic(id), but without a mapping function.
 pub fn binary_ref<'a>(id: u32) -> impl Fn(&'a [u8]) -> EbmlResult<&'a [u8]> {
-    move |i| {
-        complete(flat_map(
-            preceded(verify(vid, |val| *val == id), elem_size),
-            take,
-        ))(i)
-    }
+    move |i| complete(flat_map(preceded(check_id(id), elem_size), take))(i)
 }
 
 pub fn master<'a, F, O>(id: u32, second: F) -> impl Fn(&'a [u8]) -> EbmlResult<'a, O>
@@ -303,10 +301,22 @@ where
     F: Parser<&'a [u8], O, Error> + Copy,
 {
     move |i| {
-        tuple((verify(vid, |val| *val == id), elem_size, crc))(i).and_then(|(i, (_, size, crc))| {
+        tuple((check_id(id), elem_size, crc))(i).and_then(|(i, (_, size, crc))| {
             let size = if crc.is_some() { size - 6 } else { size };
             map_parser(checksum(crc, take(size)), second)(i)
         })
+    }
+}
+
+pub fn check_id<'a>(id: u32) -> impl Fn(&'a [u8]) -> EbmlResult<'a, u32> {
+    move |input| {
+        let (i, o) = vid(input)?;
+
+        if id == o {
+            Ok((i, o))
+        } else {
+            ebml_err(id, ParseError::UnknownID)
+        }
     }
 }
 

@@ -100,9 +100,8 @@ macro_rules! permutation_trait_impl(
 
           // Have all parsers (including void) failed?
           if l == input.len() {
-            // If the error is ErrorKind::Verify, our problem is an unknown ID.
-            // In that case, skip the entire Element with a warning.
-            if let Some(Error::Nom(ErrorKind::Verify)) = err {
+            // Skip unknown Element if possible.
+            if let Some(Error::Ebml(_, crate::ebml::ParseError::UnknownID)) = err {
               if let Ok((i, id)) = crate::ebml::skip_master(input) {
                 log::warn!("Skipped unknown Element 0x{id:X}");
                 input = i;
