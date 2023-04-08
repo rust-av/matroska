@@ -108,13 +108,6 @@ pub fn ebml_err<'a, T>(id: u32, err: ParseError) -> EbmlResult<'a, T> {
     Err(nom::Err::Error(Error::Ebml(id, err)))
 }
 
-pub(crate) fn value_error<T>(id: u32, value: Option<T>) -> Result<T, nom::Err<Error>> {
-    value.ok_or_else(|| {
-        log::error!("Not possible to get the requested value");
-        nom::Err::Error(Error::Ebml(id, ParseError::MissingRequiredValue))
-    })
-}
-
 pub fn vint(input: &[u8]) -> EbmlResult<u64> {
     if input.is_empty() {
         return Err(Err::Incomplete(Needed::new(1)));
@@ -369,27 +362,27 @@ pub struct EbmlHeader {
 pub fn ebml_header(input: &[u8]) -> EbmlResult<EbmlHeader> {
     master(0x1A45DFA3, |i| {
         matroska_permutation((
-            u32(0x4286), // version
-            u32(0x42F7), // read_version
-            u32(0x42F2), // max id length
-            u32(0x42F3), // max size length
-            str(0x4282), // doctype
-            u32(0x4287), // doctype version
-            u32(0x4285), // doctype_read version
+            opt(u32(0x4286)), // version
+            opt(u32(0x42F7)), // read_version
+            opt(u32(0x42F2)), // max id length
+            opt(u32(0x42F3)), // max size length
+            str(0x4282),      // doctype
+            opt(u32(0x4287)), // doctype version
+            opt(u32(0x4285)), // doctype_read version
         ))(i)
-        .and_then(|(i, t)| {
-            Ok((
+        .map(|(i, t)| {
+            (
                 i,
                 EbmlHeader {
                     version: t.0.unwrap_or(1),
                     read_version: t.1.unwrap_or(1),
                     max_id_length: t.2.unwrap_or(4),
                     max_size_length: t.3.unwrap_or(8),
-                    doc_type: value_error(0x4282, t.4)?,
+                    doc_type: t.4,
                     doc_type_version: t.5.unwrap_or(1),
                     doc_type_read_version: t.6.unwrap_or(1),
                 },
-            ))
+            )
         })
     })(input)
 }
