@@ -1,6 +1,8 @@
 use nom::error::{ErrorKind, ParseError};
 use nom::{Err, IResult, Parser};
 
+use crate::ebml::Error;
+
 macro_rules! succ (
   (0, $submac:ident ! ($($rest:tt)*)) => ($submac!(1, $($rest)*));
   (1, $submac:ident ! ($($rest:tt)*)) => ($submac!(2, $($rest)*));
@@ -45,13 +47,13 @@ macro_rules! succ (
   (40, $submac:ident ! ($($rest:tt)*)) => ($submac!(41, $($rest)*));
 );
 
-pub(crate) trait Permutation<'a, O, E> {
-    fn permutation(&mut self, input: &'a [u8]) -> IResult<&'a [u8], O, E>;
+pub(crate) trait Permutation<'a, O> {
+    fn permutation(&mut self, input: &'a [u8]) -> IResult<&'a [u8], O, Error>;
 }
 
-pub(crate) fn matroska_permutation<'a, O, E: ParseError<&'a [u8]>, List: Permutation<'a, O, E>>(
+pub(crate) fn matroska_permutation<'a, O, List: Permutation<'a, O>>(
     mut l: List,
-) -> impl FnMut(&'a [u8]) -> IResult<&'a [u8], O, E> {
+) -> impl FnMut(&'a [u8]) -> IResult<&'a [u8], O, Error> {
     move |i| l.permutation(i)
 }
 
@@ -78,16 +80,15 @@ macro_rules! permutation_trait(
 macro_rules! permutation_trait_impl(
   ($($name:ident $ty:ident $item:ident),+) => (
     impl<'a,
-      $($ty),+ , Error: std::fmt::Debug + ParseError<&'a[u8]>,
+      $($ty),+ ,
       $($name: Parser<&'a [u8], $ty, Error>),+
-    > Permutation<'a, ($($ty),+), Error> for ( $($name),+ ) {
+    > Permutation<'a, ($($ty),+)> for ( $($name),+ ) {
 
       fn permutation(&mut self, mut input: &'a [u8]) -> IResult<&'a [u8], ( $($ty),+ ), Error> {
         let mut res = ($(Option::<$ty>::None),+);
         let mut err: Option<Error> = None;
 
         loop {
-          // save a "marker" of where we started out parsing
           let l = input.len();
 
           // Skip Void Element
@@ -97,8 +98,19 @@ macro_rules! permutation_trait_impl(
 
           try_parse!(0, self, input, res, err, $($name)+);
 
+          // Have all parsers (including void) failed?
           if l == input.len() {
-            // nothing was consumed, we're done
+            // If the error is ErrorKind::Verify, our problem is an unknown ID.
+            // In that case, skip the entire Element with a warning.
+            if let Some(Error::Nom(ErrorKind::Verify)) = err {
+              if let Ok((i, id)) = crate::ebml::skip_master(input) {
+                log::warn!("Skipped unknown Element 0x{id:X}");
+                input = i;
+                continue;
+              }
+            }
+
+            // Otherwise, end parsing.
             break;
           }
         }
