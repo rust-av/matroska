@@ -86,7 +86,7 @@ macro_rules! permutation_trait_impl(
 
       fn permutation(&mut self, mut input: &'a [u8]) -> IResult<&'a [u8], ( $($ty),+ ), Error> {
         let mut res = ($(Option::<$ty>::None),+);
-        let mut err: Option<Error> = None;
+        let mut err = Error::from_error_kind(input, ErrorKind::Permutation);
 
         loop {
           let l = input.len();
@@ -101,7 +101,7 @@ macro_rules! permutation_trait_impl(
           // Have all parsers (including void) failed?
           if l == input.len() {
             // Skip unknown Element if possible.
-            if let Some(Error::Ebml(_, crate::ebml::ParseError::UnknownID)) = err {
+            if let Error::Ebml(_, crate::ebml::ParseError::MissingElement) = err {
               if let Ok((i, id)) = crate::ebml::skip_master(input) {
                 log::warn!("Skipped unknown Element 0x{id:X}");
                 input = i;
@@ -120,10 +120,8 @@ macro_rules! permutation_trait_impl(
             input,
             ($($item),*)
           ))
-        } else if let Some(e) = err {
-          Err(nom::Err::Error(Error::append(input, ErrorKind::Permutation, e)))
         } else {
-          Err(nom::Err::Error(Error::from_error_kind(input, ErrorKind::Permutation)))
+          Err(nom::Err::Error(err))
         }
       }
     }
@@ -139,10 +137,7 @@ macro_rules! try_parse(
           $res.$it = Some(o);
         }
         Err(Err::Error(e)) => {
-          $err = Some(match $err {
-            Some(err) => err.or(e),
-            None => e,
-          });
+          $err = $err.or(e);
         }
         Err(e) => return Err(e),
       };

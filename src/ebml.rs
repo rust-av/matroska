@@ -42,11 +42,8 @@ pub enum ParseError {
     /// The current parsing code cannot handle an element of this size.
     ElementTooLarge,
 
-    /// A required value was not found by the parser.
-    MissingRequiredValue,
-
-    /// Unknown Element ID.
-    UnknownID,
+    /// A required Element was not found by the parser.
+    MissingElement,
 
     /// One of the segment element types was discovered more than once in the input.
     DuplicateSegment,
@@ -98,6 +95,14 @@ impl<'a> nom::error::ParseError<&'a [u8]> for Error {
 
     fn append(_input: &'a [u8], _kind: nom::error::ErrorKind, other: Self) -> Self {
         other
+    }
+
+    fn or(self, other: Self) -> Self {
+        match other {
+            // "Complete" overrides some EBML errors, so discard it
+            Error::Nom(nom::error::ErrorKind::Complete) => self,
+            _ => other,
+        }
     }
 }
 
@@ -267,7 +272,7 @@ pub fn float(id: u32) -> impl Fn(&[u8]) -> EbmlResult<f64> {
 /// Handles missing and empty (0-octet) elements.
 pub fn float_or(id: u32, default: f64) -> impl Fn(&[u8]) -> EbmlResult<f64> {
     move |input| match ebml_generic(id)(input) {
-        Err(Err::Error(Error::Ebml(_, ParseError::UnknownID)))
+        Err(Err::Error(Error::Ebml(_, ParseError::MissingElement)))
         | Err(Err::Error(Error::Ebml(_, ParseError::EmptyFloat))) => Ok((input, default)),
         rest => rest,
     }
@@ -308,14 +313,14 @@ where
     }
 }
 
-pub fn check_id<'a>(id: u32) -> impl Fn(&'a [u8]) -> EbmlResult<'a, u32> {
+pub fn check_id(id: u32) -> impl Fn(&[u8]) -> EbmlResult<u32> {
     move |input| {
         let (i, o) = vid(input)?;
 
         if id == o {
             Ok((i, o))
         } else {
-            ebml_err(id, ParseError::UnknownID)
+            ebml_err(id, ParseError::MissingElement)
         }
     }
 }
