@@ -80,60 +80,52 @@ macro_rules! permutation_trait_impl(
     impl<'a,
       $($ty),+ , Error: std::fmt::Debug + ParseError<&'a[u8]>,
       $($name: Parser<&'a [u8], $ty, Error>),+
-    > Permutation<'a, ( $(Option<$ty>),+ ), Error> for ( $($name),+ ) {
+    > Permutation<'a, ($($ty),+), Error> for ( $($name),+ ) {
 
-      fn permutation(&mut self, mut input: &'a [u8]) -> IResult<&'a [u8], ( $(Option<$ty>),+ ), Error> {
-        let i_ = input.clone();
-
+      fn permutation(&mut self, mut input: &'a [u8]) -> IResult<&'a [u8], ( $($ty),+ ), Error> {
         let mut res = ($(Option::<$ty>::None),+);
+        let mut err: Option<Error> = None;
 
-        // Sum of the permutation errors obtained applying each parser
-        let permutation_error = loop {
-          let mut err: Option<Error> = None;
+        loop {
+          // save a "marker" of where we started out parsing
+          let l = input.len();
 
-          // Skip void elements
+          // Skip Void Element
           if let Ok((i, _)) = crate::ebml::void(input) {
             input = i;
-            continue;
           }
 
-          permutation_trait_inner!(0, self, input, res, err, $($name)+);
+          try_parse!(0, self, input, res, err, $($name)+);
 
-          // If we reach here, every iterator has either been applied before,
-          // or errored on the remaining input
-          // Interrupt the loop because all parsers have been applied
-          break err.map(|err| Error::append(input, ErrorKind::Permutation, err));
-        };
+          if l == input.len() {
+            // nothing was consumed, we're done
+            break;
+          }
+        }
 
-        // All parsers were applied
-        if let Some(unwrapped_res) = {
-            Some((
-              $(
-                 values!($ty, res),
-              )*
-            ))
-        } {
-            Ok((input, unwrapped_res))
-        } else if let Some(e) = permutation_error {
-            Err(Err::Error(e))
+        // Check that all parsers have succeeded
+        if let ($(Option::<$ty>::Some($item)),*) = ($(values!($ty, res)),*) {
+          Ok((
+            input,
+            ($($item),*)
+          ))
+        } else if let Some(e) = err {
+          Err(nom::Err::Error(Error::append(input, ErrorKind::Permutation, e)))
         } else {
-            Err(Err::Error({
-                nom::error::make_error(i_, nom::error::ErrorKind::Permutation)
-            }))
+          Err(nom::Err::Error(Error::from_error_kind(input, ErrorKind::Permutation)))
         }
       }
     }
   );
 );
 
-macro_rules! permutation_trait_inner(
+macro_rules! try_parse(
   ($it:tt, $self:expr, $input:ident, $res:expr, $err:expr, $head:ident $($id:ident)*) => (
     if $res.$it.is_none() {
-      match $self.$it.parse($input.clone()) {
+      match $self.$it.parse($input) {
         Ok((i, o)) => {
           $input = i;
           $res.$it = Some(o);
-          continue;
         }
         Err(Err::Error(e)) => {
           $err = Some(match $err {
@@ -144,7 +136,7 @@ macro_rules! permutation_trait_inner(
         Err(e) => return Err(e),
       };
     }
-    succ!($it, permutation_trait_inner!($self, $input, $res, $err, $($id)*));
+    succ!($it, try_parse!($self, $input, $res, $err, $($id)*));
   );
   ($it:tt, $self:expr, $input:ident, $res:expr, $err:expr,) => ();
 );

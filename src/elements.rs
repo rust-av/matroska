@@ -10,7 +10,7 @@ pub use uuid::Uuid;
 
 use crate::ebml::{
     binary, binary_exact, binary_ref, checksum, crc, elem_size, float, float_or, int, master,
-    skip_void, str, uint, uuid, value_error, vid, vint, EbmlResult,
+    skip_void, str, uint, uuid, vid, vint, EbmlResult,
 };
 use crate::permutation::matroska_permutation;
 
@@ -92,14 +92,14 @@ pub fn seek(input: &[u8]) -> EbmlResult<Seek> {
             binary_exact::<4>(0x53AB), // SeekID
             uint(0x53AC),              // SeekPosition
         ))(inp)
-        .and_then(|(i, t)| {
-            Ok((
+        .map(|(i, t)| {
+            (
                 i,
                 Seek {
-                    id: u32::from_be_bytes(value_error(0x53AB, t.0)?),
-                    position: value_error(0x53AC, t.1)?,
+                    id: u32::from_be_bytes(t.0),
+                    position: t.1,
                 },
-            ))
+            )
         })
     })(input)
 }
@@ -125,23 +125,23 @@ pub struct Info {
 //https://datatracker.ietf.org/doc/html/draft-lhomme-cellar-matroska-03#section-7.3.8
 pub fn info(input: &[u8]) -> EbmlResult<SegmentElement> {
     matroska_permutation((
-        uuid(0x73A4),                // SegmentUID
-        str(0x7384),                 // SegmentFIlename FIXME SHOULD BE UTF-8 not str
-        uuid(0x3CB923),              // PrevUID
-        str(0x3C83AB),               // PrevFilename FIXME SHOULD BE UTF-8 not str
-        uuid(0x3EB923),              // NextUID
-        str(0x3E83BB),               // NextFilename FIXME SHOULD BE UTF-8 not str
-        uuid(0x4444),                // SegmentFamily
-        complete(chapter_translate), //
-        uint(0x2AD7B1),              // TimestampScale
-        float(0x4489),               // Duration: FIXME should be float
-        binary(0x4461),              // DateUTC FIXME: should be date
-        str(0x7BA9),                 // Title FIXME SHOULD BE UTF-8 not str
-        str(0x4D80),                 // MuxingApp FIXME SHOULD BE UTF-8 not str
-        str(0x5741),                 // WritingApp FIXME SHOULD BE UTF-8 not str
+        opt(uuid(0x73A4)),                // SegmentUID
+        opt(str(0x7384)),                 // SegmentFIlename FIXME SHOULD BE UTF-8 not str
+        opt(uuid(0x3CB923)),              // PrevUID
+        opt(str(0x3C83AB)),               // PrevFilename FIXME SHOULD BE UTF-8 not str
+        opt(uuid(0x3EB923)),              // NextUID
+        opt(str(0x3E83BB)),               // NextFilename FIXME SHOULD BE UTF-8 not str
+        opt(uuid(0x4444)),                // SegmentFamily
+        opt(complete(chapter_translate)), //
+        opt(uint(0x2AD7B1)),              // TimestampScale
+        opt(float(0x4489)),               // Duration: FIXME should be float
+        opt(binary(0x4461)),              // DateUTC FIXME: should be date
+        opt(str(0x7BA9)),                 // Title FIXME SHOULD BE UTF-8 not str
+        str(0x4D80),                      // MuxingApp FIXME SHOULD BE UTF-8 not str
+        str(0x5741),                      // WritingApp FIXME SHOULD BE UTF-8 not str
     ))(input)
-    .and_then(|(i, t)| {
-        Ok((
+    .map(|(i, t)| {
+        (
             i,
             SegmentElement::Info(Info {
                 segment_uid: t.0,
@@ -156,10 +156,10 @@ pub fn info(input: &[u8]) -> EbmlResult<SegmentElement> {
                 duration: t.9,
                 date_utc: t.10,
                 title: t.11,
-                muxing_app: value_error(0x4D80, t.12)?,
-                writing_app: value_error(0x5741, t.13)?,
+                muxing_app: t.12,
+                writing_app: t.13,
             }),
-        ))
+        )
     })
 }
 
@@ -186,26 +186,26 @@ pub struct Cluster<'a> {
 pub fn cluster(input: &[u8]) -> EbmlResult<SegmentElement> {
     matroska_permutation((
         uint(0xE7),
-        complete(silent_tracks),
-        uint(0xA7),
-        uint(0xAB),
+        opt(complete(silent_tracks)),
+        opt(uint(0xA7)),
+        opt(uint(0xAB)),
         many0(binary_ref(0xA3)),
         many0(complete(block_group)),
-        binary_ref(0xAF),
+        opt(binary_ref(0xAF)),
     ))(input)
-    .and_then(|(i, t)| {
-        Ok((
+    .map(|(i, t)| {
+        (
             i,
             SegmentElement::Cluster(Cluster {
-                timestamp: value_error(0xE7, t.0)?,
+                timestamp: t.0,
                 silent_tracks: t.1,
                 position: t.2,
                 prev_size: t.3,
-                simple_block: value_error(0xA3, t.4)?,
-                block_group: value_error(0xA0, t.5)?,
+                simple_block: t.4,
+                block_group: t.5,
                 encrypted_block: t.6,
             }),
-        ))
+        )
     })
 }
 
@@ -241,22 +241,22 @@ pub fn block_group(input: &[u8]) -> EbmlResult<BlockGroup> {
     master(0xA0, |inp| {
         matroska_permutation((
             binary_ref(0xA1),
-            binary(0xA2),
-            complete(block_additions),
-            uint(0x9B),
-            uint(0xFA),
-            uint(0xFB),
-            int(0xFD),
-            binary(0xA4),
-            int(0x75A2),
-            complete(slices),
-            complete(reference_frame),
+            opt(binary(0xA2)),
+            opt(complete(block_additions)),
+            opt(uint(0x9B)),
+            opt(uint(0xFA)),
+            opt(uint(0xFB)),
+            opt(int(0xFD)),
+            opt(binary(0xA4)),
+            opt(int(0x75A2)),
+            opt(complete(slices)),
+            opt(complete(reference_frame)),
         ))(inp)
-        .and_then(|(i, t)| {
-            Ok((
+        .map(|(i, t)| {
+            (
                 i,
                 BlockGroup {
-                    block: value_error(0xA1, t.0)?,
+                    block: t.0,
                     block_virtual: t.1,
                     block_additions: t.2,
                     block_duration: t.3,
@@ -268,7 +268,7 @@ pub fn block_group(input: &[u8]) -> EbmlResult<BlockGroup> {
                     slices: t.9,
                     reference_frame: t.10,
                 },
-            ))
+            )
         })
     })(input)
 }
@@ -485,49 +485,49 @@ pub fn track_entry(input: &[u8]) -> EbmlResult<TrackEntry> {
             uint(0xD7),
             uint(0x73C5),
             uint(0x83),
-            uint(0xB9),
-            uint(0x88),
-            uint(0x55AA),
-            uint(0x9C),
-            uint(0x6DE7),
-            uint(0x6DF8),
-            uint(0x23E383),
-            uint(0x234E7A),
+            opt(uint(0xB9)),
+            opt(uint(0x88)),
+            opt(uint(0x55AA)),
+            opt(uint(0x9C)),
+            opt(uint(0x6DE7)),
+            opt(uint(0x6DF8)),
+            opt(uint(0x23E383)),
+            opt(uint(0x234E7A)),
             float_or(0x23314F, 1.0),
-            int(0x537F),
-            uint(0x55EE),
-            str(0x536E),
-            str(0x22B59C),
-            str(0x22B59D),
+            opt(int(0x537F)),
+            opt(uint(0x55EE)),
+            opt(str(0x536E)),
+            opt(str(0x22B59C)),
+            opt(str(0x22B59D)),
             str(0x86),
-            binary(0x63A2),
-            str(0x258688),
-            uint(0x7446),
-            str(0x3A9697),
-            str(0x3B4040),
-            str(0x26B240),
-            uint(0xAA),
-            uint(0x6FAB),
-            uint(0x56AA),
-            uint(0x56BB),
+            opt(binary(0x63A2)),
+            opt(str(0x258688)),
+            opt(uint(0x7446)),
+            opt(str(0x3A9697)),
+            opt(str(0x3B4040)),
+            opt(str(0x26B240)),
+            opt(uint(0xAA)),
+            opt(uint(0x6FAB)),
+            opt(uint(0x56AA)),
+            opt(uint(0x56BB)),
             many0(complete(track_translate)),
-            complete(video),
-            complete(audio),
-            complete(track_operation),
-            uint(0xC0),
-            uuid(0xC1),
-            uint(0xC6),
-            uint(0xC7),
-            uuid(0xC4),
-            complete(content_encodings),
+            opt(complete(video)),
+            opt(complete(audio)),
+            opt(complete(track_operation)),
+            opt(uint(0xC0)),
+            opt(uuid(0xC1)),
+            opt(uint(0xC6)),
+            opt(uint(0xC7)),
+            opt(uuid(0xC4)),
+            opt(complete(content_encodings)),
         ))(inp)
-        .and_then(|(i, t)| {
-            Ok((
+        .map(|(i, t)| {
+            (
                 i,
                 TrackEntry {
-                    track_number: value_error(0xD7, t.0)?,
-                    track_uid: value_error(0x73C5, t.1)?,
-                    track_type: value_error(0x83, t.2)?,
+                    track_number: t.0,
+                    track_uid: t.1,
+                    track_type: t.2,
                     flag_enabled: t.3.unwrap_or(1),
                     flag_default: t.4.unwrap_or(1),
                     flag_forced: t.5.unwrap_or(0),
@@ -536,13 +536,13 @@ pub fn track_entry(input: &[u8]) -> EbmlResult<TrackEntry> {
                     max_cache: t.8,
                     default_duration: t.9,
                     default_decoded_field_duration: t.10,
-                    track_timestamp_scale: value_error(0x23314F, t.11)?,
+                    track_timestamp_scale: t.11,
                     track_offset: t.12,
                     max_block_addition_id: t.13.unwrap_or(0),
                     name: t.14,
                     language: t.15.unwrap_or(String::from("eng")),
                     language_ietf: t.16,
-                    codec_id: value_error(0x86, t.17)?,
+                    codec_id: t.17,
                     codec_private: t.18,
                     codec_name: t.19,
                     attachment_link: t.20,
@@ -553,7 +553,7 @@ pub fn track_entry(input: &[u8]) -> EbmlResult<TrackEntry> {
                     track_overlay: t.25,
                     codec_delay: t.26.unwrap_or(0),
                     seek_pre_roll: t.27.unwrap_or(0),
-                    track_translate: value_error(0x6624, t.28)?,
+                    track_translate: t.28,
                     video: t.29,
                     audio: t.30,
                     track_operation: t.31,
@@ -565,7 +565,7 @@ pub fn track_entry(input: &[u8]) -> EbmlResult<TrackEntry> {
                     content_encodings: t.37,
                     stream_index: 0,
                 },
-            ))
+            )
         })
     })(input)
 }
@@ -579,16 +579,16 @@ pub struct TrackTranslate {
 
 pub fn track_translate(input: &[u8]) -> EbmlResult<TrackTranslate> {
     master(0x6624, |inp| {
-        matroska_permutation((many1(uint(0x66FC)), uint(0x66BF), uint(0x66A5)))(inp).and_then(
+        matroska_permutation((many1(uint(0x66FC)), uint(0x66BF), uint(0x66A5)))(inp).map(
             |(i, t)| {
-                Ok((
+                (
                     i,
                     TrackTranslate {
-                        edition_uid: value_error(0x66FC, t.0)?,
-                        codec: value_error(0x66BF, t.1)?,
-                        track_id: value_error(0x66A5, t.2)?,
+                        edition_uid: t.0,
+                        codec: t.1,
+                        track_id: t.2,
                     },
-                ))
+                )
             },
         )
     })(input)
@@ -603,7 +603,10 @@ pub struct TrackOperation {
 pub fn track_operation(input: &[u8]) -> EbmlResult<TrackOperation> {
     master(0xE2, |i| {
         map(
-            matroska_permutation((complete(track_combine_planes), complete(track_join_blocks))),
+            matroska_permutation((
+                opt(complete(track_combine_planes)),
+                opt(complete(track_join_blocks)),
+            )),
             |t| TrackOperation {
                 combine_planes: t.0,
                 join_blocks: t.1,
@@ -633,14 +636,14 @@ pub struct TrackPlane {
 
 pub fn track_plane(input: &[u8]) -> EbmlResult<TrackPlane> {
     master(0xE4, |inp| {
-        matroska_permutation((uint(0xE5), uint(0xE6)))(inp).and_then(|(i, t)| {
-            Ok((
+        matroska_permutation((uint(0xE5), uint(0xE6)))(inp).map(|(i, t)| {
+            (
                 i,
                 TrackPlane {
-                    uid: value_error(0xE5, t.0)?,
-                    plane_type: value_error(0xE6, t.1)?,
+                    uid: t.0,
+                    plane_type: t.1,
                 },
-            ))
+            )
         })
     })(input)
 }
@@ -681,11 +684,11 @@ pub struct ContentEncoding {
 pub fn content_encoding(input: &[u8]) -> EbmlResult<ContentEncoding> {
     master(0x6240, |inp| {
         matroska_permutation((
-            uint(0x5031),
-            uint(0x5032),
-            uint(0x5033),
-            complete(content_compression),
-            complete(content_encryption),
+            opt(uint(0x5031)),
+            opt(uint(0x5032)),
+            opt(uint(0x5033)),
+            opt(complete(content_compression)),
+            opt(complete(content_encryption)),
         ))(inp)
         .map(|(i, t)| {
             (
@@ -710,7 +713,7 @@ pub struct ContentCompression {
 
 pub fn content_compression(input: &[u8]) -> EbmlResult<ContentCompression> {
     master(0x5034, |inp| {
-        matroska_permutation((uint(0x4254), uint(0x4255)))(inp).map(|(i, t)| {
+        matroska_permutation((opt(uint(0x4254)), opt(uint(0x4255))))(inp).map(|(i, t)| {
             (
                 i,
                 ContentCompression {
@@ -736,12 +739,12 @@ pub fn content_encryption(input: &[u8]) -> EbmlResult<ContentEncryption> {
     master(0x5035, |i| {
         map(
             matroska_permutation((
-                uint(0x47E1),
-                binary(0x47E2),
-                binary(0x47E3),
-                binary(0x47E4),
-                uint(0x47E5),
-                uint(0x47E6),
+                opt(uint(0x47E1)),
+                opt(binary(0x47E2)),
+                opt(binary(0x47E3)),
+                opt(binary(0x47E4)),
+                opt(uint(0x47E5)),
+                opt(uint(0x47E6)),
             )),
             |t| ContentEncryption {
                 enc_algo: t.0.unwrap_or(0),
@@ -768,22 +771,22 @@ pub fn audio(input: &[u8]) -> EbmlResult<Audio> {
     master(0xE1, |inp| {
         matroska_permutation((
             float_or(0xB5, 5360.0), // 0x1.4fp+12
-            float(0x78B5),
-            uint(0x9F),
-            binary(0x7D7B),
-            uint(0x6264),
+            opt(float(0x78B5)),
+            opt(uint(0x9F)),
+            opt(binary(0x7D7B)),
+            opt(uint(0x6264)),
         ))(inp)
-        .and_then(|(i, t)| {
-            Ok((
+        .map(|(i, t)| {
+            (
                 i,
                 Audio {
-                    sampling_frequency: value_error(0xB5, t.0)?,
+                    sampling_frequency: t.0,
                     output_sampling_frequency: t.1,
                     channels: t.2.unwrap_or(1),
                     channel_positions: t.3,
                     bit_depth: t.4,
                 },
-            ))
+            )
         })
     })(input)
 }
@@ -815,29 +818,29 @@ pub struct Video {
 pub fn video(input: &[u8]) -> EbmlResult<Video> {
     master(0xE0, |inp| {
         matroska_permutation((
-            uint(0x9A),
-            uint(0x9D),
-            uint(0x53B8),
-            uint(0x53C0),
-            uint(0x53B9),
+            opt(uint(0x9A)),
+            opt(uint(0x9D)),
+            opt(uint(0x53B8)),
+            opt(uint(0x53C0)),
+            opt(uint(0x53B9)),
             uint(0xB0),
             uint(0xBA),
-            uint(0x54AA),
-            uint(0x54BB),
-            uint(0x54CC),
-            uint(0x54DD),
-            uint(0x54B0),
-            uint(0x54BA),
-            uint(0x54B2),
-            uint(0x54B3),
-            binary(0x2EB524),
-            float(0x2FB523),
-            float(0x2383E3),
-            complete(colour),
-            complete(projection),
+            opt(uint(0x54AA)),
+            opt(uint(0x54BB)),
+            opt(uint(0x54CC)),
+            opt(uint(0x54DD)),
+            opt(uint(0x54B0)),
+            opt(uint(0x54BA)),
+            opt(uint(0x54B2)),
+            opt(uint(0x54B3)),
+            opt(binary(0x2EB524)),
+            opt(float(0x2FB523)),
+            opt(float(0x2383E3)),
+            opt(complete(colour)),
+            opt(complete(projection)),
         ))(inp)
-        .and_then(|(i, t)| {
-            Ok((
+        .map(|(i, t)| {
+            (
                 i,
                 Video {
                     flag_interlaced: t.0.unwrap_or(0),
@@ -845,8 +848,8 @@ pub fn video(input: &[u8]) -> EbmlResult<Video> {
                     stereo_mode: t.2.unwrap_or(0),
                     alpha_mode: t.3.unwrap_or(0),
                     old_stereo_mode: t.4,
-                    pixel_width: value_error(0xB0, t.5)?,
-                    pixel_height: value_error(0xBA, t.6)?,
+                    pixel_width: t.5,
+                    pixel_height: t.6,
                     pixel_crop_bottom: t.7.unwrap_or(0),
                     pixel_crop_top: t.8.unwrap_or(0),
                     pixel_crop_left: t.9.unwrap_or(0),
@@ -861,7 +864,7 @@ pub fn video(input: &[u8]) -> EbmlResult<Video> {
                     colour: t.18,
                     projection: t.19,
                 },
-            ))
+            )
         })
     })(input)
 }
@@ -888,20 +891,20 @@ pub fn colour(input: &[u8]) -> EbmlResult<Colour> {
     master(0x55B0, |i| {
         map(
             matroska_permutation((
-                uint(0x55B1),
-                uint(0x55B2),
-                uint(0x55B3),
-                uint(0x55B4),
-                uint(0x55B5),
-                uint(0x55B6),
-                uint(0x55B7),
-                uint(0x55B8),
-                uint(0x55B9),
-                uint(0x55BA),
-                uint(0x55BB),
-                uint(0x55BC),
-                uint(0x55BD),
-                complete(mastering_metadata),
+                opt(uint(0x55B1)),
+                opt(uint(0x55B2)),
+                opt(uint(0x55B3)),
+                opt(uint(0x55B4)),
+                opt(uint(0x55B5)),
+                opt(uint(0x55B6)),
+                opt(uint(0x55B7)),
+                opt(uint(0x55B8)),
+                opt(uint(0x55B9)),
+                opt(uint(0x55BA)),
+                opt(uint(0x55BB)),
+                opt(uint(0x55BC)),
+                opt(uint(0x55BD)),
+                opt(complete(mastering_metadata)),
             )),
             |t| Colour {
                 matrix_coefficients: t.0.unwrap_or(2),
@@ -941,16 +944,16 @@ pub fn mastering_metadata(input: &[u8]) -> EbmlResult<MasteringMetadata> {
     master(0x55D0, |i| {
         map(
             matroska_permutation((
-                float(0x55D1),
-                float(0x55D2),
-                float(0x55D3),
-                float(0x55D4),
-                float(0x55D5),
-                float(0x55D6),
-                float(0x55D7),
-                float(0x55D8),
-                float(0x55D9),
-                float(0x55DA),
+                opt(float(0x55D1)),
+                opt(float(0x55D2)),
+                opt(float(0x55D3)),
+                opt(float(0x55D4)),
+                opt(float(0x55D5)),
+                opt(float(0x55D6)),
+                opt(float(0x55D7)),
+                opt(float(0x55D8)),
+                opt(float(0x55D9)),
+                opt(float(0x55DA)),
             )),
             |t| MasteringMetadata {
                 primary_r_chromaticity_x: t.0,
@@ -980,23 +983,23 @@ pub struct Projection {
 pub fn projection(input: &[u8]) -> EbmlResult<Projection> {
     master(0x7670, |inp| {
         matroska_permutation((
-            uint(0x7671),
-            binary(0x7672),
+            opt(uint(0x7671)),
+            opt(binary(0x7672)),
             float_or(0x7673, 0.0),
             float_or(0x7674, 0.0),
             float_or(0x7675, 0.0),
         ))(inp)
-        .and_then(|(i, t)| {
-            Ok((
+        .map(|(i, t)| {
+            (
                 i,
                 Projection {
                     projection_type: t.0.unwrap_or(0),
                     projection_private: t.1,
-                    projection_pose_yaw: value_error(0x7673, t.2)?,
-                    projection_pose_pitch: value_error(0x7674, t.3)?,
-                    projection_pose_roll: value_error(0x7675, t.4)?,
+                    projection_pose_yaw: t.2,
+                    projection_pose_pitch: t.3,
+                    projection_pose_roll: t.4,
                 },
-            ))
+            )
         })
     })(input)
 }
