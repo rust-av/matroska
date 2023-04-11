@@ -555,7 +555,6 @@ fn gen_fixed_size_laced_frames<'a>(
 
 #[cfg(test)]
 mod tests {
-    use log::trace;
     use quickcheck::{quickcheck, Arbitrary, Gen, TestResult};
 
     use crate::elements::SegmentElement;
@@ -572,14 +571,14 @@ mod tests {
     }
 
     fn test_seek_head_serializer(seeks: Vec<Seek>) -> bool {
-        trace!("testing for {seeks:?}");
+        println!("testing for {seeks:?}");
 
         for seek in seeks.iter() {
-            trace!("id: {:x}", seek.id);
+            println!("id: {:x}", seek.id);
         }
 
         let capacity = (12 + 100) * seeks.len(); // (fields + padding) * len
-        trace!("defining capacity as {capacity}");
+        println!("defining capacity as {capacity}");
 
         let mut data = vec![0; capacity];
 
@@ -588,15 +587,15 @@ mod tests {
         };
 
         let gen_res = gen_seek_head(&seek_head)((&mut data[..], 0));
-        trace!("gen_res: {gen_res:?}");
+        println!("gen_res: {gen_res:?}");
         if let Err(e) = gen_res {
-            trace!("gen_res is error: {e:?}");
+            println!("gen_res is error: {e:?}");
             // Do not fail if quickcheck generated data is too large
             return true;
         }
 
         let parse_res = crate::elements::segment_element(&data[..]);
-        trace!("parse_res: {parse_res:?}");
+        println!("parse_res: {parse_res:?}");
         match parse_res {
             Ok((_, SegmentElement::SeekHead(o))) => {
                 assert_eq!(seek_head, o);
