@@ -1070,10 +1070,7 @@ mod tests {
                 }
                 e => {
                     let max_index = min(mkv.len(), index + 200);
-                    println!(
-                        "[{index}] {e:#?}:\n{}",
-                        (mkv[index..max_index]).to_hex(16)
-                    );
+                    println!("[{index}] {e:#?}:\n{}", (mkv[index..max_index]).to_hex(16));
                     break;
                 }
             }
@@ -1117,10 +1114,7 @@ mod tests {
                 }
                 e => {
                     let max_index = min(webm.len(), index + 200);
-                    println!(
-                        "[{index}] {e:#?}:\n{}",
-                        (webm[index..max_index]).to_hex(16)
-                    );
+                    println!("[{index}] {e:#?}:\n{}", (webm[index..max_index]).to_hex(16));
                     break;
                 }
             }
