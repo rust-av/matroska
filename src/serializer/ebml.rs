@@ -376,7 +376,6 @@ impl EbmlSize for uuid::Uuid {
 #[cfg(test)]
 mod tests {
     use cookie_factory::gen::set_be_u64;
-    use log::{info, trace};
     use nom::HexDisplay;
     use quickcheck::quickcheck;
 
@@ -399,29 +398,29 @@ mod tests {
     }
 
     fn test_vint_serializer(i: u64) -> bool {
-        info!("testing for {}", i);
+        println!("testing for {i}");
 
         let mut data = [0u8; 10];
         {
             let gen_res = gen_vint(i)((&mut data[..], 0));
             if let Err(e) = gen_res {
-                trace!("gen_res is error: {:?}", e);
-                trace!("Large id value: {:?}", i);
+                println!("gen_res is error: {e:?}");
+                println!("Large id value: {i:?}");
                 // Do not fail if quickcheck generated data is too large
                 return i >= ALLOWED_ID_VALUES;
             }
-            info!("gen_res: {:?}", gen_res);
+            println!("gen_res: {gen_res:?}");
         }
-        info!("{}", (data[..]).to_hex(16));
+        println!("{}", (data[..]).to_hex(16));
 
         let parse_res = crate::ebml::vint(&data[..]);
-        info!("parse_res: {:?}", parse_res);
+        println!("parse_res: {parse_res:?}");
         match parse_res {
             Ok((_rest, o)) => {
                 assert_eq!(i, o);
                 true
             }
-            e => panic!("{}", format!("parse error: {:?}", e)),
+            e => panic!("parse error: {e:?}"),
         }
     }
 
@@ -441,24 +440,24 @@ mod tests {
     }
 
     fn test_vid_serializer(id: u32) -> bool {
-        info!("\ntesting for id={}", id);
+        println!("\ntesting for id={id}");
 
         let mut data = [0u8; 10];
         {
             let gen_res = gen_vid(id)((&mut data[..], 0));
-            info!("gen_res: {:?}", gen_res);
+            println!("gen_res: {gen_res:?}");
         }
-        info!("{}", (data[..]).to_hex(16));
+        println!("{}", (data[..]).to_hex(16));
 
         let parse_res = crate::ebml::vid(&data[..]);
-        info!("parse_res: {:?}", parse_res);
+        println!("parse_res: {parse_res:?}");
         match parse_res {
             Ok((_rest, o)) => {
-                info!("id={:08b}, parsed={:08b}", id, o);
+                println!("id={id:08b}, parsed={o:08b}");
                 assert_eq!(id, o);
                 true
             }
-            e => panic!("{}", format!("parse error: {:?}", e)),
+            e => panic!("parse error: {e:?}"),
         }
     }
 
@@ -471,17 +470,17 @@ mod tests {
 
     fn test_ebml_u64_serializer(num: u64) -> bool {
         let id = 0x9F;
-        info!("\ntesting for id={id}, num={num}");
+        println!("\ntesting for id={id}, num={num}");
 
         let data = &mut [0u8; 100];
         {
             let (_, written) = gen_u64(id, num)((data, 0)).unwrap();
-            info!("written: {written:?}");
+            println!("written: {written:?}");
         }
-        info!("{}", data.to_hex(16));
+        println!("{}", data.to_hex(16));
 
         let parse_res: EbmlResult<u64> = crate::ebml::uint(id)(data);
-        info!("parse_res: {parse_res:?}");
+        println!("parse_res: {parse_res:?}");
         match parse_res {
             Ok((_rest, o)) => {
                 assert_eq!(num, o);
@@ -509,23 +508,23 @@ mod tests {
     quickcheck! {
       fn test_ebml_u8(num: u8) -> bool {
         let id = 0x9F;
-        info!("testing for id={}, num={}", id, num);
+        println!("testing for id={id}, num={num}");
 
         let mut data = [0u8; 100];
         {
           let gen_res = gen_u8(id, num)((&mut data[..], 0));
-          info!("gen_res: {:?}", gen_res);
+          println!("gen_res: {gen_res:?}");
         }
-        info!("{}", (data[..]).to_hex(16));
+        println!("{}", (data[..]).to_hex(16));
 
         let parse_res: EbmlResult<u64> = crate::ebml::uint(id)(&data[..]);
-        info!("parse_res: {:?}", parse_res);
+        println!("parse_res: {parse_res:?}");
         match parse_res {
           Ok((_rest, o)) => {
             assert_eq!(num as u64, o);
             true
           },
-          e => panic!("{}", format!("parse error: {:?}", e)),
+          e => panic!("parse error: {e:?}"),
         }
       }
     }
@@ -543,11 +542,11 @@ mod tests {
           doc_type_read_version: doc_type_read_version as u32,
         };
 
-        info!("will serialize: {:#?}", header);
+        println!("will serialize: {header:#?}");
         let mut data = [0u8; 100];
         {
           let gen_res = gen_ebml_header(&header)((&mut data[..], 0));
-          info!("gen_res: {:?}", gen_res);
+          println!("gen_res: {gen_res:?}");
           // Do not fail if quickcheck generated data is too large
           match gen_res {
             Err(GenError::BufferTooSmall(_)) => return true,
@@ -556,15 +555,15 @@ mod tests {
           }
         }
 
-        info!("{}", (data[..]).to_hex(16));
+        println!("{}", (data[..]).to_hex(16));
         let parse_res = crate::ebml::ebml_header(&data[..]);
-        info!("parse_res: {:?}", parse_res);
+        println!("parse_res: {parse_res:?}");
         match parse_res {
           Ok((_rest, h)) => {
             assert_eq!(header, h);
             true
           },
-          e => panic!("{}", format!("parse error: {:?}", e)),
+          e => panic!("parse error: {e:?}"),
         }
       }
     }

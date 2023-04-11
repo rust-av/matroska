@@ -321,7 +321,6 @@ pub const MKV_DESC: &dyn Descriptor<OutputDemuxer = MkvDemuxer> = &Des {
 mod tests {
     use std::io::Cursor;
 
-    use log::info;
     use nom::Offset;
 
     use av_format::{buffer::*, demuxer::Context};
@@ -335,17 +334,17 @@ mod tests {
         let mut demuxer = MkvDemuxer::new();
 
         let res = demuxer.parse_until_tracks(webm);
-        info!("got parsing res: {:?}", res);
+        println!("got parsing res: {res:?}");
         match res {
             Ok((i, _)) => {
-                info!("offset: {} bytes", webm.offset(i));
+                println!("offset: {} bytes", webm.offset(i));
             }
             e => {
-                info!("could not parse: {:?}", e);
+                println!("could not parse: {e:?}");
             }
         }
 
-        info!("demuxer: {:#?}", demuxer);
+        println!("demuxer: {demuxer:#?}");
     }
 
     #[test]
@@ -355,10 +354,10 @@ mod tests {
         for n in 100..2000 {
             let res = demuxer.parse_until_tracks(&webm[0..n]);
             match res {
-                Ok(_) => info!("Size {} ok", n),
-                Err(Err::Incomplete(needed)) => info!("Incomplete {} needs {:?}", n, needed),
+                Ok(_) => println!("Size {n} ok"),
+                Err(Err::Incomplete(needed)) => println!("Incomplete {n} needs {needed:?}"),
                 Err(e) => {
-                    panic!("Error at size {}: {:?}", n, e);
+                    panic!("Error at size {n}: {e:?}");
                 }
             }
         }
@@ -371,7 +370,7 @@ mod tests {
         println!("{:?}", context.read_headers().unwrap());
 
         while let Ok(event) = context.read_event() {
-            println!("event: {:?}", event);
+            println!("event: {event:?}");
             if let Event::Eof = event {
                 break;
             }

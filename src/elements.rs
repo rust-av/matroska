@@ -1026,7 +1026,6 @@ pub struct Tags {}
 mod tests {
     use std::cmp::min;
 
-    use log::debug;
     use nom::{HexDisplay, Offset};
 
     use super::*;
@@ -1037,12 +1036,12 @@ mod tests {
     #[test]
     fn mkv_segment_root() {
         let res = segment(&mkv[47..100]);
-        debug!("{:?}", res);
+        println!("{res:?}");
 
         if let Ok((i, _)) = res {
-            debug!("consumed {} bytes after header", (mkv[47..]).offset(i));
+            println!("consumed {} bytes after header", (mkv[47..]).offset(i));
         } else {
-            panic!("res: {:?}", res);
+            panic!("res: {res:?}");
         }
     }
 
@@ -1058,13 +1057,12 @@ mod tests {
                     let new_index = mkv.offset(i);
                     match o {
                         SegmentElement::Unknown(id, size) => {
-                            debug!(
-                                "[{} -> {}] Unknown {{ id: 0x{:x}, size: {:?} }}",
-                                index, new_index, id, size
+                            println!(
+                                "[{index} -> {new_index}] Unknown {{ id: 0x{id:x}, size: {size:?} }}",
                             );
                         }
                         o => {
-                            debug!("[{} -> {}] {:#?}", index, new_index, o);
+                            println!("[{index} -> {new_index}] {o:#?}");
                         }
                     };
 
@@ -1072,10 +1070,8 @@ mod tests {
                 }
                 e => {
                     let max_index = min(mkv.len(), index + 200);
-                    debug!(
-                        "[{}] {:#?}:\n{}",
-                        index,
-                        e,
+                    println!(
+                        "[{index}] {e:#?}:\n{}",
                         (mkv[index..max_index]).to_hex(16)
                     );
                     break;
@@ -1087,12 +1083,12 @@ mod tests {
     #[test]
     fn webm_segment_root() {
         let res = segment(&webm[40..100]);
-        debug!("{:?}", res);
+        println!("{res:?}");
 
         if let Ok((i, _)) = res {
-            debug!("consumed {} bytes after header", (webm[40..]).offset(i));
+            println!("consumed {} bytes after header", (webm[40..]).offset(i));
         } else {
-            panic!("res: {:?}", res);
+            panic!("res: {res:?}");
         }
     }
 
@@ -1108,13 +1104,12 @@ mod tests {
                     let new_index = webm.offset(i);
                     match o {
                         SegmentElement::Unknown(id, size) => {
-                            debug!(
-                                "[{} -> {}] Unknown {{ id: 0x{:x}, size: {:?} }}",
-                                index, new_index, id, size
+                            println!(
+                                "[{index} -> {new_index}] Unknown {{ id: 0x{id:x}, size: {size:?} }}"
                             );
                         }
                         o => {
-                            debug!("[{} -> {}] {:#?}", index, new_index, o);
+                            println!("[{index} -> {new_index}] {o:#?}");
                         }
                     };
 
@@ -1122,10 +1117,8 @@ mod tests {
                 }
                 e => {
                     let max_index = min(webm.len(), index + 200);
-                    debug!(
-                        "[{}] {:#?}:\n{}",
-                        index,
-                        e,
+                    println!(
+                        "[{index}] {e:#?}:\n{}",
                         (webm[index..max_index]).to_hex(16)
                     );
                     break;
