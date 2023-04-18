@@ -324,6 +324,9 @@ mod tests {
     use nom::Offset;
 
     use av_format::{buffer::*, demuxer::Context};
+    use uuid::Uuid;
+
+    use crate::elements::Seek;
 
     use super::*;
 
@@ -333,18 +336,153 @@ mod tests {
     fn parse_headers() {
         let mut demuxer = MkvDemuxer::new();
 
-        let res = demuxer.parse_until_tracks(webm);
-        println!("got parsing res: {res:?}");
-        match res {
-            Ok((i, _)) => {
-                println!("offset: {} bytes", webm.offset(i));
-            }
-            e => {
-                println!("could not parse: {e:?}");
-            }
+        match demuxer.parse_until_tracks(webm) {
+            Ok((i, _)) => println!("parsed {} bytes", webm.offset(i)),
+            e => panic!("parse error: {e:?}"),
         }
 
-        println!("demuxer: {demuxer:#?}");
+        assert_eq!(
+            demuxer.header.expect("can parse EBML Header"),
+            EbmlHeader {
+                version: 1,
+                read_version: 1,
+                max_id_length: 4,
+                max_size_length: 8,
+                doc_type: String::from("webm"),
+                doc_type_version: 4,
+                doc_type_read_version: 2,
+            }
+        );
+
+        assert_eq!(
+            demuxer.seek_head.expect("can parse Seek Head Element"),
+            SeekHead {
+                positions: vec![
+                    Seek {
+                        id: 357149030,
+                        position: 223,
+                    },
+                    Seek {
+                        id: 374648427,
+                        position: 300,
+                    },
+                    Seek {
+                        id: 475249515,
+                        position: 23267,
+                    },
+                ]
+            }
+        );
+
+        assert_eq!(
+            demuxer.info.expect("can parse Info Element"),
+            Info {
+                segment_uid: Some(Uuid::try_parse("ed157223-369d-f02d-cf50-76a5fea70034").unwrap()),
+                segment_filename: None,
+                prev_uid: None,
+                prev_filename: None,
+                next_uid: None,
+                next_filename: None,
+                segment_family: None,
+                chapter_translate: None,
+                timestamp_scale: 1_000_000,
+                duration: Some(1020.0),
+                date_utc: None,
+                title: None,
+                muxing_app: String::from("Lavf57.10.0"),
+                writing_app: String::from("Lavf57.10.0"),
+            }
+        );
+
+        assert_eq!(
+            demuxer.tracks.expect("can parse Tracks Element"),
+            Tracks {
+                tracks: vec![
+                    TrackEntry {
+                        track_number: 1,
+                        track_uid: 1,
+                        track_type: 1,
+                        flag_enabled: 1,
+                        flag_default: 1,
+                        flag_forced: 0,
+                        flag_lacing: 0,
+                        min_cache: None,
+                        max_cache: None,
+                        default_duration: None,
+                        default_decoded_field_duration: None,
+                        track_timestamp_scale: 1.0,
+                        track_offset: None,
+                        max_block_addition_id: 0,
+                        name: None,
+                        language: String::from("eng"),
+                        language_ietf: None,
+                        codec_id: String::from("V_VP9"),
+                        codec_private: None,
+                        codec_name: None,
+                        attachment_link: None,
+                        codec_settings: None,
+                        codec_info_url: None,
+                        codec_download_url: None,
+                        codec_decode_all: None,
+                        track_overlay: None,
+                        codec_delay: 0,
+                        seek_pre_roll: 0,
+                        trick_track_uid: None,
+                        trick_track_segment_uid: None,
+                        trick_track_flag: None,
+                        trick_master_track_uid: None,
+                        trick_master_track_segment_uid: None,
+                        video: None,
+                        audio: None,
+                        track_translate: vec![],
+                        track_operation: None,
+                        content_encodings: None,
+                        stream_index: 0,
+                    },
+                    TrackEntry {
+                        track_number: 2,
+                        track_uid: 2,
+                        track_type: 2,
+                        flag_enabled: 1,
+                        flag_default: 1,
+                        flag_forced: 0,
+                        flag_lacing: 0,
+                        min_cache: None,
+                        max_cache: None,
+                        default_duration: None,
+                        default_decoded_field_duration: None,
+                        track_timestamp_scale: 1.0,
+                        track_offset: None,
+                        max_block_addition_id: 0,
+                        name: None,
+                        language: String::from("eng"),
+                        language_ietf: None,
+                        codec_id: String::from("A_OPUS"),
+                        codec_private: None,
+                        codec_name: None,
+                        attachment_link: None,
+                        codec_settings: None,
+                        codec_info_url: None,
+                        codec_download_url: None,
+                        codec_decode_all: None,
+                        track_overlay: None,
+                        codec_delay: 6500000,
+                        seek_pre_roll: 0,
+                        trick_track_uid: None,
+                        trick_track_segment_uid: None,
+                        trick_track_flag: None,
+                        trick_master_track_uid: None,
+                        trick_master_track_segment_uid: None,
+                        video: None,
+                        audio: None,
+                        track_translate: vec![],
+                        track_operation: None,
+                        content_encodings: None,
+                        stream_index: 0,
+                    },
+                ]
+            }
+        )
     }
 
     #[test]
