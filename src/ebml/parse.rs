@@ -88,6 +88,14 @@ impl<'a> EbmlParsable<'a> for Uuid {
     }
 }
 
+// FIXME: Better error handling (via append?)
+pub fn get_required<T>(val: Option<T>, id: u32) -> Result<T, ErrorKind> {
+    val.ok_or_else(|| {
+        log::error!("Required Element {id:#0X} missing");
+        ErrorKind::MissingElement
+    })
+}
+
 pub fn ebml_element<'a, O: EbmlParsable<'a>>(id: u32) -> impl Fn(&'a [u8]) -> EbmlResult<'a, O> {
     move |i| {
         let (i, mut size) = complete(preceded(check_id(id), elem_size))(i)?;

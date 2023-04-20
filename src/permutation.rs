@@ -82,9 +82,9 @@ macro_rules! permutation_trait_impl(
     impl<'a,
       $($ty),+ ,
       $($name: Parser<&'a [u8], $ty, Error>),+
-    > Permutation<'a, ($($ty),+)> for ( $($name),+ ) {
+    > Permutation<'a, ($(Option<$ty>),+)> for ( $($name),+ ) {
 
-      fn permutation(&mut self, mut input: &'a [u8]) -> IResult<&'a [u8], ( $($ty),+ ), Error> {
+      fn permutation(&mut self, mut input: &'a [u8]) -> IResult<&'a [u8], ( $(Option<$ty>),+ ), Error> {
         let mut res = ($(Option::<$ty>::None),+);
         let mut err = Error::from_error_kind(input, ErrorKind::Permutation);
 
@@ -114,15 +114,7 @@ macro_rules! permutation_trait_impl(
           }
         }
 
-        // Check that all parsers have succeeded
-        if let ($(Option::<$ty>::Some($item)),*) = ($(values!($ty, res)),*) {
-          Ok((
-            input,
-            ($($item),*)
-          ))
-        } else {
-          Err(nom::Err::Error(err))
-        }
+        Ok((input, res))
       }
     }
   );
@@ -145,50 +137,6 @@ macro_rules! try_parse(
     succ!($it, try_parse!($self, $input, $res, $err, $($id)*));
   );
   ($it:tt, $self:expr, $input:ident, $res:expr, $err:expr,) => ();
-);
-
-macro_rules! values (
-  (A, $tup:expr) => ($tup.0);
-  (B, $tup:expr) => ($tup.1);
-  (C, $tup:expr) => ($tup.2);
-  (D, $tup:expr) => ($tup.3);
-  (E, $tup:expr) => ($tup.4);
-  (F, $tup:expr) => ($tup.5);
-  (G, $tup:expr) => ($tup.6);
-  (H, $tup:expr) => ($tup.7);
-  (I, $tup:expr) => ($tup.8);
-  (J, $tup:expr) => ($tup.9);
-  (K, $tup:expr) => ($tup.10);
-  (L, $tup:expr) => ($tup.11);
-  (M, $tup:expr) => ($tup.12);
-  (N, $tup:expr) => ($tup.13);
-  (O, $tup:expr) => ($tup.14);
-  (P, $tup:expr) => ($tup.15);
-  (Q, $tup:expr) => ($tup.16);
-  (R, $tup:expr) => ($tup.17);
-  (S, $tup:expr) => ($tup.18);
-  (T, $tup:expr) => ($tup.19);
-  (U, $tup:expr) => ($tup.20);
-  (V, $tup:expr) => ($tup.21);
-  (W, $tup:expr) => ($tup.22);
-  (X, $tup:expr) => ($tup.23);
-  (Y, $tup:expr) => ($tup.24);
-  (Z, $tup:expr) => ($tup.25);
-  (AA, $tup:expr) => ($tup.26);
-  (AB, $tup:expr) => ($tup.27);
-  (AC, $tup:expr) => ($tup.28);
-  (AD, $tup:expr) => ($tup.29);
-  (AE, $tup:expr) => ($tup.30);
-  (AF, $tup:expr) => ($tup.31);
-  (AG, $tup:expr) => ($tup.32);
-  (AH, $tup:expr) => ($tup.33);
-  (AI, $tup:expr) => ($tup.34);
-  (AJ, $tup:expr) => ($tup.35);
-  (AK, $tup:expr) => ($tup.36);
-  (AL, $tup:expr) => ($tup.37);
-  (AM, $tup:expr) => ($tup.38);
-  (AN, $tup:expr) => ($tup.39);
-  (AO, $tup:expr) => ($tup.40);
 );
 
 permutation_trait!(
