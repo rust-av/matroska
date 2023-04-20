@@ -4,7 +4,7 @@ use crc::{Algorithm, Crc};
 use log::trace;
 use nom::{
     bytes::streaming::take,
-    combinator::{complete, map, map_parser, map_res, opt},
+    combinator::{complete, map, map_res, opt},
     sequence::{preceded, tuple},
     Err::Incomplete,
     Needed, Parser,
@@ -45,6 +45,8 @@ impl<'a, T: Int> EbmlParsable<'a> for T {
     }
 }
 
+// FIXME: Define and double-check float parsing behaviour in error cases
+// FIXME: Also implement a test suite for that
 impl<'a> EbmlParsable<'a> for f64 {
     fn try_parse(data: &'a [u8]) -> Result<Self, ErrorKind> {
         match data.len() {
@@ -115,70 +117,6 @@ pub fn ebml_element<'a, O: EbmlParsable<'a>>(id: u32) -> impl Fn(&'a [u8]) -> Eb
     }
 }
 
-pub fn u32<'a>(id: u32) -> impl Fn(&'a [u8]) -> EbmlResult<'a, u32> {
-    ebml_element(id)
-}
-
-pub fn uint<'a>(id: u32) -> impl Fn(&'a [u8]) -> EbmlResult<'a, u64> {
-    ebml_element(id)
-}
-
-pub fn int<'a>(id: u32) -> impl Fn(&'a [u8]) -> EbmlResult<'a, i64> {
-    ebml_element(id)
-}
-
-// FIXME: Define and double-check float parsing behaviour in error cases
-// FIXME: Also implement a test suite for that
-pub fn float<'a>(id: u32) -> impl Fn(&'a [u8]) -> EbmlResult<'a, f64> {
-    ebml_element(id)
-}
-
-/// Handles missing and empty (0-octet) elements.
-pub fn float_or<'a>(id: u32, default: f64) -> impl Fn(&'a [u8]) -> EbmlResult<'a, f64> {
-    move |input| match ebml_element(id)(input) {
-        Err(nom::Err::Error(Error {
-            id: _,
-            kind: ErrorKind::MissingElement | ErrorKind::EmptyFloat,
-        })) => Ok((input, default)),
-        rest => rest,
-    }
-}
-
-pub fn str<'a>(id: u32) -> impl Fn(&'a [u8]) -> EbmlResult<'a, String> {
-    ebml_element(id)
-}
-
-pub fn binary_exact<'a, const N: usize>(id: u32) -> impl Fn(&'a [u8]) -> EbmlResult<'a, [u8; N]> {
-    ebml_element(id)
-}
-
-pub fn binary<'a>(id: u32) -> impl Fn(&'a [u8]) -> EbmlResult<'a, Vec<u8>> {
-    ebml_element(id)
-}
-
-pub fn uuid<'a>(id: u32) -> impl Fn(&'a [u8]) -> EbmlResult<'a, Uuid> {
-    ebml_element(id)
-}
-
-// Doing this via EbmlParsable<'a>would make the trait more complicated,
-// so it gets special treatment instead. This basically does the same
-// thing as ebml_generic(id), but without a mapping function.
-pub fn binary_ref<'a>(id: u32) -> impl Fn(&'a [u8]) -> EbmlResult<'a, &'a [u8]> {
-    ebml_element(id)
-}
-
-pub fn master<'a, F, O>(id: u32, second: F) -> impl Fn(&'a [u8]) -> EbmlResult<'a, O>
-where
-    F: Parser<&'a [u8], O, Error> + Copy,
-{
-    move |i| {
-        tuple((check_id(id), elem_size, crc))(i).and_then(|(i, (_, size, crc))| {
-            let size = if crc.is_some() { size - 6 } else { size };
-            map_parser(checksum(crc, take(size)), second)(i)
-        })
-    }
-}
-
 pub fn check_id<'a>(id: u32) -> impl Fn(&'a [u8]) -> EbmlResult<'a, u32> {
     move |input| {
         let (i, o) = vid(input)?;
@@ -191,15 +129,8 @@ pub fn check_id<'a>(id: u32) -> impl Fn(&'a [u8]) -> EbmlResult<'a, u32> {
     }
 }
 
-pub fn skip_void<'a, F, O>(second: F) -> impl FnMut(&'a [u8]) -> EbmlResult<'a, O>
-where
-    F: Parser<&'a [u8], O, Error> + Copy,
-{
-    preceded(opt(void), second)
-}
-
 pub fn void(input: &[u8]) -> EbmlResult<&[u8]> {
-    binary_ref(0xEC)(input)
+    ebml_element(0xEC)(input)
 }
 
 /// Consumes an entire Master Element, and returns the ID if successful.
@@ -216,7 +147,7 @@ const CRC: Crc<u32> = Crc::<u32>::new(&Algorithm {
 });
 
 pub fn crc(input: &[u8]) -> EbmlResult<Option<u32>> {
-    opt(map(binary_exact::<4>(0xBF), u32::from_le_bytes))(input)
+    opt(map(ebml_element::<[u8; 4]>(0xBF), u32::from_le_bytes))(input)
 }
 
 pub fn checksum<'a, F>(
