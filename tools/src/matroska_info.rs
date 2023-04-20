@@ -139,15 +139,18 @@ fn run(filename: &str) -> Result<(), InfoError> {
                         println!("| + Seek entry size {}", element_size);
 
                         // FIXME: Make the formatting similar to mkvinfo again
-                        print!("|  + Seek ID: {:x}", seek.id);
+                        print!(
+                            "|  + Seek ID: {} {} {} {}",
+                            seek.id[0], seek.id[1], seek.id[2], seek.id[3]
+                        );
 
                         let name = match seek.id {
-                            0x114D9B74 => " (KaxSeekHead)",
-                            0x1254C367 => " (KaxTags)",
-                            0x1549A966 => " (KaxInfo)",
-                            0x1654AE6B => " (KaxTracks)",
-                            0x1C53BB6B => " (KaxCues)",
-                            0x1F43B675 => " (KaxCluster)",
+                            [0x11, 0x4D, 0x9B, 0x74] => " (KaxSeekHead)",
+                            [0x12, 0x54, 0xC3, 0x67] => " (KaxTags)",
+                            [0x15, 0x49, 0xA9, 0x66] => " (KaxInfo)",
+                            [0x16, 0x54, 0xAE, 0x6B] => " (KaxTracks)",
+                            [0x1C, 0x53, 0xBB, 0x6B] => " (KaxCues)",
+                            [0x1F, 0x43, 0xB6, 0x75] => " (KaxCluster)",
                             _ => "",
                         };
 
@@ -301,16 +304,9 @@ fn run(filename: &str) -> Result<(), InfoError> {
                 SegmentElement::Void(s) => {
                     println!("|+ EbmlVoid (size: {})", s);
                 }
-                SegmentElement::Tags(_) => {
-                    println!("|+ Tags");
-                }
-                SegmentElement::Cues(_) => {
-                    println!("|+ Cues");
-                }
                 SegmentElement::Unknown(id, data) => {
                     return Err(InfoError::UnknownElement(_consumed, id, data))
                 }
-                el => return Err(InfoError::UnexpectedElement(format!("{:?}", el))),
             }
 
             b.data().offset(i)
