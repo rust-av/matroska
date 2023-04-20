@@ -32,7 +32,7 @@ fn gen_seek<'a, 'b>(
             0x4DBB,
             vint_size(s.capacity() as u64)?,
             tuple((
-                gen_ebml_binary(0x53AB, &s.id.to_be_bytes()),
+                gen_ebml_binary(0x53AB, s.id),
                 gen_ebml_uint_l(0x53AC, s.position, || Ok(8)),
             )),
         )(input)
@@ -564,7 +564,7 @@ mod tests {
     impl Arbitrary for Seek {
         fn arbitrary(g: &mut Gen) -> Seek {
             Seek {
-                id: u32::arbitrary(g),
+                id: u32::arbitrary(g).to_be_bytes(),
                 position: u64::arbitrary(g),
             }
         }
@@ -574,7 +574,10 @@ mod tests {
         println!("testing for {seeks:?}");
 
         for seek in seeks.iter() {
-            println!("id: {:x}", seek.id);
+            println!(
+                "id: {} {} {} {}",
+                seek.id[0], seek.id[1], seek.id[2], seek.id[3]
+            );
         }
 
         let capacity = (12 + 100) * seeks.len(); // (fields + padding) * len

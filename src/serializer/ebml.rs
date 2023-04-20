@@ -349,6 +349,12 @@ impl EbmlSize for Vec<u8> {
     }
 }
 
+impl<const N: usize> EbmlSize for [u8; N] {
+    fn capacity(&self) -> usize {
+        N
+    }
+}
+
 impl<'a> EbmlSize for &'a [u8] {
     fn capacity(&self) -> usize {
         self.len()
