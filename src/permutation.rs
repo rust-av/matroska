@@ -101,7 +101,7 @@ macro_rules! permutation_trait_impl(
           // Have all parsers (including void) failed?
           if l == input.len() {
             // Skip unknown Element if possible.
-            if let Error::Ebml(_, crate::ebml::ParseError::MissingElement) = err {
+            if let Error { id: _, kind: crate::ebml::ErrorKind::MissingElement } = err {
               if let Ok((i, id)) = crate::ebml::skip_master(input) {
                 log::warn!("Skipped unknown Element 0x{id:X}");
                 input = i;

@@ -17,27 +17,37 @@ use crate::permutation::matroska_permutation;
 
 pub(crate) type EbmlResult<'a, T> = nom::IResult<&'a [u8], T, Error>;
 
-#[derive(Debug, PartialEq, Eq)]
-pub enum Error {
-    /// nom returned an error.
-    Nom(nom::error::ErrorKind),
-
-    /// nom did not return an error, but the EBML is incorrect.
-    /// The contained [u32] is the Element ID of the Element where the
-    /// error occurred, or 0 if not applicable.
+#[derive(PartialEq, Eq)]
+pub struct Error {
+    /// The Element ID where the error occurred. 0 if not available.
     ///
     /// For an overview of Element IDs, see the list of
     /// [EBML Element IDs] or [Matroska Element IDs].
     ///
     /// [EBML Element IDs]: https://www.rfc-editor.org/rfc/rfc8794.html#name-ebml-element-ids-registry
     /// [Matroska Element IDs]: https://www.ietf.org/archive/id/draft-ietf-cellar-matroska-15.html#section-27.1-11
-    Ebml(u32, ParseError),
+    pub id: u32,
+
+    /// See [ErrorKind] for more information.
+    pub kind: ErrorKind,
+}
+
+impl std::fmt::Debug for Error {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Error")
+            .field("id", &format!("{:#0X}", self.id))
+            .field("kind", &self.kind)
+            .finish()
+    }
 }
 
 /// Describes what went wrong.
 #[derive(Debug, PartialEq, Eq)]
 #[non_exhaustive]
-pub enum ParseError {
+pub enum ErrorKind {
+    /// nom returned an error.
+    Nom(nom::error::ErrorKind),
+
     /// The Element Data Size did not fit within a [usize].
     /// The current parsing code cannot handle an element of this size.
     ElementTooLarge,
@@ -90,7 +100,10 @@ pub enum ParseError {
 
 impl<'a> nom::error::ParseError<&'a [u8]> for Error {
     fn from_error_kind(_input: &'a [u8], kind: nom::error::ErrorKind) -> Self {
-        Error::Nom(kind)
+        Self {
+            id: 0,
+            kind: ErrorKind::Nom(kind),
+        }
     }
 
     fn append(_input: &'a [u8], _kind: nom::error::ErrorKind, other: Self) -> Self {
@@ -98,9 +111,9 @@ impl<'a> nom::error::ParseError<&'a [u8]> for Error {
     }
 
     fn or(self, other: Self) -> Self {
-        match other {
+        match other.kind {
             // "Complete" overrides some EBML errors, so discard it
-            Error::Nom(nom::error::ErrorKind::Complete) => self,
+            ErrorKind::Nom(nom::error::ErrorKind::Complete) => self,
             _ => other,
         }
     }
@@ -112,8 +125,8 @@ impl<I> nom::error::FromExternalError<I, Error> for Error {
     }
 }
 
-pub fn ebml_err<'a, T>(id: u32, err: ParseError) -> EbmlResult<'a, T> {
-    Err(nom::Err::Error(Error::Ebml(id, err)))
+pub fn ebml_err<'a, T>(id: u32, kind: ErrorKind) -> EbmlResult<'a, T> {
+    Err(nom::Err::Error(Error { id, kind }))
 }
 
 pub fn vint(input: &[u8]) -> EbmlResult<u64> {
@@ -125,7 +138,7 @@ pub fn vint(input: &[u8]) -> EbmlResult<u64> {
     let len = v.leading_zeros();
 
     if len == 8 {
-        return ebml_err(0, ParseError::VintTooWide);
+        return ebml_err(0, ErrorKind::VintTooWide);
     }
 
     if input.len() <= len as usize {
@@ -157,7 +170,10 @@ pub fn elem_size(input: &[u8]) -> EbmlResult<usize> {
     map_res(vint, |u| {
         usize::try_from(u).map_err(|_| {
             log::error!("Element Data Size does not fit into usize");
-            Error::Ebml(0, ParseError::ElementTooLarge)
+            Error {
+                id: 0,
+                kind: ErrorKind::ElementTooLarge,
+            }
         })
     })(input)
 }
@@ -177,12 +193,12 @@ pub fn vid(input: &[u8]) -> EbmlResult<u32> {
 
     match u32::try_parse(&input[..len]) {
         Ok(id) => Ok((&input[len..], id)),
-        Err(_) => ebml_err(0, ParseError::IDTooWide),
+        Err(_) => ebml_err(0, ErrorKind::IDTooWide),
     }
 }
 
 trait EbmlParsable: Sized {
-    fn try_parse(data: &[u8]) -> Result<Self, ParseError>;
+    fn try_parse(data: &[u8]) -> Result<Self, ErrorKind>;
 }
 
 // Parsable implementation for the integer types
@@ -192,9 +208,9 @@ impl Int for u32 {}
 impl Int for i64 {}
 
 impl<T: Int> EbmlParsable for T {
-    fn try_parse(data: &[u8]) -> Result<Self, ParseError> {
+    fn try_parse(data: &[u8]) -> Result<Self, ErrorKind> {
         if data.len() > std::mem::size_of::<T>() {
-            return Err(ParseError::IntTooWide);
+            return Err(ErrorKind::IntTooWide);
         }
 
         let mut val = Self::from(0);
@@ -207,38 +223,38 @@ impl<T: Int> EbmlParsable for T {
 }
 
 impl EbmlParsable for f64 {
-    fn try_parse(data: &[u8]) -> Result<Self, ParseError> {
+    fn try_parse(data: &[u8]) -> Result<Self, ErrorKind> {
         match data.len() {
-            0 => Err(ParseError::EmptyFloat),
+            0 => Err(ErrorKind::EmptyFloat),
             4 => Ok(f64::from(f32::from_be_bytes(data.try_into().unwrap()))),
             8 => Ok(f64::from_be_bytes(data.try_into().unwrap())),
-            _ => Err(ParseError::FloatWidthIncorrect),
+            _ => Err(ErrorKind::FloatWidthIncorrect),
         }
     }
 }
 
 impl EbmlParsable for String {
-    fn try_parse(data: &[u8]) -> Result<Self, ParseError> {
-        String::from_utf8(data.to_vec()).map_err(|_| ParseError::StringNotUtf8)
+    fn try_parse(data: &[u8]) -> Result<Self, ErrorKind> {
+        String::from_utf8(data.to_vec()).map_err(|_| ErrorKind::StringNotUtf8)
     }
 }
 
 impl<const N: usize> EbmlParsable for [u8; N] {
-    fn try_parse(data: &[u8]) -> Result<Self, ParseError> {
+    fn try_parse(data: &[u8]) -> Result<Self, ErrorKind> {
         let actual_len = data.len();
         data.try_into()
-            .map_err(|_| ParseError::BinaryWidthIncorrect(actual_len as u16))
+            .map_err(|_| ErrorKind::BinaryWidthIncorrect(actual_len as u16))
     }
 }
 
 impl EbmlParsable for Vec<u8> {
-    fn try_parse(data: &[u8]) -> Result<Self, ParseError> {
+    fn try_parse(data: &[u8]) -> Result<Self, ErrorKind> {
         Ok(data.to_vec())
     }
 }
 
 impl EbmlParsable for Uuid {
-    fn try_parse(data: &[u8]) -> Result<Self, ParseError> {
+    fn try_parse(data: &[u8]) -> Result<Self, ErrorKind> {
         <[u8; 16] as EbmlParsable>::try_parse(data).map(Uuid::from_bytes)
     }
 }
@@ -246,7 +262,7 @@ impl EbmlParsable for Uuid {
 fn ebml_generic<O: EbmlParsable>(id: u32) -> impl Fn(&[u8]) -> EbmlResult<O> {
     move |i| {
         let data = flat_map(preceded(check_id(id), elem_size), take);
-        let parsed = map_res(data, |d| O::try_parse(d).map_err(|k| Error::Ebml(id, k)));
+        let parsed = map_res(data, |d| O::try_parse(d).map_err(|kind| Error { id, kind }));
         complete(parsed)(i)
     }
 }
@@ -272,8 +288,10 @@ pub fn float(id: u32) -> impl Fn(&[u8]) -> EbmlResult<f64> {
 /// Handles missing and empty (0-octet) elements.
 pub fn float_or(id: u32, default: f64) -> impl Fn(&[u8]) -> EbmlResult<f64> {
     move |input| match ebml_generic(id)(input) {
-        Err(Err::Error(Error::Ebml(_, ParseError::MissingElement)))
-        | Err(Err::Error(Error::Ebml(_, ParseError::EmptyFloat))) => Ok((input, default)),
+        Err(Err::Error(Error {
+            id: _,
+            kind: ErrorKind::MissingElement | ErrorKind::EmptyFloat,
+        })) => Ok((input, default)),
         rest => rest,
     }
 }
@@ -320,7 +338,7 @@ pub fn check_id(id: u32) -> impl Fn(&[u8]) -> EbmlResult<u32> {
         if id == o {
             Ok((i, o))
         } else {
-            ebml_err(id, ParseError::MissingElement)
+            ebml_err(id, ErrorKind::MissingElement)
         }
     }
 }
@@ -365,7 +383,7 @@ where
 
         // FIXME: don't just return an error, the spec has well-defined CRC error handling
         match crc {
-            Some(cs) if cs != CRC.checksum(o) => ebml_err(0, ParseError::Crc32Mismatch),
+            Some(cs) if cs != CRC.checksum(o) => ebml_err(0, ErrorKind::Crc32Mismatch),
             _ => Ok((i, o)),
         }
     }
