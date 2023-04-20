@@ -35,7 +35,7 @@ macro_rules! impl_ebml_master {
             $(pub $field_name: $($field_type)+,)+
         }
 
-        impl<'p, $(:$lifetime, $lifetime)?> $crate::ebml::EbmlParsable<'p> for $name$(<$lifetime>)? {
+        impl<'p$(:$lifetime, $lifetime)?> $crate::ebml::EbmlParsable<'p> for $name$(<$lifetime>)? {
             // Master Elements can always have a CRC-32 Element
             fn has_crc() -> bool {
                 true

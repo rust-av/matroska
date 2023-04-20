@@ -1,29 +1,28 @@
 use nom::{
     bytes::streaming::take,
-    combinator::{complete, cond, map, map_opt, opt},
-    multi::{many0, many1},
+    combinator::{map, map_opt, opt},
     number::streaming::{be_i16, be_u8},
     sequence::{pair, tuple},
 };
 
 pub use uuid::Uuid;
 
-use crate::ebml::{
-    binary, binary_exact, binary_ref, check_id, checksum, crc, elem_size, float, float_or, int,
-    master, skip_void, str, uint, uuid, vid, vint, EbmlResult,
-};
 use crate::permutation::matroska_permutation;
+use crate::{
+    ebml::{check_id, checksum, crc, elem_size, vid, vint, EbmlParsable, EbmlResult, Error},
+    elements, impl_ebml_master,
+};
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum SegmentElement<'a> {
     SeekHead(SeekHead),
     Info(Info),
     Tracks(Tracks),
-    Chapters(Chapters),
+    // Chapters(Chapters),
     Cluster(Cluster<'a>),
-    Cues(Cues),
-    Attachments(Attachments),
-    Tags(Tags),
+    // Cues(Cues),
+    // Attachments(Attachments),
+    // Tags(Tags),
     Void(usize),
     Unknown(u32, Option<usize>),
 }
@@ -33,268 +32,129 @@ pub fn segment(input: &[u8]) -> EbmlResult<(u32, Option<u64>)> {
     pair(check_id(0x18538067), opt(vint))(input)
 }
 
-pub fn sub_element<'a, O1, G>(second: G) -> impl Fn(&'a [u8]) -> EbmlResult<'a, O1>
-where
-    G: Fn(&'a [u8]) -> EbmlResult<'a, O1> + Copy,
-{
-    move |input| {
-        pair(elem_size, crc)(input).and_then(|(i, (size, crc))| {
-            let size = if crc.is_some() { size - 6 } else { size };
-            checksum(crc, take(size))(i).and_then(|(i, data)| second(data).map(|(_, val)| (i, val)))
-        })
+pub(crate) fn sub_element<'a, O: EbmlParsable<'a>>(input: &'a [u8]) -> EbmlResult<'a, O> {
+    let (i, (mut size, crc)) = pair(elem_size, crc)(input)?;
+
+    if crc.is_some() {
+        size -= 6;
+    }
+
+    let (i, data) = checksum(crc, take(size))(i)?;
+
+    match O::try_parse(data) {
+        Ok(o) => Ok((i, o)),
+        Err(kind) => Err(nom::Err::Error(Error { id: 0, kind })),
     }
 }
 
 // Segment, the root element, has id 0x18538067
 pub fn segment_element(input: &[u8]) -> EbmlResult<SegmentElement> {
-    vid(input).and_then(|(i, id)| match id {
-        0x114D9B74 => sub_element(seek_head)(i),
-        0x1549A966 => sub_element(info)(i),
-        0x1F43B675 => sub_element(cluster)(i),
-        0x1043A770 => sub_element(chapters)(i),
-        0x1254C367 => sub_element(|i| Ok((i, SegmentElement::Tags(Tags {}))))(i),
-        0x1941A469 => sub_element(|i| Ok((i, SegmentElement::Attachments(Attachments {}))))(i),
-        0x1654AE6B => sub_element(tracks)(i),
-        0x1C53BB6B => sub_element(|i| Ok((i, SegmentElement::Cues(Cues {}))))(i),
-        0xEC => {
-            elem_size(i).and_then(|(i, size)| map(take(size), |_| SegmentElement::Void(size))(i))
+    use SegmentElement::*;
+
+    vid(input).and_then(|(i, id)| {
+        match id {
+            0x114D9B74 => sub_element::<elements::SeekHead>(i).map(|(i, sh)| (i, SeekHead(sh))),
+            0x1549A966 => sub_element::<elements::Info>(i).map(|(i, info)| (i, Info(info))),
+            0x1F43B675 => sub_element::<elements::Cluster>(i).map(|(i, cl)| (i, Cluster(cl))),
+            // 0x1043A770 => sub_element(|i| Ok((i, SegmentElement::Chapters(Chapters {}))))(i),
+            // 0x1254C367 => sub_element(|i| Ok((i, SegmentElement::Tags(Tags {}))))(i),
+            // 0x1941A469 => sub_element(|i| Ok((i, SegmentElement::Attachments(Attachments {}))))(i),
+            0x1654AE6B => sub_element::<elements::Tracks>(i).map(|(i, tr)| (i, Tracks(tr))),
+            // 0x1C53BB6B => sub_element(|i| Ok((i, SegmentElement::Cues(Cues {}))))(i),
+            0xEC => {
+                let (i, size) = elem_size(i)?;
+                take(size)(i).map(|(i, _)| (i, Void(size)))
+            }
+            id => {
+                let (i, size) = opt(elem_size)(i)?;
+                match size {
+                    Some(sz) => {
+                        take(sz)(i).map(|(i, _)| (i, SegmentElement::Unknown(id, Some(sz))))
+                    }
+                    None => Ok((i, SegmentElement::Unknown(id, None))),
+                }
+            }
         }
-        id => opt(elem_size)(i).and_then(|(i, size)| {
-            map(cond(size.is_some(), take(size.unwrap())), |_| {
-                SegmentElement::Unknown(id, size)
-            })(i)
-        }),
     })
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct SeekHead {
-    pub positions: Vec<Seek>,
+impl_ebml_master! {
+    // Element ID 0x114D9B74
+    #[derive(Debug, Clone, PartialEq, Eq)]
+    struct SeekHead {
+        [0x4DBB] positions: (Vec<Seek>),
+    }
 }
 
-//https://datatracker.ietf.org/doc/html/draft-lhomme-cellar-matroska-03#section-7.3.4
-pub fn seek_head(input: &[u8]) -> EbmlResult<SegmentElement> {
-    map(many1(complete(seek)), |positions| {
-        SegmentElement::SeekHead(SeekHead { positions })
-    })(input)
+impl_ebml_master! {
+    // Element ID 0x4DBB
+    #[derive(Debug, Clone, PartialEq, Eq)]
+    struct Seek {
+        [0x53AB] id: ([u8; 4]),
+        [0x53AC] position: (u64),
+    }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Seek {
-    pub id: u32,
-    pub position: u64,
+// FIXME: Strings should be UTF-8, not ASCII
+impl_ebml_master! {
+    // Element ID 0x1549A966
+    #[derive(Debug, Default, Clone, PartialEq)]
+    struct Info {
+        [0x73A4] segment_uid: (Option<Uuid>),
+        [0x7384] segment_filename: (Option<String>),
+        [0x3CB923] prev_uid: (Option<Uuid>),
+        [0x3C83AB] prev_filename: (Option<String>),
+        [0x3EB923] next_uid: (Option<Uuid>),
+        [0x3E83BB] next_filename: (Option<String>),
+        [0x4444] segment_family: (Option<Uuid>),
+        // [0x6924] chapter_translate: (Option<ChapterTranslate>),
+        [0x2AD7B1] timestamp_scale: (u64) = 1000000,
+        [0x4489] duration: (Option<f64>),     // FIXME: should be float
+        [0x4461] date_utc: (Option<Vec<u8>>), // FIXME: should be date
+        [0x7BA9] title: (Option<String>),
+        [0x4D80] muxing_app: (String),
+        [0x5741] writing_app: (String),
+    }
 }
 
-//https://datatracker.ietf.org/doc/html/draft-lhomme-cellar-matroska-03#section-7.3.4
-pub fn seek(input: &[u8]) -> EbmlResult<Seek> {
-    master(0x4DBB, |inp| {
-        matroska_permutation((
-            binary_exact::<4>(0x53AB), // SeekID
-            uint(0x53AC),              // SeekPosition
-        ))(inp)
-        .map(|(i, t)| {
-            (
-                i,
-                Seek {
-                    id: u32::from_be_bytes(t.0),
-                    position: t.1,
-                },
-            )
-        })
-    })(input)
+impl_ebml_master! {
+    // Element ID 0x1F43B675
+    #[derive(Debug, Clone, PartialEq)]
+    struct Cluster<'a> {
+        [0xE7] timestamp: (u64),
+        [0x5854] silent_tracks: (Option<SilentTracks>),
+        [0xA7] position: (Option<u64>),
+        [0xAB] prev_size: (Option<u64>),
+        [0xA3] simple_block: (Vec<&'a [u8]>),
+        [0xA0] block_group: (Vec<BlockGroup<'a>>),
+        [0xAF] encrypted_block: (Option<&'a [u8]>),
+    }
 }
 
-#[derive(Debug, Clone, PartialEq, Default)]
-pub struct Info {
-    pub segment_uid: Option<Uuid>,
-    pub segment_filename: Option<String>,
-    pub prev_uid: Option<Uuid>,
-    pub prev_filename: Option<String>,
-    pub next_uid: Option<Uuid>,
-    pub next_filename: Option<String>,
-    pub segment_family: Option<Uuid>,
-    pub chapter_translate: Option<ChapterTranslate>,
-    pub timestamp_scale: u64,
-    pub duration: Option<f64>,     // FIXME should be float
-    pub date_utc: Option<Vec<u8>>, //FIXME: should be date
-    pub title: Option<String>,
-    pub muxing_app: String,
-    pub writing_app: String,
+impl_ebml_master! {
+    // Element ID 0x5854
+    #[derive(Debug, Clone, PartialEq, Eq)]
+    struct SilentTracks {
+        [0x58D7] numbers: (Vec<u64>),
+    }
 }
 
-//https://datatracker.ietf.org/doc/html/draft-lhomme-cellar-matroska-03#section-7.3.8
-pub fn info(input: &[u8]) -> EbmlResult<SegmentElement> {
-    matroska_permutation((
-        opt(uuid(0x73A4)),                // SegmentUID
-        opt(str(0x7384)),                 // SegmentFIlename FIXME SHOULD BE UTF-8 not str
-        opt(uuid(0x3CB923)),              // PrevUID
-        opt(str(0x3C83AB)),               // PrevFilename FIXME SHOULD BE UTF-8 not str
-        opt(uuid(0x3EB923)),              // NextUID
-        opt(str(0x3E83BB)),               // NextFilename FIXME SHOULD BE UTF-8 not str
-        opt(uuid(0x4444)),                // SegmentFamily
-        opt(complete(chapter_translate)), //
-        opt(uint(0x2AD7B1)),              // TimestampScale
-        opt(float(0x4489)),               // Duration: FIXME should be float
-        opt(binary(0x4461)),              // DateUTC FIXME: should be date
-        opt(str(0x7BA9)),                 // Title FIXME SHOULD BE UTF-8 not str
-        str(0x4D80),                      // MuxingApp FIXME SHOULD BE UTF-8 not str
-        str(0x5741),                      // WritingApp FIXME SHOULD BE UTF-8 not str
-    ))(input)
-    .map(|(i, t)| {
-        (
-            i,
-            SegmentElement::Info(Info {
-                segment_uid: t.0,
-                segment_filename: t.1,
-                prev_uid: t.2,
-                prev_filename: t.3,
-                next_uid: t.4,
-                next_filename: t.5,
-                segment_family: t.6,
-                chapter_translate: t.7,
-                timestamp_scale: t.8.unwrap_or(1_000_000),
-                duration: t.9,
-                date_utc: t.10,
-                title: t.11,
-                muxing_app: t.12,
-                writing_app: t.13,
-            }),
-        )
-    })
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct ChapterTranslate {}
-
-//https://datatracker.ietf.org/doc/html/draft-lhomme-cellar-matroska-03#section-7.3.16
-pub fn chapter_translate(input: &[u8]) -> EbmlResult<ChapterTranslate> {
-    master(0x6924, |i| Ok((i, ChapterTranslate {})))(input)
-}
-
-//https://datatracker.ietf.org/doc/html/draft-lhomme-cellar-matroska-03#section-7.3.26
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Cluster<'a> {
-    pub timestamp: u64,
-    pub silent_tracks: Option<SilentTracks>,
-    pub position: Option<u64>,
-    pub prev_size: Option<u64>,
-    pub simple_block: Vec<&'a [u8]>,
-    pub block_group: Vec<BlockGroup<'a>>,
-    pub encrypted_block: Option<&'a [u8]>,
-}
-
-pub fn cluster(input: &[u8]) -> EbmlResult<SegmentElement> {
-    matroska_permutation((
-        uint(0xE7),
-        opt(complete(silent_tracks)),
-        opt(uint(0xA7)),
-        opt(uint(0xAB)),
-        many0(binary_ref(0xA3)),
-        many0(complete(block_group)),
-        opt(binary_ref(0xAF)),
-    ))(input)
-    .map(|(i, t)| {
-        (
-            i,
-            SegmentElement::Cluster(Cluster {
-                timestamp: t.0,
-                silent_tracks: t.1,
-                position: t.2,
-                prev_size: t.3,
-                simple_block: t.4,
-                block_group: t.5,
-                encrypted_block: t.6,
-            }),
-        )
-    })
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct SilentTracks {
-    pub numbers: Vec<u64>,
-}
-
-//https://datatracker.ietf.org/doc/html/draft-lhomme-cellar-matroska-03#section-7.3.16
-pub fn silent_tracks(input: &[u8]) -> EbmlResult<SilentTracks> {
-    master(0x5854, |i| {
-        map(many0(uint(0x58D7)), |v| SilentTracks { numbers: v })(i)
-    })(input)
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct BlockGroup<'a> {
-    pub block: &'a [u8],
-    pub block_virtual: Option<Vec<u8>>,
-    pub block_additions: Option<BlockAdditions>,
-    pub block_duration: Option<u64>,
-    pub reference_priority: u64,
-    pub reference_block: Option<u64>,
-    pub reference_virtual: Option<i64>,
-    pub codec_state: Option<Vec<u8>>,
-    pub discard_padding: Option<i64>,
-    pub slices: Option<Slices>,
-    pub reference_frame: Option<ReferenceFrame>,
-}
-
-//https://datatracker.ietf.org/doc/html/draft-lhomme-cellar-matroska-03#section-7.3.16
-pub fn block_group(input: &[u8]) -> EbmlResult<BlockGroup> {
-    master(0xA0, |inp| {
-        matroska_permutation((
-            binary_ref(0xA1),
-            opt(binary(0xA2)),
-            opt(complete(block_additions)),
-            opt(uint(0x9B)),
-            opt(uint(0xFA)),
-            opt(uint(0xFB)),
-            opt(int(0xFD)),
-            opt(binary(0xA4)),
-            opt(int(0x75A2)),
-            opt(complete(slices)),
-            opt(complete(reference_frame)),
-        ))(inp)
-        .map(|(i, t)| {
-            (
-                i,
-                BlockGroup {
-                    block: t.0,
-                    block_virtual: t.1,
-                    block_additions: t.2,
-                    block_duration: t.3,
-                    reference_priority: t.4.unwrap_or(0),
-                    reference_block: t.5,
-                    reference_virtual: t.6,
-                    codec_state: t.7,
-                    discard_padding: t.8,
-                    slices: t.9,
-                    reference_frame: t.10,
-                },
-            )
-        })
-    })(input)
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct BlockAdditions {}
-
-//https://datatracker.ietf.org/doc/html/draft-lhomme-cellar-matroska-03#section-7.3.16
-pub fn block_additions(input: &[u8]) -> EbmlResult<BlockAdditions> {
-    master(0x75A1, |i| Ok((i, BlockAdditions {})))(input)
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Slices {}
-
-//https://datatracker.ietf.org/doc/html/draft-lhomme-cellar-matroska-03#section-7.3.46
-pub fn slices(input: &[u8]) -> EbmlResult<Slices> {
-    master(0x8E, |i| Ok((i, Slices {})))(input)
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct ReferenceFrame {}
-
-//https://datatracker.ietf.org/doc/html/draft-lhomme-cellar-matroska-03#section-7.3.53
-pub fn reference_frame(input: &[u8]) -> EbmlResult<ReferenceFrame> {
-    master(0xC8, |i| Ok((i, ReferenceFrame {})))(input)
+impl_ebml_master! {
+    // Element ID 0xA0
+    #[derive(Debug, Clone, PartialEq, Eq)]
+    struct BlockGroup<'a> {
+        [0xA1] block: (&'a [u8]),
+        [0xA2] block_virtual: (Option<Vec<u8>>),
+        // [0x75A1] block_additions: (Option<BlockAdditions>),
+        [0x9B] block_duration: (Option<u64>),
+        [0xFA] reference_priority: (u64) = 0,
+        [0xFB] reference_block: (Option<u64>),
+        [0xFD] reference_virtual: (Option<i64>),
+        [0xA4] codec_state: (Option<Vec<u8>>),
+        [0x75A2] discard_padding: (Option<i64>),
+        // [0x8E] slices: (Option<Slices>),
+        // [0xC8] reference_frame: (Option<ReferenceFrame>),
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -388,9 +248,12 @@ pub struct LacedData {
     pub frame_count: u8,
 }
 
-#[derive(Debug, Clone, PartialEq)]
-pub struct Tracks {
-    pub tracks: Vec<TrackEntry>,
+impl_ebml_master! {
+    // Element ID 0x1654AE6B
+    #[derive(Debug, Clone, PartialEq)]
+    struct Tracks {
+        [0xAE] tracks: (Vec<TrackEntry>),
+    }
 }
 
 impl Tracks {
@@ -398,15 +261,8 @@ impl Tracks {
         self.tracks
             .iter()
             .find(|t| t.track_number == track_number)
-            .map(|t| t.stream_index)
+            .map(|t| t.stream_index as usize)
     }
-}
-
-//https://datatracker.ietf.org/doc/html/draft-lhomme-cellar-matroska-03#section-7.3.16
-pub fn tracks(input: &[u8]) -> EbmlResult<SegmentElement> {
-    map(many1(complete(skip_void(track_entry))), |v| {
-        SegmentElement::Tracks(Tracks { tracks: v })
-    })(input)
 }
 
 pub(crate) enum TrackType {
@@ -435,591 +291,234 @@ impl From<TrackType> for u64 {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Default)]
-pub struct TrackEntry {
-    pub track_number: u64,
-    pub track_uid: u64,
-    pub track_type: u64,
-    pub flag_enabled: u64,
-    pub flag_default: u64,
-    pub flag_forced: u64,
-    pub flag_lacing: u64,
-    pub min_cache: Option<u64>,
-    pub max_cache: Option<u64>,
-    pub default_duration: Option<u64>,
-    pub default_decoded_field_duration: Option<u64>,
-    pub track_timestamp_scale: f64,
-    pub track_offset: Option<i64>,
-    pub max_block_addition_id: u64,
-    pub name: Option<String>,
-    pub language: String,
-    pub language_ietf: Option<String>,
-    pub codec_id: String,
-    pub codec_private: Option<Vec<u8>>,
-    pub codec_name: Option<String>,
-    pub attachment_link: Option<u64>,
-    pub codec_settings: Option<String>,
-    pub codec_info_url: Option<String>,
-    pub codec_download_url: Option<String>,
-    pub codec_decode_all: Option<u64>, //FIXME: this flag is mandatory but does not appear in some files?
-    pub track_overlay: Option<u64>,
-    pub codec_delay: u64,
-    pub seek_pre_roll: u64,
-    pub trick_track_uid: Option<u64>,
-    pub trick_track_segment_uid: Option<Uuid>,
-    pub trick_track_flag: Option<u64>,
-    pub trick_master_track_uid: Option<u64>,
-    pub trick_master_track_segment_uid: Option<Uuid>,
-    pub video: Option<Video>,
-    pub audio: Option<Audio>,
-    pub track_translate: Vec<TrackTranslate>,
-    pub track_operation: Option<TrackOperation>,
-    pub content_encodings: Option<ContentEncodings>,
-    /// The demuxer Stream index matching the Track
-    pub stream_index: usize,
+impl_ebml_master! {
+    // Element ID 0xAE
+    #[derive(Debug, Clone, PartialEq, Default)]
+    struct TrackEntry {
+        [0xD7] track_number: (u64),
+        [0x73C5] track_uid: (u64),
+        [0x83] track_type: (u64),
+        [0xB9] flag_enabled: (u64) = 1,
+        [0x88] flag_default: (u64) = 1,
+        [0x55AA] flag_forced: (u64) = 0,
+        [0x9C] flag_lacing: (u64) = 1,
+        [0x6DE7] min_cache: (Option<u64>),
+        [0x6DF8] max_cache: (Option<u64>),
+        [0x23E383] default_duration: (Option<u64>),
+        [0x234E7A] default_decoded_field_duration: (Option<u64>),
+        // FIXME: reimplement float_or handling
+        [0x23314F] track_timestamp_scale: (f64) = 1.0,
+        [0x537F] track_offset: (Option<i64>),
+        [0x55EE] max_block_addition_id: (u64) = 0,
+        [0x536E] name: (Option<String>),
+        [0x22B59C] language: (String) = String::from("eng"),
+        [0x22B59D] language_ietf: (Option<String>),
+        [0x86] codec_id: (String),
+        [0x63A2] codec_private: (Option<Vec<u8>>),
+        [0x258688] codec_name: (Option<String>),
+        [0x7446] attachment_link: (Option<u64>),
+        [0x3A9697] codec_settings: (Option<String>),
+        [0x3B4040] codec_info_url: (Option<String>),
+        [0x26B240] codec_download_url: (Option<String>),
+        [0xAA] codec_decode_all: (Option<u64>),
+        [0x6FAB] track_overlay: (Option<u64>),
+        [0x56AA] codec_delay: (u64) = 0,
+        [0x56BB] seek_pre_roll: (u64) = 0,
+        [0x6624] trick_track_uid: (Option<u64>),
+        [0xE0] trick_track_segment_uid: (Option<Uuid>),
+        [0xE1] trick_track_flag: (Option<u64>),
+        [0xE2] trick_master_track_uid: (Option<u64>),
+        [0xC0] trick_master_track_segment_uid: (Option<Uuid>),
+        [0xC1] video: (Option<Video>),
+        [0xC6] audio: (Option<Audio>),
+        [0xC7] track_translate: (Vec<TrackTranslate>),
+        [0xC4] track_operation: (Option<TrackOperation>),
+        [0x6D80] content_encodings: (Option<ContentEncodings>),
+        // The demuxer Stream index matching the Track
+        // ID 0xFFFFFFFF is a workaround because this is not data
+        // from the Matroska format, but something else.
+        [0xFFFFFFFF] stream_index: (u64) = 0, // FIXME: Move somewhere else?
+    }
 }
 
-pub fn track_entry(input: &[u8]) -> EbmlResult<TrackEntry> {
-    master(0xAE, |inp| {
-        matroska_permutation((
-            uint(0xD7),
-            uint(0x73C5),
-            uint(0x83),
-            opt(uint(0xB9)),
-            opt(uint(0x88)),
-            opt(uint(0x55AA)),
-            opt(uint(0x9C)),
-            opt(uint(0x6DE7)),
-            opt(uint(0x6DF8)),
-            opt(uint(0x23E383)),
-            opt(uint(0x234E7A)),
-            float_or(0x23314F, 1.0),
-            opt(int(0x537F)),
-            opt(uint(0x55EE)),
-            opt(str(0x536E)),
-            opt(str(0x22B59C)),
-            opt(str(0x22B59D)),
-            str(0x86),
-            opt(binary(0x63A2)),
-            opt(str(0x258688)),
-            opt(uint(0x7446)),
-            opt(str(0x3A9697)),
-            opt(str(0x3B4040)),
-            opt(str(0x26B240)),
-            opt(uint(0xAA)),
-            opt(uint(0x6FAB)),
-            opt(uint(0x56AA)),
-            opt(uint(0x56BB)),
-            many0(complete(track_translate)),
-            opt(complete(video)),
-            opt(complete(audio)),
-            opt(complete(track_operation)),
-            opt(uint(0xC0)),
-            opt(uuid(0xC1)),
-            opt(uint(0xC6)),
-            opt(uint(0xC7)),
-            opt(uuid(0xC4)),
-            opt(complete(content_encodings)),
-        ))(inp)
-        .map(|(i, t)| {
-            (
-                i,
-                TrackEntry {
-                    track_number: t.0,
-                    track_uid: t.1,
-                    track_type: t.2,
-                    flag_enabled: t.3.unwrap_or(1),
-                    flag_default: t.4.unwrap_or(1),
-                    flag_forced: t.5.unwrap_or(0),
-                    flag_lacing: t.6.unwrap_or(1),
-                    min_cache: t.7,
-                    max_cache: t.8,
-                    default_duration: t.9,
-                    default_decoded_field_duration: t.10,
-                    track_timestamp_scale: t.11,
-                    track_offset: t.12,
-                    max_block_addition_id: t.13.unwrap_or(0),
-                    name: t.14,
-                    language: t.15.unwrap_or(String::from("eng")),
-                    language_ietf: t.16,
-                    codec_id: t.17,
-                    codec_private: t.18,
-                    codec_name: t.19,
-                    attachment_link: t.20,
-                    codec_settings: t.21,
-                    codec_info_url: t.22,
-                    codec_download_url: t.23,
-                    codec_decode_all: t.24,
-                    track_overlay: t.25,
-                    codec_delay: t.26.unwrap_or(0),
-                    seek_pre_roll: t.27.unwrap_or(0),
-                    track_translate: t.28,
-                    video: t.29,
-                    audio: t.30,
-                    track_operation: t.31,
-                    trick_track_uid: t.32,
-                    trick_track_segment_uid: t.33,
-                    trick_track_flag: t.34,
-                    trick_master_track_uid: t.35,
-                    trick_master_track_segment_uid: t.36,
-                    content_encodings: t.37,
-                    stream_index: 0,
-                },
-            )
-        })
-    })(input)
+impl_ebml_master! {
+    // Element ID 0xC7
+    #[derive(Debug, Clone, PartialEq, Eq)]
+    struct TrackTranslate {
+        [0x66FC] edition_uid: (Vec<u64>),
+        [0x66BF] codec: (u64),
+        [0x66A5] track_id: (u64),
+    }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct TrackTranslate {
-    pub edition_uid: Vec<u64>,
-    pub codec: u64,
-    pub track_id: u64,
+impl_ebml_master! {
+    // Element ID 0xC4
+    #[derive(Debug, Clone, PartialEq, Eq)]
+    struct TrackOperation {
+        [0xE3] combine_planes: (Option<TrackCombinePlanes>),
+        [0xE9] join_blocks: (Option<TrackJoinBlocks>),
+    }
 }
 
-pub fn track_translate(input: &[u8]) -> EbmlResult<TrackTranslate> {
-    master(0x6624, |inp| {
-        matroska_permutation((many1(uint(0x66FC)), uint(0x66BF), uint(0x66A5)))(inp).map(
-            |(i, t)| {
-                (
-                    i,
-                    TrackTranslate {
-                        edition_uid: t.0,
-                        codec: t.1,
-                        track_id: t.2,
-                    },
-                )
-            },
-        )
-    })(input)
+impl_ebml_master! {
+    // Element ID 0xE3
+    #[derive(Debug, Clone, PartialEq, Eq)]
+    struct TrackCombinePlanes {
+        [0xE4] track_planes: (Vec<TrackPlane>),
+    }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct TrackOperation {
-    pub combine_planes: Option<TrackCombinePlanes>,
-    pub join_blocks: Option<TrackJoinBlocks>,
+impl_ebml_master! {
+    // Element ID 0xE4
+    #[derive(Debug, Clone, PartialEq, Eq)]
+    struct TrackPlane {
+        [0xE5] uid: (u64),
+        [0xE6] plane_type: (u64),
+    }
 }
 
-pub fn track_operation(input: &[u8]) -> EbmlResult<TrackOperation> {
-    master(0xE2, |i| {
-        map(
-            matroska_permutation((
-                opt(complete(track_combine_planes)),
-                opt(complete(track_join_blocks)),
-            )),
-            |t| TrackOperation {
-                combine_planes: t.0,
-                join_blocks: t.1,
-            },
-        )(i)
-    })(input)
+impl_ebml_master! {
+    // Element ID 0xE9
+    #[derive(Debug, Clone, PartialEq, Eq)]
+    struct TrackJoinBlocks {
+        [0xED] uid: (Vec<u64>),
+    }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct TrackCombinePlanes {
-    pub track_planes: Vec<TrackPlane>,
+impl_ebml_master! {
+    // Element ID 0x6D80
+    #[derive(Debug, Clone, PartialEq, Eq)]
+    struct ContentEncodings {
+        [0x6240] content_encoding: (Vec<ContentEncoding>),
+    }
 }
 
-pub fn track_combine_planes(input: &[u8]) -> EbmlResult<TrackCombinePlanes> {
-    master(0xE3, |i| {
-        map(many1(complete(track_plane)), |v| TrackCombinePlanes {
-            track_planes: v,
-        })(i)
-    })(input)
+impl_ebml_master! {
+    // Element ID 0x6240
+    #[derive(Debug, Clone, PartialEq, Eq)]
+    struct ContentEncoding {
+        [0x5031] order: (u64) = 0,
+        [0x5032] scope: (u64) = 1,
+        [0x5033] encoding_type: (u64) = 0,
+        [0x5034] compression: (Option<ContentCompression>),
+        [0x5035] encryption: (Option<ContentEncryption>),
+    }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct TrackPlane {
-    pub uid: u64,
-    pub plane_type: u64,
+impl_ebml_master! {
+    // Element ID 0x5034
+    #[derive(Debug, Clone, PartialEq, Eq)]
+    struct ContentCompression {
+        [0x4254] algo: (u64) = 0,
+        [0x4255] settings: (Option<u64>),
+    }
+
 }
 
-pub fn track_plane(input: &[u8]) -> EbmlResult<TrackPlane> {
-    master(0xE4, |inp| {
-        matroska_permutation((uint(0xE5), uint(0xE6)))(inp).map(|(i, t)| {
-            (
-                i,
-                TrackPlane {
-                    uid: t.0,
-                    plane_type: t.1,
-                },
-            )
-        })
-    })(input)
+impl_ebml_master! {
+    // Element ID 0x5035
+    #[derive(Debug, Clone, PartialEq, Eq)]
+    struct ContentEncryption {
+        [0x47E1] enc_algo: (u64) = 0,
+        [0x47E2] enc_key_id: (Option<Vec<u8>>),
+        [0x47E3] signature: (Option<Vec<u8>>),
+        [0x47E4] sig_key_id: (Option<Vec<u8>>),
+        [0x47E5] sig_algo: (Option<u64>),
+        [0x47E6] sig_hash_algo: (Option<u64>),
+    }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct TrackJoinBlocks {
-    pub uid: Vec<u64>,
+impl_ebml_master! {
+    // Element ID 0xC6
+    #[derive(Debug, Clone, PartialEq, Default)]
+    struct Audio {
+        // FIXME: reimplement float_or handling
+        [0xB5] sampling_frequency: (f64) = 5360.0,
+        [0x7885] output_sampling_frequency: (Option<f64>),
+        [0x9F] channels: (u64),
+        [0x7D7B] channel_positions: (Option<Vec<u8>>),
+        [0x6264] bit_depth: (Option<u64>),
+    }
 }
 
-pub fn track_join_blocks(input: &[u8]) -> EbmlResult<TrackJoinBlocks> {
-    master(0xE9, |i| {
-        map(many1(uint(0xED)), |v| TrackJoinBlocks { uid: v })(i)
-    })(input)
+impl_ebml_master! {
+    // Element ID 0xC1
+    #[derive(Debug, Clone, PartialEq, Default)]
+    struct Video {
+        [0x9A] flag_interlaced: (u64) = 0,
+        [0x9D] field_order: (u64) = 2,
+        [0x53B8] stereo_mode: (u64) = 0,
+        [0x53C0] alpha_mode: (u64) = 0,
+        [0x53B9] old_stereo_mode: (Option<u64>),
+        [0xB0] pixel_width: (u64),
+        [0xBA] pixel_height: (u64),
+        [0x54AA] pixel_crop_bottom: (u64) = 0,
+        [0x54BB] pixel_crop_top: (u64) = 0,
+        [0x54CC] pixel_crop_left: (u64) = 0,
+        [0x54DD] pixel_crop_right: (u64) = 0,
+        [0x54B0] display_width: (Option<u64>),
+        [0x54BA] display_height: (Option<u64>),
+        [0x54B2] display_unit: (u64) = 0,
+        [0x54B3] aspect_ratio_type: (Option<u64>),
+        [0x2EB524] colour_space: (Option<Vec<u8>>),
+        [0x2FB523] gamma_value: (Option<f64>),
+        [0x2383E3] frame_rate: (Option<f64>),
+        [0x55B0] colour: (Option<Colour>),
+        [0x55D0] projection: (Option<Projection>),
+    }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct ContentEncodings {
-    pub content_encoding: Vec<ContentEncoding>,
+impl_ebml_master! {
+    // Element ID 0x55B0
+    #[derive(Debug, Clone, PartialEq, Default)]
+    struct Colour {
+        [0x55B1] matrix_coefficients: (u64) = 2,
+        [0x55B2] bits_per_channel: (u64) = 0,
+        [0x55B3] chroma_subsampling_horz: (Option<u64>),
+        [0x55B4] chroma_subsampling_vert: (Option<u64>),
+        [0x55B5] cb_subsampling_horz: (Option<u64>),
+        [0x55B6] cb_subsampling_vert: (Option<u64>),
+        [0x55B7] chroma_siting_horz: (u64) = 0,
+        [0x55B8] chroma_siting_vert: (u64) = 0,
+        [0x55B9] range: (u64) = 0,
+        [0x55BA] transfer_characteristics: (u64) = 2,
+        [0x55BB] primaries: (u64) = 2,
+        [0x55BC] max_cll: (Option<u64>),
+        [0x55BD] max_fall: (Option<u64>),
+        [0x55D0] mastering_metadata: (Option<MasteringMetadata>),
+    }
+
 }
 
-pub fn content_encodings(input: &[u8]) -> EbmlResult<ContentEncodings> {
-    master(0x6D80, |i| {
-        map(many1(complete(content_encoding)), |v| ContentEncodings {
-            content_encoding: v,
-        })(i)
-    })(input)
+impl_ebml_master! {
+    // Element ID 0x55D0
+    #[derive(Debug, Clone, PartialEq)]
+    struct MasteringMetadata {
+        [0x55D1] primary_r_chromaticity_x: (Option<f64>),
+        [0x55D2] primary_r_chromaticity_y: (Option<f64>),
+        [0x55D3] primary_g_chromaticity_x: (Option<f64>),
+        [0x55D4] primary_g_chromaticity_y: (Option<f64>),
+        [0x55D5] primary_b_chromaticity_x: (Option<f64>),
+        [0x55D6] primary_b_chromaticity_y: (Option<f64>),
+        [0x55D7] white_point_chromaticity_x: (Option<f64>),
+        [0x55D8] white_point_chromaticity_y: (Option<f64>),
+        [0x55D9] luminance_max: (Option<f64>),
+        [0x55DA] luminance_min: (Option<f64>),
+    }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct ContentEncoding {
-    order: u64,
-    scope: u64,
-    encoding_type: u64,
-    compression: Option<ContentCompression>,
-    encryption: Option<ContentEncryption>,
+impl_ebml_master! {
+    // Element ID 0x7670
+    #[derive(Debug, Clone, PartialEq)]
+    struct Projection {
+        [0x7671] projection_type: (u64) = 0,
+        [0x7672] projection_private: (Option<Vec<u8>>),
+        // FIXME: reimplement float_or handling
+        [0x7673] projection_pose_yaw: (f64) = 0.0,
+        [0x7674] projection_pose_pitch: (f64) = 0.0,
+        [0x7675] projection_pose_roll: (f64) = 0.0,
+    }
 }
-
-pub fn content_encoding(input: &[u8]) -> EbmlResult<ContentEncoding> {
-    master(0x6240, |inp| {
-        matroska_permutation((
-            opt(uint(0x5031)),
-            opt(uint(0x5032)),
-            opt(uint(0x5033)),
-            opt(complete(content_compression)),
-            opt(complete(content_encryption)),
-        ))(inp)
-        .map(|(i, t)| {
-            (
-                i,
-                ContentEncoding {
-                    order: t.0.unwrap_or(0),
-                    scope: t.1.unwrap_or(1),
-                    encoding_type: t.2.unwrap_or(0),
-                    compression: t.3,
-                    encryption: t.4,
-                },
-            )
-        })
-    })(input)
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct ContentCompression {
-    algo: u64,
-    settings: Option<u64>,
-}
-
-pub fn content_compression(input: &[u8]) -> EbmlResult<ContentCompression> {
-    master(0x5034, |inp| {
-        matroska_permutation((opt(uint(0x4254)), opt(uint(0x4255))))(inp).map(|(i, t)| {
-            (
-                i,
-                ContentCompression {
-                    algo: t.0.unwrap_or(0),
-                    settings: t.1,
-                },
-            )
-        })
-    })(input)
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct ContentEncryption {
-    enc_algo: u64,
-    enc_key_id: Option<Vec<u8>>,
-    signature: Option<Vec<u8>>,
-    sig_key_id: Option<Vec<u8>>,
-    sig_algo: Option<u64>,
-    sig_hash_algo: Option<u64>,
-}
-
-pub fn content_encryption(input: &[u8]) -> EbmlResult<ContentEncryption> {
-    master(0x5035, |i| {
-        map(
-            matroska_permutation((
-                opt(uint(0x47E1)),
-                opt(binary(0x47E2)),
-                opt(binary(0x47E3)),
-                opt(binary(0x47E4)),
-                opt(uint(0x47E5)),
-                opt(uint(0x47E6)),
-            )),
-            |t| ContentEncryption {
-                enc_algo: t.0.unwrap_or(0),
-                enc_key_id: t.1,
-                signature: t.2,
-                sig_key_id: t.3,
-                sig_algo: t.4,
-                sig_hash_algo: t.5,
-            },
-        )(i)
-    })(input)
-}
-
-#[derive(Debug, Clone, PartialEq, Default)]
-pub struct Audio {
-    pub sampling_frequency: f64,
-    pub output_sampling_frequency: Option<f64>,
-    pub channels: u64,
-    pub channel_positions: Option<Vec<u8>>,
-    pub bit_depth: Option<u64>,
-}
-
-pub fn audio(input: &[u8]) -> EbmlResult<Audio> {
-    master(0xE1, |inp| {
-        matroska_permutation((
-            float_or(0xB5, 5360.0), // 0x1.4fp+12
-            opt(float(0x78B5)),
-            opt(uint(0x9F)),
-            opt(binary(0x7D7B)),
-            opt(uint(0x6264)),
-        ))(inp)
-        .map(|(i, t)| {
-            (
-                i,
-                Audio {
-                    sampling_frequency: t.0,
-                    output_sampling_frequency: t.1,
-                    channels: t.2.unwrap_or(1),
-                    channel_positions: t.3,
-                    bit_depth: t.4,
-                },
-            )
-        })
-    })(input)
-}
-
-#[derive(Debug, Clone, PartialEq, Default)]
-pub struct Video {
-    pub flag_interlaced: u64,
-    pub field_order: u64,
-    pub stereo_mode: u64,
-    pub alpha_mode: u64,
-    pub old_stereo_mode: Option<u64>,
-    pub pixel_width: u64,
-    pub pixel_height: u64,
-    pub pixel_crop_bottom: u64,
-    pub pixel_crop_top: u64,
-    pub pixel_crop_left: u64,
-    pub pixel_crop_right: u64,
-    pub display_width: Option<u64>,
-    pub display_height: Option<u64>,
-    pub display_unit: u64,
-    pub aspect_ratio_type: Option<u64>,
-    pub colour_space: Option<Vec<u8>>,
-    pub gamma_value: Option<f64>,
-    pub frame_rate: Option<f64>,
-    pub colour: Option<Colour>,
-    pub projection: Option<Projection>,
-}
-
-pub fn video(input: &[u8]) -> EbmlResult<Video> {
-    master(0xE0, |inp| {
-        matroska_permutation((
-            opt(uint(0x9A)),
-            opt(uint(0x9D)),
-            opt(uint(0x53B8)),
-            opt(uint(0x53C0)),
-            opt(uint(0x53B9)),
-            uint(0xB0),
-            uint(0xBA),
-            opt(uint(0x54AA)),
-            opt(uint(0x54BB)),
-            opt(uint(0x54CC)),
-            opt(uint(0x54DD)),
-            opt(uint(0x54B0)),
-            opt(uint(0x54BA)),
-            opt(uint(0x54B2)),
-            opt(uint(0x54B3)),
-            opt(binary(0x2EB524)),
-            opt(float(0x2FB523)),
-            opt(float(0x2383E3)),
-            opt(complete(colour)),
-            opt(complete(projection)),
-        ))(inp)
-        .map(|(i, t)| {
-            (
-                i,
-                Video {
-                    flag_interlaced: t.0.unwrap_or(0),
-                    field_order: t.1.unwrap_or(2),
-                    stereo_mode: t.2.unwrap_or(0),
-                    alpha_mode: t.3.unwrap_or(0),
-                    old_stereo_mode: t.4,
-                    pixel_width: t.5,
-                    pixel_height: t.6,
-                    pixel_crop_bottom: t.7.unwrap_or(0),
-                    pixel_crop_top: t.8.unwrap_or(0),
-                    pixel_crop_left: t.9.unwrap_or(0),
-                    pixel_crop_right: t.10.unwrap_or(0),
-                    display_width: t.11,
-                    display_height: t.12,
-                    display_unit: t.13.unwrap_or(0),
-                    aspect_ratio_type: t.14,
-                    colour_space: t.15,
-                    gamma_value: t.16,
-                    frame_rate: t.17,
-                    colour: t.18,
-                    projection: t.19,
-                },
-            )
-        })
-    })(input)
-}
-
-#[derive(Debug, Clone, PartialEq, Default)]
-pub struct Colour {
-    pub matrix_coefficients: u64,
-    pub bits_per_channel: u64,
-    pub chroma_subsampling_horz: Option<u64>,
-    pub chroma_subsampling_vert: Option<u64>,
-    pub cb_subsampling_horz: Option<u64>,
-    pub cb_subsampling_vert: Option<u64>,
-    pub chroma_siting_horz: u64,
-    pub chroma_siting_vert: u64,
-    pub range: u64,
-    pub transfer_characteristics: u64,
-    pub primaries: u64,
-    pub max_cll: Option<u64>,
-    pub max_fall: Option<u64>,
-    pub mastering_metadata: Option<MasteringMetadata>,
-}
-
-pub fn colour(input: &[u8]) -> EbmlResult<Colour> {
-    master(0x55B0, |i| {
-        map(
-            matroska_permutation((
-                opt(uint(0x55B1)),
-                opt(uint(0x55B2)),
-                opt(uint(0x55B3)),
-                opt(uint(0x55B4)),
-                opt(uint(0x55B5)),
-                opt(uint(0x55B6)),
-                opt(uint(0x55B7)),
-                opt(uint(0x55B8)),
-                opt(uint(0x55B9)),
-                opt(uint(0x55BA)),
-                opt(uint(0x55BB)),
-                opt(uint(0x55BC)),
-                opt(uint(0x55BD)),
-                opt(complete(mastering_metadata)),
-            )),
-            |t| Colour {
-                matrix_coefficients: t.0.unwrap_or(2),
-                bits_per_channel: t.1.unwrap_or(0),
-                chroma_subsampling_horz: t.2,
-                chroma_subsampling_vert: t.3,
-                cb_subsampling_horz: t.4,
-                cb_subsampling_vert: t.5,
-                chroma_siting_horz: t.6.unwrap_or(0),
-                chroma_siting_vert: t.7.unwrap_or(0),
-                range: t.8.unwrap_or(0),
-                transfer_characteristics: t.9.unwrap_or(2),
-                primaries: t.10.unwrap_or(2),
-                max_cll: t.11,
-                max_fall: t.12,
-                mastering_metadata: t.13,
-            },
-        )(i)
-    })(input)
-}
-
-#[derive(Debug, Clone, PartialEq)]
-pub struct MasteringMetadata {
-    pub primary_r_chromaticity_x: Option<f64>,
-    pub primary_r_chromaticity_y: Option<f64>,
-    pub primary_g_chromaticity_x: Option<f64>,
-    pub primary_g_chromaticity_y: Option<f64>,
-    pub primary_b_chromaticity_x: Option<f64>,
-    pub primary_b_chromaticity_y: Option<f64>,
-    pub white_point_chromaticity_x: Option<f64>,
-    pub white_point_chromaticity_y: Option<f64>,
-    pub luminance_max: Option<f64>,
-    pub luminance_min: Option<f64>,
-}
-
-pub fn mastering_metadata(input: &[u8]) -> EbmlResult<MasteringMetadata> {
-    master(0x55D0, |i| {
-        map(
-            matroska_permutation((
-                opt(float(0x55D1)),
-                opt(float(0x55D2)),
-                opt(float(0x55D3)),
-                opt(float(0x55D4)),
-                opt(float(0x55D5)),
-                opt(float(0x55D6)),
-                opt(float(0x55D7)),
-                opt(float(0x55D8)),
-                opt(float(0x55D9)),
-                opt(float(0x55DA)),
-            )),
-            |t| MasteringMetadata {
-                primary_r_chromaticity_x: t.0,
-                primary_r_chromaticity_y: t.1,
-                primary_g_chromaticity_x: t.2,
-                primary_g_chromaticity_y: t.3,
-                primary_b_chromaticity_x: t.4,
-                primary_b_chromaticity_y: t.5,
-                white_point_chromaticity_x: t.6,
-                white_point_chromaticity_y: t.7,
-                luminance_max: t.8,
-                luminance_min: t.9,
-            },
-        )(i)
-    })(input)
-}
-
-#[derive(Debug, Clone, PartialEq)]
-pub struct Projection {
-    pub projection_type: u64,
-    pub projection_private: Option<Vec<u8>>,
-    pub projection_pose_yaw: f64,
-    pub projection_pose_pitch: f64,
-    pub projection_pose_roll: f64,
-}
-
-pub fn projection(input: &[u8]) -> EbmlResult<Projection> {
-    master(0x7670, |inp| {
-        matroska_permutation((
-            opt(uint(0x7671)),
-            opt(binary(0x7672)),
-            float_or(0x7673, 0.0),
-            float_or(0x7674, 0.0),
-            float_or(0x7675, 0.0),
-        ))(inp)
-        .map(|(i, t)| {
-            (
-                i,
-                Projection {
-                    projection_type: t.0.unwrap_or(0),
-                    projection_private: t.1,
-                    projection_pose_yaw: t.2,
-                    projection_pose_pitch: t.3,
-                    projection_pose_roll: t.4,
-                },
-            )
-        })
-    })(input)
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Chapters {}
-
-//https://datatracker.ietf.org/doc/html/draft-lhomme-cellar-matroska-03#section-7.3.199
-pub fn chapters(input: &[u8]) -> EbmlResult<SegmentElement> {
-    master(0x45B9, |i| Ok((i, SegmentElement::Chapters(Chapters {}))))(input)
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Cues {}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Attachments {}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Tags {}
 
 #[cfg(test)]
 #[allow(non_upper_case_globals)]

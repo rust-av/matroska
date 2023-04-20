@@ -136,7 +136,7 @@ impl Demuxer for MkvDemuxer {
                 if let Some(ref mut t) = self.tracks {
                     for tr in t.tracks.iter_mut() {
                         info.add_stream(track_to_stream(self.info.as_ref().unwrap(), tr));
-                        tr.stream_index = info.streams.last().unwrap().index;
+                        tr.stream_index = info.streams.last().unwrap().index as u64;
                     }
                 }
                 Ok(SeekFrom::Current(buf.data().offset(i) as i64))
@@ -237,7 +237,7 @@ pub fn track_to_stream(info: &Info, t: &TrackEntry) -> Stream {
 
     Stream {
         id: t.track_uid as isize,
-        index: t.stream_index,
+        index: t.stream_index as usize,
         start: None,
         duration: t.default_duration,
         timebase: Rational64::new(num, 1000 * 1000 * 1000),
@@ -359,15 +359,15 @@ mod tests {
             SeekHead {
                 positions: vec![
                     Seek {
-                        id: 357149030,
+                        id: 357149030_u32.to_be_bytes(),
                         position: 223,
                     },
                     Seek {
-                        id: 374648427,
+                        id: 374648427_u32.to_be_bytes(),
                         position: 300,
                     },
                     Seek {
-                        id: 475249515,
+                        id: 475249515_u32.to_be_bytes(),
                         position: 23267,
                     },
                 ]
@@ -384,7 +384,7 @@ mod tests {
                 next_uid: None,
                 next_filename: None,
                 segment_family: None,
-                chapter_translate: None,
+                // chapter_translate: None,
                 timestamp_scale: 1_000_000,
                 duration: Some(1020.0),
                 date_utc: None,
