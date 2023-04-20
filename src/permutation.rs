@@ -77,6 +77,21 @@ macro_rules! permutation_trait(
   );
 );
 
+// Manual implementation for a single Parser (not covered by tuples)
+impl<'a, A, FnA: Parser<&'a [u8], A, Error>> Permutation<'a, Option<A>> for FnA {
+    fn permutation(&mut self, mut input: &'a [u8]) -> IResult<&'a [u8], Option<A>, Error> {
+        while let Ok((i, _)) = crate::ebml::void(input) {
+            input = i;
+        }
+
+        match self.parse(input) {
+            Ok((i, o)) => Ok((i, Some(o))),
+            Err(Err::Error(_)) => Ok((input, None)),
+            Err(e) => Err(e),
+        }
+    }
+}
+
 macro_rules! permutation_trait_impl(
   ($($name:ident $ty:ident $item:ident),+) => (
     impl<'a,
