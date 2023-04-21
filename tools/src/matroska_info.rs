@@ -181,6 +181,20 @@ fn run(filename: &str) -> Result<(), InfoError> {
                     }
                     println!("| + Multiplexing application: {}", i.muxing_app);
                     println!("| + Writing application: {}", i.writing_app);
+                    if let Some(ref date) = i.date_utc {
+                        use time::format_description::well_known::Rfc3339;
+                        use time::{Date, Duration};
+
+                        let formatted = Date::from_ordinal_date(2001, 1)
+                            .unwrap()
+                            .midnight()
+                            .assume_utc()
+                            .saturating_add(Duration::nanoseconds(date.0))
+                            .format(&Rfc3339)
+                            .unwrap();
+
+                        println!("| + Date: {formatted}");
+                    }
                     if info.is_some() {
                         return Err(InfoError::InfoElement);
                     } else {
