@@ -6,8 +6,9 @@
 [![LICENSE][license badge]][license]
 
 ## Specification
-- [rfc](https://datatracker.ietf.org/doc/draft-ietf-cellar-matroska/)
-- [git repository](https://github.com/ietf-wg-cellar/matroska-specification)
+- [EBML RFC](https://www.rfc-editor.org/rfc/rfc8794.html)
+- [Matroska RFC drafts](https://datatracker.ietf.org/doc/draft-ietf-cellar-matroska/)
+- [Matroska specification repository](https://github.com/ietf-wg-cellar/matroska-specification)
 
 ## Status
 - Supported formats
