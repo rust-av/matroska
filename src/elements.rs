@@ -7,11 +7,9 @@ use nom::{
 
 pub use uuid::Uuid;
 
-use crate::permutation::matroska_permutation;
-use crate::{
-    ebml::{check_id, checksum, crc, elem_size, vid, vint, EbmlParsable, EbmlResult, Error},
-    elements, impl_ebml_master,
-};
+use crate::ebml::macros::impl_ebml_master;
+use crate::ebml::{check_id, checksum, crc, elem_size, vid, vint, EbmlParsable, EbmlResult, Error};
+use crate::elements;
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum SegmentElement<'a> {
