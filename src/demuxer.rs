@@ -342,7 +342,7 @@ mod tests {
         }
 
         assert_eq!(
-            demuxer.header.expect("can parse EBML Header"),
+            demuxer.header.unwrap(),
             EbmlHeader {
                 version: 1,
                 read_version: 1,
@@ -355,7 +355,7 @@ mod tests {
         );
 
         assert_eq!(
-            demuxer.seek_head.expect("can parse Seek Head Element"),
+            demuxer.seek_head.unwrap(),
             SeekHead {
                 positions: vec![
                     Seek {
@@ -375,7 +375,7 @@ mod tests {
         );
 
         assert_eq!(
-            demuxer.info.expect("can parse Info Element"),
+            demuxer.info.unwrap(),
             Info {
                 segment_uid: Some(Uuid::try_parse("ed157223-369d-f02d-cf50-76a5fea70034").unwrap()),
                 segment_filename: None,
@@ -395,7 +395,7 @@ mod tests {
         );
 
         assert_eq!(
-            demuxer.tracks.expect("can parse Tracks Element"),
+            demuxer.tracks.unwrap(),
             Tracks {
                 tracks: vec![
                     TrackEntry {
