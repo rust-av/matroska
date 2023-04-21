@@ -1,17 +1,14 @@
 mod error;
-mod macros;
+pub(crate) mod macros;
 mod parse;
 
 #[cfg(test)]
 mod tests;
 
-pub use crate::impl_ebml_master;
-use crate::permutation::matroska_permutation;
-
 pub use self::error::{ebml_err, Error, ErrorKind};
 pub use self::parse::*;
 
-impl_ebml_master! {
+self::macros::impl_ebml_master! {
     // Element ID 0x1A45DFA3
     #[derive(Debug, Clone, PartialEq, Eq)]
     struct EbmlHeader {
