@@ -7,8 +7,8 @@ use nom::{
 
 pub use uuid::Uuid;
 
-use crate::ebml::macros::impl_ebml_master;
 use crate::ebml::{check_id, checksum, crc, elem_size, vid, vint, EbmlParsable, EbmlResult, Error};
+use crate::ebml::{macros::impl_ebml_master, Date};
 use crate::elements;
 
 #[derive(Debug, Clone, PartialEq)]
@@ -108,7 +108,7 @@ impl_ebml_master! {
         // [0x6924] chapter_translate: (Option<ChapterTranslate>),
         [0x2AD7B1] timestamp_scale: (u64) = 1000000,
         [0x4489] duration: (Option<f64>),     // FIXME: should be float
-        [0x4461] date_utc: (Option<Vec<u8>>), // FIXME: should be date
+        [0x4461] date_utc: (Option<Date>),
         [0x7BA9] title: (Option<String>),
         [0x4D80] muxing_app: (String),
         [0x5741] writing_app: (String),

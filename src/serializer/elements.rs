@@ -87,7 +87,9 @@ pub(crate) fn gen_info<'a, 'b>(
                 gen_opt(i.segment_family.as_ref(), |v| gen_ebml_binary(0x4444, v)),
                 gen_ebml_uint(0x2AD7B1, i.timestamp_scale),
                 gen_opt(i.duration.as_ref(), |v| gen_f64(0x4489, *v)),
-                gen_opt(i.date_utc.as_ref(), |v| gen_ebml_binary(0x4461, v)),
+                gen_opt(i.date_utc.as_ref(), |v| {
+                    gen_ebml_binary(0x4461, v.0.to_be_bytes())
+                }),
                 gen_opt(i.title.as_ref(), |v| gen_ebml_str(0x7BA9, v)),
                 gen_ebml_str(0x4D80, &i.muxing_app),
                 gen_ebml_str(0x5741, &i.writing_app),

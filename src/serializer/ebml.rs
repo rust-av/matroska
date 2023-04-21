@@ -3,7 +3,7 @@ use cookie_factory::gen_slice;
 use cookie_factory::GenError;
 use nom::AsBytes;
 
-use crate::ebml::EbmlHeader;
+use crate::ebml::{Date, EbmlHeader};
 use crate::serializer::cookie_utils::{
     gen_at_offset, gen_skip, gen_slice, set_be_f64, set_be_i8, tuple,
 };
@@ -311,6 +311,13 @@ impl EbmlSize for i64 {
 impl EbmlSize for f64 {
     fn capacity(&self) -> usize {
         //FIXME: calculate size
+        8
+    }
+}
+
+impl EbmlSize for Date {
+    fn capacity(&self) -> usize {
+        // FIXME: Handle zero-sized date
         8
     }
 }

@@ -58,6 +58,25 @@ impl<'a> EbmlParsable<'a> for f64 {
     }
 }
 
+/// Date Element. Contains the number of nanoseconds since
+/// 2001-01-01T00:00:00.000000000 UTC.
+///
+/// This struct can't really do anything by itself. If you want
+/// date/time handling, you should use a crate like [time].
+///
+/// [time]: https://crates.io/crates/time
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Date(pub i64);
+
+impl<'a> EbmlParsable<'a> for Date {
+    fn try_parse(data: &'a [u8]) -> Result<Self, ErrorKind> {
+        match data.len() {
+            0 | 8 => i64::try_parse(data).map(Date),
+            _ => Err(ErrorKind::DateWidthIncorrect),
+        }
+    }
+}
+
 impl<'a> EbmlParsable<'a> for String {
     fn try_parse(data: &'a [u8]) -> Result<Self, ErrorKind> {
         String::from_utf8(data.to_vec()).map_err(|_| ErrorKind::StringNotUtf8)

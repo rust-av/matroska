@@ -59,6 +59,10 @@ pub enum ErrorKind {
     /// which is not allowed.
     FloatWidthIncorrect,
 
+    /// A date element has declared a length that is not 0 or 8 octets,
+    /// which is not allowed.
+    DateWidthIncorrect,
+
     /// A string element contains non-UTF-8 data, which is not allowed.
     StringNotUtf8,
 
