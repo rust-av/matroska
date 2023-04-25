@@ -12,8 +12,11 @@ macro_rules! unwrap_parser {
     ($field_id:literal, Option<$field_type:ty>) => {
         $crate::ebml::macros::unwrap_parser!($field_id, $field_type)
     };
-    ($field_id:literal, Vec<$field_type:ty>) => {
+    ($field_id:literal, 0, Vec<$field_type:ty>) => {
         nom::multi::many0($crate::ebml::macros::unwrap_parser!($field_id, $field_type))
+    };
+    ($field_id:literal, 1, Vec<$field_type:ty>) => {
+        nom::multi::many1($crate::ebml::macros::unwrap_parser!($field_id, $field_type))
     };
     ($field_id:literal, $field_type:ty) => {
         $crate::ebml::ebml_element::<$field_type>($field_id)
@@ -24,7 +27,7 @@ macro_rules! impl_ebml_master {
     (
         $(#[$outer:meta])*
         struct $name:ident$(<$lifetime:lifetime>)? {
-            $([$field_id:literal] $field_name:ident: ($($field_type:tt)+) $(= $default:expr)?,)+
+            $([$field_id:literal] $field_name:ident: ($($field_type:tt)+) $([$lower_bound:tt..])? $(= $default:expr)?,)+
         }
     ) => {
         $(#[$outer])*
@@ -41,7 +44,7 @@ macro_rules! impl_ebml_master {
             fn try_parse(input: &'p [u8]) -> Result<Self, $crate::ebml::ErrorKind> {
                 #[allow(unused_parens)]
                 let (i, ($($field_name),*)) = $crate::permutation::matroska_permutation((
-                    $($crate::ebml::macros::unwrap_parser!($field_id, $($field_type)+)),+
+                    $($crate::ebml::macros::unwrap_parser!($field_id, $($lower_bound,)? $($field_type)+)),+
                 ))(input)
                     .map_err(|e| match e {
                         nom::Err::Failure(e) | nom::Err::Error(e) => e.kind,
