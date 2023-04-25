@@ -80,7 +80,7 @@ impl_ebml_master! {
     // Element ID 0x114D9B74
     #[derive(Debug, Clone, PartialEq, Eq)]
     struct SeekHead {
-        [0x4DBB] positions: (Vec<Seek>),
+        [0x4DBB] positions: (Vec<Seek>) [1..],
     }
 }
 
@@ -123,8 +123,8 @@ impl_ebml_master! {
         [0x5854] silent_tracks: (Option<SilentTracks>),
         [0xA7] position: (Option<u64>),
         [0xAB] prev_size: (Option<u64>),
-        [0xA3] simple_block: (Vec<&'a [u8]>),
-        [0xA0] block_group: (Vec<BlockGroup<'a>>),
+        [0xA3] simple_block: (Vec<&'a [u8]>) [0..],
+        [0xA0] block_group: (Vec<BlockGroup<'a>>) [0..],
         [0xAF] encrypted_block: (Option<&'a [u8]>),
     }
 }
@@ -133,7 +133,7 @@ impl_ebml_master! {
     // Element ID 0x5854
     #[derive(Debug, Clone, PartialEq, Eq)]
     struct SilentTracks {
-        [0x58D7] numbers: (Vec<u64>),
+        [0x58D7] numbers: (Vec<u64>) [0..],
     }
 }
 
@@ -250,7 +250,7 @@ impl_ebml_master! {
     // Element ID 0x1654AE6B
     #[derive(Debug, Clone, PartialEq)]
     struct Tracks {
-        [0xAE] tracks: (Vec<TrackEntry>),
+        [0xAE] tracks: (Vec<TrackEntry>) [1..],
     }
 }
 
@@ -329,7 +329,7 @@ impl_ebml_master! {
         [0xC0] trick_master_track_segment_uid: (Option<Uuid>),
         [0xC1] video: (Option<Video>),
         [0xC6] audio: (Option<Audio>),
-        [0xC7] track_translate: (Vec<TrackTranslate>),
+        [0xC7] track_translate: (Vec<TrackTranslate>) [0..],
         [0xC4] track_operation: (Option<TrackOperation>),
         [0x6D80] content_encodings: (Option<ContentEncodings>),
         // The demuxer Stream index matching the Track
@@ -343,7 +343,7 @@ impl_ebml_master! {
     // Element ID 0xC7
     #[derive(Debug, Clone, PartialEq, Eq)]
     struct TrackTranslate {
-        [0x66FC] edition_uid: (Vec<u64>),
+        [0x66FC] edition_uid: (Vec<u64>) [0..],
         [0x66BF] codec: (u64),
         [0x66A5] track_id: (u64),
     }
@@ -362,7 +362,7 @@ impl_ebml_master! {
     // Element ID 0xE3
     #[derive(Debug, Clone, PartialEq, Eq)]
     struct TrackCombinePlanes {
-        [0xE4] track_planes: (Vec<TrackPlane>),
+        [0xE4] track_planes: (Vec<TrackPlane>) [1..],
     }
 }
 
@@ -379,7 +379,7 @@ impl_ebml_master! {
     // Element ID 0xE9
     #[derive(Debug, Clone, PartialEq, Eq)]
     struct TrackJoinBlocks {
-        [0xED] uid: (Vec<u64>),
+        [0xED] uid: (Vec<u64>) [1..],
     }
 }
 
@@ -387,7 +387,7 @@ impl_ebml_master! {
     // Element ID 0x6D80
     #[derive(Debug, Clone, PartialEq, Eq)]
     struct ContentEncodings {
-        [0x6240] content_encoding: (Vec<ContentEncoding>),
+        [0x6240] content_encoding: (Vec<ContentEncoding>) [1..],
     }
 }
 
