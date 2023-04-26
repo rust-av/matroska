@@ -4,7 +4,7 @@ use cookie_factory::GenError;
 use crate::{
     elements::{
         Audio, Cluster, Colour, Info, Lacing, MasteringMetadata, Projection, Seek, SeekHead,
-        SilentTracks, SimpleBlock, TrackEntry, Tracks, Video,
+        SimpleBlock, TrackEntry, Tracks, Video,
     },
     serializer::cookie_utils::{gen_many, gen_opt, gen_opt_copy, set_be_i16, tuple},
     serializer::ebml::{
@@ -128,12 +128,9 @@ impl EbmlSize for TrackEntry {
             + self.flag_default.size(0x88)
             + self.flag_forced.size(0x55AA)
             + self.flag_lacing.size(0x9C)
-            + self.min_cache.size(0x6DE7)
-            + self.max_cache.size(0x6DF8)
             + self.default_duration.size(0x23E383)
             + self.default_decoded_field_duration.size(0x234E7A)
             + self.track_timestamp_scale.size(0x23314F)
-            + self.track_offset.size(0x537F)
             + self.max_block_addition_id.size(0x55EE)
             + self.name.size(0x536E)
             + self.language.size(0x22B59C)
@@ -142,20 +139,10 @@ impl EbmlSize for TrackEntry {
             + self.codec_private.size(0x63A2)
             + self.codec_name.size(0x258688)
             + self.attachment_link.size(0x7446)
-            + self.codec_settings.size(0x3A9697)
-            + self.codec_info_url.size(0x3B4040)
-            + self.codec_download_url.size(0x26B240)
-            + self.codec_decode_all.size(0xAA)
-            + self.track_overlay.size(0x6FAB)
             + self.codec_delay.size(0x56AA)
             + self.seek_pre_roll.size(0x56BB)
             + self.video.size(0xE0)
             + self.audio.size(0xE1)
-            + self.trick_track_uid.size(0xC0)
-            + self.trick_track_segment_uid.size(0xC1)
-            + self.trick_track_flag.size(0xC6)
-            + self.trick_master_track_uid.size(0xC7)
-            + self.trick_master_track_segment_uid.size(0xC4)
     }
 }
 
@@ -177,14 +164,11 @@ fn gen_track_entry<'a, 'b>(
                 gen_ebml_uint(0x88, t.flag_default),
                 gen_ebml_uint(0x55AA, t.flag_forced),
                 gen_ebml_uint(0x9C, t.flag_lacing),
-                gen_opt_copy(t.min_cache, |v| gen_ebml_uint(0x6DE7, v)),
-                gen_opt_copy(t.max_cache, |v| gen_ebml_uint(0x6DF8, v)),
                 gen_opt_copy(t.default_duration, |v| gen_ebml_uint(0x23E383, v)),
                 gen_opt_copy(t.default_decoded_field_duration, |v| {
                     gen_ebml_uint(0x234E7A, v)
                 }),
                 gen_f64(0x23314F, t.track_timestamp_scale), // FIXME: don't serialize if default
-                gen_opt_copy(t.track_offset, |v| gen_ebml_int(0x537F, v)),
                 gen_ebml_uint(0x55EE, t.max_block_addition_id),
                 gen_opt(t.name.as_ref(), |v| gen_ebml_str(0x536E, v)),
                 gen_ebml_str(0x22B59C, &t.language),
@@ -193,24 +177,10 @@ fn gen_track_entry<'a, 'b>(
                 gen_opt(t.codec_private.as_ref(), |v| gen_ebml_binary(0x63A2, v)),
                 gen_opt(t.codec_name.as_ref(), |v| gen_ebml_str(0x258688, v)),
                 gen_opt_copy(t.attachment_link, |v| gen_ebml_uint(0x7446, v)),
-                gen_opt(t.codec_settings.as_ref(), |v| gen_ebml_str(0x3A9697, v)),
-                gen_opt(t.codec_info_url.as_ref(), |v| gen_ebml_str(0x3B4040, v)),
-                gen_opt(t.codec_download_url.as_ref(), |v| gen_ebml_str(0x26B240, v)),
-                gen_opt_copy(t.codec_decode_all, |v| gen_ebml_uint(0xAA, v)),
-                gen_opt_copy(t.track_overlay, |v| gen_ebml_uint(0x6FAB, v)),
                 gen_ebml_uint(0x56AA, t.codec_delay),
                 gen_ebml_uint(0x56BB, t.seek_pre_roll),
                 gen_opt(t.video.as_ref(), gen_track_entry_video),
                 gen_opt(t.audio.as_ref(), gen_track_entry_audio),
-                gen_opt_copy(t.trick_track_uid, |v| gen_ebml_uint(0xC0, v)),
-                gen_opt(t.trick_track_segment_uid.as_ref(), |v| {
-                    gen_ebml_binary(0xC1, v)
-                }),
-                gen_opt_copy(t.trick_track_flag, |v| gen_ebml_uint(0xC6, v)),
-                gen_opt_copy(t.trick_master_track_uid, |v| gen_ebml_uint(0xC7, v)),
-                gen_opt(t.trick_master_track_segment_uid.as_ref(), |v| {
-                    gen_ebml_binary(0xC4, v)
-                }),
             )),
         )(input)
     }
@@ -221,7 +191,6 @@ impl EbmlSize for Audio {
         self.sampling_frequency.size(0xB5)
             + self.output_sampling_frequency.size(0x78B5)
             + self.channels.size(0x9F)
-            + self.channel_positions.size(0x7D7B)
             + self.bit_depth.size(0x6264)
     }
 }
@@ -239,7 +208,6 @@ fn gen_track_entry_audio<'a, 'b>(
                 gen_f64(0xB5, a.sampling_frequency),
                 gen_opt_copy(a.output_sampling_frequency, |v| gen_f64(0x78B5, v)),
                 gen_ebml_uint(0x9F, a.channels),
-                gen_opt(a.channel_positions.as_ref(), |v| gen_ebml_binary(0x7D7B, v)),
                 gen_opt_copy(a.bit_depth, |v| gen_ebml_uint(0x6264, v)),
             )),
         )(input)
@@ -262,10 +230,7 @@ impl EbmlSize for Video {
             + self.display_width.size(0x54B0)
             + self.display_height.size(0x54BA)
             + self.display_unit.size(0x54B2)
-            + self.aspect_ratio_type.size(0x54B3)
             + self.colour_space.size(0x2EB524)
-            + self.gamma_value.size(0x2FB523)
-            + self.frame_rate.size(0x2383E3)
             + self.colour.size(0x55B0)
             + self.projection.size(0x7670)
     }
@@ -295,10 +260,7 @@ fn gen_track_entry_video<'a, 'b>(
                 gen_opt_copy(v.display_width, |v| gen_ebml_uint(0x54B0, v)),
                 gen_opt_copy(v.display_height, |v| gen_ebml_uint(0x54BA, v)),
                 gen_ebml_uint(0x54B2, v.display_unit),
-                gen_opt_copy(v.aspect_ratio_type, |v| gen_ebml_uint(0x54B3, v)),
                 gen_opt(v.colour_space.as_ref(), |v| gen_ebml_binary(0x2EB524, v)),
-                gen_opt_copy(v.gamma_value, |v| gen_f64(0x2FB523, v)),
-                gen_opt_copy(v.frame_rate, |v| gen_f64(0x2383E3, v)),
                 gen_opt(v.colour.as_ref(), gen_track_entry_video_colour),
                 gen_opt(v.projection.as_ref(), |v| {
                     gen_track_entry_video_projection(v)
@@ -432,11 +394,12 @@ fn gen_track_entry_video_projection<'a, 'b>(
 
 impl<'a> EbmlSize for Cluster<'a> {
     fn capacity(&self) -> usize {
-        self.timestamp.size(0xE7) + self.silent_tracks.size(0x5854) + self.position.size(0xA7) +
-      self.prev_size.size(0xAB) + self.simple_block.size(0xA3) +
-      // TODO: implement for BlockGroup
-      // self.block_group.size(0xA0) +
-      self.encrypted_block.size(0xAF)
+        self.timestamp.size(0xE7)
+            + self.position.size(0xA7)
+            + self.prev_size.size(0xAB)
+            + self.simple_block.size(0xA3)
+        // TODO: implement for BlockGroup
+        // + self.block_group.size(0xA0)
     }
 }
 
@@ -450,33 +413,12 @@ pub(crate) fn gen_cluster<'a, 'b>(
             byte_capacity,
             tuple((
                 gen_ebml_uint(0xE7, c.timestamp),
-                gen_opt(c.silent_tracks.as_ref(), gen_silent_tracks),
                 gen_opt_copy(c.position, |v| gen_ebml_uint(0xA7, v)),
                 gen_opt_copy(c.prev_size, |v| gen_ebml_uint(0xAB, v)),
                 gen_many(&c.simple_block, |v| gen_ebml_binary(0xA3, v)),
                 // TODO: implement for BlockGroup
                 // gen_many(&c.block_group, gen_block_group)
-                gen_opt(c.encrypted_block.as_ref(), |v| gen_ebml_binary(0xAF, v)),
             )),
-        )(input)
-    }
-}
-
-impl EbmlSize for SilentTracks {
-    fn capacity(&self) -> usize {
-        self.numbers.size(0x58D7)
-    }
-}
-
-fn gen_silent_tracks<'a, 'b>(
-    s: &'a SilentTracks,
-) -> impl Fn((&'b mut [u8], usize)) -> Result<(&'b mut [u8], usize), GenError> + 'a {
-    move |input| {
-        let byte_capacity = vint_size(s.capacity() as u64)?;
-        gen_ebml_master(
-            0x5854,
-            byte_capacity,
-            gen_many(&s.numbers, |v| gen_ebml_uint(0x58D7, *v)),
         )(input)
     }
 }

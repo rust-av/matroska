@@ -239,9 +239,6 @@ fn run(filename: &str) -> Result<(), InfoError> {
                                 println!("|    + Output sampling freqeuncy: {}", frequency);
                             }
                             println!("|    + Channels: {}", a.channels);
-                            if let Some(ref channel_positions) = a.channel_positions {
-                                println!("|    + Channel position: {:?}", channel_positions);
-                            }
                             if let Some(bit_depth) = a.bit_depth {
                                 println!("|    + Bit depth: {}", bit_depth);
                             }
@@ -305,15 +302,10 @@ fn run(filename: &str) -> Result<(), InfoError> {
                 SegmentElement::Cluster(c) => {
                     println!("|+ Cluster");
                     println!("|+   Timestamp: {}", c.timestamp);
-                    println!("|+   Silent_tracks: {:?}", c.silent_tracks);
                     println!("|+   Position: {:?}", c.position);
                     println!("|+   Prev size: {:?}", c.prev_size);
                     println!("|+   Simple block: {} elements", c.simple_block.len());
                     println!("|+   Block group: {} elements", c.block_group.len());
-                    println!(
-                        "|+   Encrypted block: {:?} bytes",
-                        c.encrypted_block.as_ref().map(|s| s.len())
-                    );
                 }
                 SegmentElement::Void(s) => {
                     println!("|+ EbmlVoid (size: {})", s);

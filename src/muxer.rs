@@ -346,12 +346,10 @@ impl Muxer for MkvMuxer {
 
                 let cluster = Cluster {
                     timestamp: self.timestamp.take().unwrap(),
-                    silent_tracks: None,
                     position: None,
                     prev_size: None,
                     simple_block: simple_blocks,
                     block_group: Vec::new(),
-                    encrypted_block: None,
                 };
 
                 let mut buf: Vec<u8> = vec![0; cluster.size(0x1F43B675)];
@@ -398,12 +396,10 @@ impl Muxer for MkvMuxer {
 
             let cluster = Cluster {
                 timestamp: self.timestamp.take().unwrap(),
-                silent_tracks: None,
                 position: None,
                 prev_size: None,
                 simple_block: simple_blocks,
                 block_group: Vec::new(),
-                encrypted_block: None,
             };
 
             let mut buf: Vec<u8> = vec![0; cluster.size(0x1F43B675)];

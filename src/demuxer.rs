@@ -210,15 +210,9 @@ fn track_entry_audio_kind(audio: &Audio) -> Option<MediaKind> {
     let rate = audio
         .output_sampling_frequency
         .unwrap_or(audio.sampling_frequency);
-    // TODO: complete it
-    let map = if audio.channel_positions.is_none() {
-        Some(ChannelMap::default_map(audio.channels as usize))
-    } else {
-        unimplemented!("Convert matroska map to rust-av map")
-    };
     let a = AudioInfo {
         rate: rate as usize,
-        map,
+        map: Some(ChannelMap::default_map(audio.channels as usize)),
         format: None,
     };
     Some(MediaKind::Audio(a))
@@ -406,12 +400,9 @@ mod tests {
                         flag_default: 1,
                         flag_forced: 0,
                         flag_lacing: 0,
-                        min_cache: None,
-                        max_cache: None,
                         default_duration: None,
                         default_decoded_field_duration: None,
                         track_timestamp_scale: 1.0,
-                        track_offset: None,
                         max_block_addition_id: 0,
                         name: None,
                         language: String::from("eng"),
@@ -420,18 +411,8 @@ mod tests {
                         codec_private: None,
                         codec_name: None,
                         attachment_link: None,
-                        codec_settings: None,
-                        codec_info_url: None,
-                        codec_download_url: None,
-                        codec_decode_all: None,
-                        track_overlay: None,
                         codec_delay: 0,
                         seek_pre_roll: 0,
-                        trick_track_uid: None,
-                        trick_track_segment_uid: None,
-                        trick_track_flag: None,
-                        trick_master_track_uid: None,
-                        trick_master_track_segment_uid: None,
                         video: Some(Video {
                             flag_interlaced: 0,
                             field_order: 2,
@@ -447,10 +428,7 @@ mod tests {
                             display_width: Some(640),
                             display_height: Some(360),
                             display_unit: 3,
-                            aspect_ratio_type: None,
                             colour_space: None,
-                            gamma_value: None,
-                            frame_rate: None,
                             colour: None,
                             projection: None
                         }),
@@ -468,12 +446,9 @@ mod tests {
                         flag_default: 1,
                         flag_forced: 0,
                         flag_lacing: 0,
-                        min_cache: None,
-                        max_cache: None,
                         default_duration: None,
                         default_decoded_field_duration: None,
                         track_timestamp_scale: 1.0,
-                        track_offset: None,
                         max_block_addition_id: 0,
                         name: None,
                         language: String::from("eng"),
@@ -485,24 +460,13 @@ mod tests {
                         ]),
                         codec_name: None,
                         attachment_link: None,
-                        codec_settings: None,
-                        codec_info_url: None,
-                        codec_download_url: None,
-                        codec_decode_all: None,
-                        track_overlay: None,
                         codec_delay: 6500000,
                         seek_pre_roll: 0,
-                        trick_track_uid: None,
-                        trick_track_segment_uid: None,
-                        trick_track_flag: None,
-                        trick_master_track_uid: None,
-                        trick_master_track_segment_uid: None,
                         video: None,
                         audio: Some(Audio {
                             sampling_frequency: 48000.0,
                             output_sampling_frequency: None,
                             channels: 1,
-                            channel_positions: None,
                             bit_depth: Some(32),
                         }),
                         track_translate: vec![],
