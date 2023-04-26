@@ -8,8 +8,8 @@ use crate::{
     },
     serializer::cookie_utils::{gen_many, gen_opt, gen_opt_copy, set_be_i16, tuple},
     serializer::ebml::{
-        gen_ebml_binary, gen_ebml_int, gen_ebml_master, gen_ebml_str, gen_ebml_uint,
-        gen_ebml_uint_l, gen_f64, gen_vid, gen_vint, vint_size, EbmlSize,
+        gen_ebml_binary, gen_ebml_master, gen_ebml_str, gen_ebml_uint, gen_ebml_uint_l, gen_f64,
+        gen_vid, gen_vint, vint_size, EbmlSize,
     },
 };
 
