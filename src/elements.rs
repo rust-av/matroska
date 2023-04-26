@@ -120,20 +120,10 @@ impl_ebml_master! {
     #[derive(Debug, Clone, PartialEq)]
     struct Cluster<'a> {
         [0xE7] timestamp: (u64),
-        [0x5854] silent_tracks: (Option<SilentTracks>),
         [0xA7] position: (Option<u64>),
         [0xAB] prev_size: (Option<u64>),
         [0xA3] simple_block: (Vec<&'a [u8]>) [0..],
         [0xA0] block_group: (Vec<BlockGroup<'a>>) [0..],
-        [0xAF] encrypted_block: (Option<&'a [u8]>),
-    }
-}
-
-impl_ebml_master! {
-    // Element ID 0x5854
-    #[derive(Debug, Clone, PartialEq, Eq)]
-    struct SilentTracks {
-        [0x58D7] numbers: (Vec<u64>) [0..],
     }
 }
 
@@ -142,16 +132,12 @@ impl_ebml_master! {
     #[derive(Debug, Clone, PartialEq, Eq)]
     struct BlockGroup<'a> {
         [0xA1] block: (&'a [u8]),
-        [0xA2] block_virtual: (Option<Vec<u8>>),
         // [0x75A1] block_additions: (Option<BlockAdditions>),
         [0x9B] block_duration: (Option<u64>),
         [0xFA] reference_priority: (u64) = 0,
         [0xFB] reference_block: (Option<u64>),
-        [0xFD] reference_virtual: (Option<i64>),
         [0xA4] codec_state: (Option<Vec<u8>>),
         [0x75A2] discard_padding: (Option<i64>),
-        // [0x8E] slices: (Option<Slices>),
-        // [0xC8] reference_frame: (Option<ReferenceFrame>),
     }
 }
 
@@ -300,13 +286,10 @@ impl_ebml_master! {
         [0x88] flag_default: (u64) = 1,
         [0x55AA] flag_forced: (u64) = 0,
         [0x9C] flag_lacing: (u64) = 1,
-        [0x6DE7] min_cache: (Option<u64>),
-        [0x6DF8] max_cache: (Option<u64>),
         [0x23E383] default_duration: (Option<u64>),
         [0x234E7A] default_decoded_field_duration: (Option<u64>),
         // FIXME: reimplement float_or handling
         [0x23314F] track_timestamp_scale: (f64) = 1.0,
-        [0x537F] track_offset: (Option<i64>),
         [0x55EE] max_block_addition_id: (u64) = 0,
         [0x536E] name: (Option<String>),
         [0x22B59C] language: (String) = String::from("eng"),
@@ -315,18 +298,8 @@ impl_ebml_master! {
         [0x63A2] codec_private: (Option<Vec<u8>>),
         [0x258688] codec_name: (Option<String>),
         [0x7446] attachment_link: (Option<u64>),
-        [0x3A9697] codec_settings: (Option<String>),
-        [0x3B4040] codec_info_url: (Option<String>),
-        [0x26B240] codec_download_url: (Option<String>),
-        [0xAA] codec_decode_all: (Option<u64>),
-        [0x6FAB] track_overlay: (Option<u64>),
         [0x56AA] codec_delay: (u64) = 0,
         [0x56BB] seek_pre_roll: (u64) = 0,
-        [0xC0] trick_track_uid: (Option<u64>),
-        [0xC1] trick_track_segment_uid: (Option<Uuid>),
-        [0xC6] trick_track_flag: (Option<u64>),
-        [0xC7] trick_master_track_uid: (Option<u64>),
-        [0xC4] trick_master_track_segment_uid: (Option<Uuid>),
         [0xE0] video: (Option<Video>),
         [0xE1] audio: (Option<Audio>),
         [0x6624] track_translate: (Vec<TrackTranslate>) [0..],
@@ -419,10 +392,6 @@ impl_ebml_master! {
     struct ContentEncryption {
         [0x47E1] enc_algo: (u64) = 0,
         [0x47E2] enc_key_id: (Option<Vec<u8>>),
-        [0x47E3] signature: (Option<Vec<u8>>),
-        [0x47E4] sig_key_id: (Option<Vec<u8>>),
-        [0x47E5] sig_algo: (Option<u64>),
-        [0x47E6] sig_hash_algo: (Option<u64>),
     }
 }
 
@@ -434,7 +403,6 @@ impl_ebml_master! {
         [0xB5] sampling_frequency: (f64) = 5360.0,
         [0x7885] output_sampling_frequency: (Option<f64>),
         [0x9F] channels: (u64),
-        [0x7D7B] channel_positions: (Option<Vec<u8>>),
         [0x6264] bit_depth: (Option<u64>),
     }
 }
@@ -457,10 +425,7 @@ impl_ebml_master! {
         [0x54B0] display_width: (Option<u64>),
         [0x54BA] display_height: (Option<u64>),
         [0x54B2] display_unit: (u64) = 0,
-        [0x54B3] aspect_ratio_type: (Option<u64>),
         [0x2EB524] colour_space: (Option<Vec<u8>>),
-        [0x2FB523] gamma_value: (Option<f64>),
-        [0x2383E3] frame_rate: (Option<f64>),
         [0x55B0] colour: (Option<Colour>),
         [0x55D0] projection: (Option<Projection>),
     }
