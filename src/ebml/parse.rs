@@ -152,8 +152,8 @@ pub fn void(input: &[u8]) -> EbmlResult<&[u8]> {
     ebml_element(0xEC)(input)
 }
 
-/// Consumes an entire Master Element, and returns the ID if successful.
-pub fn skip_master(input: &[u8]) -> EbmlResult<u32> {
+/// Consumes an entire EBML Element, and returns the ID if successful.
+pub fn skip_element(input: &[u8]) -> EbmlResult<u32> {
     let (i, (id, size, crc)) = tuple((vid, elem_size, crc))(input)?;
     let size = if crc.is_some() { size - 6 } else { size };
     checksum(crc, take(size))(i)?;
