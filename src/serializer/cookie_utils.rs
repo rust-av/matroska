@@ -1,4 +1,4 @@
-use cookie_factory::bytes::{be_f64, be_i16, be_i8};
+use cookie_factory::bytes::{be_f64, be_i16};
 use cookie_factory::combinator::{skip, slice};
 use cookie_factory::gen::legacy_wrap;
 use cookie_factory::GenError;
@@ -87,11 +87,6 @@ pub(crate) fn gen_slice<'a, 'b>(
     v: &'b [u8],
 ) -> impl Fn((&'a mut [u8], usize)) -> Result<(&'a mut [u8], usize), GenError> + 'b {
     move |input| legacy_wrap(slice(v), input)
-}
-
-#[inline]
-pub(crate) fn set_be_i8(x: (&mut [u8], usize), v: i8) -> Result<(&mut [u8], usize), GenError> {
-    legacy_wrap(be_i8(v), x)
 }
 
 #[inline]

@@ -4,9 +4,7 @@ use cookie_factory::GenError;
 use nom::AsBytes;
 
 use crate::ebml::{Date, EbmlHeader};
-use crate::serializer::cookie_utils::{
-    gen_at_offset, gen_skip, gen_slice, set_be_f64, set_be_i8, tuple,
-};
+use crate::serializer::cookie_utils::{gen_at_offset, gen_skip, gen_slice, set_be_f64, tuple};
 
 const ALLOWED_ID_VALUES: u64 = (1u64 << 56) - 1;
 
@@ -77,32 +75,6 @@ pub(crate) fn gen_uint(
         let mut i = needed_bytes - 1;
         loop {
             match set_be_u8((input.0, input.1), (num.wrapping_shr((i * 8).into())) as u8) {
-                Ok(next) => {
-                    input = next;
-                }
-                Err(e) => return Err(e),
-            }
-
-            if i == 0 {
-                break;
-            }
-            i -= 1;
-        }
-
-        Ok(input)
-    }
-}
-
-//FIXME: is it the right implementation?
-pub(crate) fn gen_int(
-    num: i64,
-) -> impl Fn((&mut [u8], usize)) -> Result<(&mut [u8], usize), GenError> {
-    move |mut input| {
-        let needed_bytes = vint_size(num as u64)?;
-
-        let mut i = needed_bytes - 1;
-        loop {
-            match set_be_i8((input.0, input.1), (num >> (i * 8)) as i8) {
                 Ok(next) => {
                     input = next;
                 }
@@ -197,21 +169,6 @@ pub(crate) fn gen_ebml_uint(
     num: u64,
 ) -> impl Fn((&mut [u8], usize)) -> Result<(&mut [u8], usize), GenError> {
     gen_ebml_uint_l(id, num, move || vint_size(num))
-}
-
-pub(crate) fn gen_ebml_int(
-    id: u32,
-    num: i64,
-) -> impl Fn((&mut [u8], usize)) -> Result<(&mut [u8], usize), GenError> {
-    move |input| {
-        let expected_size = vint_size(num as u64)?;
-        let needed_bytes = vint_size(expected_size as u64)?;
-
-        let (buf, ofs_len) = gen_vid(id)(input)?;
-        let (buf, start) = gen_skip(needed_bytes as usize)((buf, ofs_len))?;
-        let (buf, end) = gen_int(num)((buf, start))?;
-        gen_at_offset(ofs_len, gen_ebml_size(expected_size, end - start))((buf, end))
-    }
 }
 
 pub(crate) fn gen_ebml_str<'a, 'b>(
