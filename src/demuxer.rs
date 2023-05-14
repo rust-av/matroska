@@ -173,10 +173,12 @@ impl Demuxer for MkvDemuxer {
                     Ok((seek, Event::MoreDataNeeded(0)))
                 }
                 Err(Err::Incomplete(Needed::Size(size))) => {
-                    Err(Error::MoreDataNeeded(usize::from(size)))
+                    // Needed::Size(size) describes only the missing number of bytes,
+                    // but Error::MoreDataNeeded(size) wants the entire size of the Element.
+                    Err(Error::MoreDataNeeded(buf.data().len() + size.get()))
                 }
                 e => {
-                    error!("{:?}", e);
+                    error!("{e:?}");
                     Err(Error::InvalidData)
                 }
             }
