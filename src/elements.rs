@@ -180,7 +180,7 @@ pub struct SimpleBlock {
 }
 
 fn block_flags(data: u8) -> Option<BlockFlags> {
-    let lacing_data = ((data << 6) >> 6) >> 5;
+    let lacing_data = ((data << 5) >> 5) >> 1;
     let lacing = match lacing_data {
         0 => Lacing::None,
         1 => Lacing::Xiph,
@@ -190,10 +190,10 @@ fn block_flags(data: u8) -> Option<BlockFlags> {
     };
 
     Some(BlockFlags {
-        keyframe: (data & 1) != 0,
-        invisible: (data & (1 << 4)) != 0,
+        keyframe: (data & (1 << 7)) != 0,
+        invisible: (data & (1 << 3)) != 0,
         lacing,
-        discardable: (data & (1 << 7)) != 0,
+        discardable: (data & 1) != 0,
     })
 }
 
