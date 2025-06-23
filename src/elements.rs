@@ -496,6 +496,52 @@ mod tests {
     const webm: &[u8] = include_bytes!("../assets/big-buck-bunny_trailer.webm");
 
     #[test]
+    fn block_flags() {
+        let test = [
+            (
+                0b1000_1011,
+                Some(BlockFlags {
+                    keyframe: true,
+                    invisible: true,
+                    lacing: Lacing::Xiph,
+                    discardable: true,
+                }),
+            ),
+            (
+                0b0000_0000,
+                Some(BlockFlags {
+                    keyframe: false,
+                    invisible: false,
+                    lacing: Lacing::None,
+                    discardable: false,
+                }),
+            ),
+            (
+                0b0000_0110,
+                Some(BlockFlags {
+                    keyframe: false,
+                    invisible: false,
+                    lacing: Lacing::EBML,
+                    discardable: false,
+                }),
+            ),
+            (
+                0b0000_0101,
+                Some(BlockFlags {
+                    keyframe: false,
+                    invisible: false,
+                    lacing: Lacing::FixedSize,
+                    discardable: true,
+                }),
+            ),
+        ];
+
+        for (data, flags) in test {
+            assert_eq!(super::block_flags(data), flags);
+        }
+    }
+
+    #[test]
     fn mkv_segment_root() {
         let res = segment(&mkv[47..100]);
         println!("{res:?}");
