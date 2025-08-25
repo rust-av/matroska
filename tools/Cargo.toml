@@ -14,7 +14,7 @@ av-format = "0.7"
 circular = "0.3"
 log = "0.4"
 matroska = { path = ".." }
-nom = "7.0"
+nom = "8.0"
 pretty_env_logger = "0.5"
 err-derive = "0.3.0"
 time = { version = "0.3.20", features = ["formatting"] }
